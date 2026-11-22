@@ -17,8 +17,10 @@
 #include <algorithm>
 #include <iostream>
 #include <string>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/load_balancing/CmdConfigLoadBalancing.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -33,7 +35,7 @@ namespace {
 // subcommands rely on.
 std::string runLoadBalancerDelete(cfg::LoadBalancerID id) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
   const auto before = swConfig.loadBalancers()->size();
   auto msg = removeLoadBalancer(swConfig, id);
   if (swConfig.loadBalancers()->size() != before) {

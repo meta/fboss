@@ -14,6 +14,7 @@
 #include <string_view>
 #include <vector>
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
@@ -92,7 +93,7 @@ CmdDeleteInterfacePfcConfig::queryClient(
         folly::join(", ", interfaces.getNames()));
   }
 
-  session.saveConfig();
+  session.save<AgentConfigDomain>();
 
   if (wholeStruct) {
     return fmt::format(

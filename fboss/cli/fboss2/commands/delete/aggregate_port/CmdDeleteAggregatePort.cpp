@@ -9,8 +9,10 @@
 #include <stdexcept>
 #include <utility>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 #include "fboss/cli/fboss2/commands/config/aggregate_port/AggregatePortConfigUtils.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -37,7 +39,7 @@ CmdDeleteAggregatePortTraits::RetType CmdDeleteAggregatePort::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& aggregatePortArg) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
   auto aggregatePorts = *swConfig.aggregatePorts();
   auto originalSize = aggregatePorts.size();
   std::erase_if(aggregatePorts, [&](const auto& aggregatePort) {
@@ -65,7 +67,7 @@ CmdDeleteAggregatePortMember::queryClient(
     const AggregatePortNameArg& aggregatePortArg,
     const ObjectArgType& memberArgs) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
   auto aggregatePorts = *swConfig.aggregatePorts();
   auto* aggregatePort = aggregate_port_utils::findAggregatePort(
       aggregatePorts, aggregatePortArg.getName());
@@ -112,7 +114,7 @@ CmdDeleteAggregatePortMinimumCapacityToUp::queryClient(
     const HostInfo& /* hostInfo */,
     const AggregatePortNameArg& aggregatePortArg) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
   auto aggregatePorts = *swConfig.aggregatePorts();
   auto* aggregatePort = aggregate_port_utils::findAggregatePort(
       aggregatePorts, aggregatePortArg.getName());

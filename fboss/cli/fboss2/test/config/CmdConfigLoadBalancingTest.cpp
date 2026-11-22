@@ -13,8 +13,10 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/config/load_balancing/CmdConfigLoadBalancing.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -289,7 +291,7 @@ TEST_F(CmdConfigLoadBalancingTestFixture, ecmp_queryClient_setAlgorithm) {
   EXPECT_THAT(result, HasSubstr("ecmp"));
   EXPECT_THAT(result, HasSubstr("hash-algorithm"));
 
-  const auto& config = ConfigSession::getInstance().getAgentConfig();
+  const auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   const auto* lb = findLoadBalancer(*config.sw(), cfg::LoadBalancerID::ECMP);
   ASSERT_NE(lb, nullptr);
   EXPECT_EQ(*lb->algorithm(), cfg::HashingAlgorithm::CRC32_HI);
@@ -303,7 +305,7 @@ TEST_F(CmdConfigLoadBalancingTestFixture, ecmp_queryClient_setSeed) {
 
   cmd.queryClient(hostInfo, args);
 
-  const auto& config = ConfigSession::getInstance().getAgentConfig();
+  const auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   const auto* lb = findLoadBalancer(*config.sw(), cfg::LoadBalancerID::ECMP);
   ASSERT_NE(lb, nullptr);
   ASSERT_TRUE(lb->seed().has_value());
@@ -318,7 +320,7 @@ TEST_F(CmdConfigLoadBalancingTestFixture, ecmp_queryClient_setFieldsIpv4) {
 
   cmd.queryClient(hostInfo, args);
 
-  const auto& config = ConfigSession::getInstance().getAgentConfig();
+  const auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   const auto* lb = findLoadBalancer(*config.sw(), cfg::LoadBalancerID::ECMP);
   ASSERT_NE(lb, nullptr);
   EXPECT_EQ(lb->fieldSelection()->ipv4Fields()->size(), 1);
@@ -337,7 +339,7 @@ TEST_F(CmdConfigLoadBalancingTestFixture, lag_queryClient_setAlgorithm) {
   EXPECT_THAT(result, HasSubstr("lag"));
   EXPECT_THAT(result, HasSubstr("hash-algorithm"));
 
-  const auto& config = ConfigSession::getInstance().getAgentConfig();
+  const auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   const auto* lb =
       findLoadBalancer(*config.sw(), cfg::LoadBalancerID::AGGREGATE_PORT);
   ASSERT_NE(lb, nullptr);
@@ -354,7 +356,7 @@ TEST_F(CmdConfigLoadBalancingTestFixture, lag_queryClient_setFieldsIpv6) {
 
   cmd.queryClient(hostInfo, args);
 
-  const auto& config = ConfigSession::getInstance().getAgentConfig();
+  const auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   const auto* lb =
       findLoadBalancer(*config.sw(), cfg::LoadBalancerID::AGGREGATE_PORT);
   ASSERT_NE(lb, nullptr);

@@ -21,8 +21,10 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/vlan/CmdConfigVlan.h"
 #include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtils.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -37,7 +39,7 @@ CmdConfigVlanPortTaggingMode::queryClient(
     const utils::PortList& portList,
     const ObjectArgType& taggingMode) {
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   VlanID vlanId(vlanIdArg.getVlanId());
 
@@ -96,7 +98,7 @@ CmdConfigVlanPortTaggingMode::queryClient(
 
   // Save the updated config - tagging mode changes are hitless (no agent
   // restart)
-  session.saveConfig();
+  session.save<AgentConfigDomain>();
 
   std::string modeStr;
   if (emitPriorityTags) {

@@ -44,13 +44,13 @@ TEST(ConfigDomainTest, RegistryListsAgentAndBgp) {
   EXPECT_EQ(agent.sessionPath, "/home/u/.fboss2/agent.conf");
   EXPECT_EQ(agent.gitRelPath, "cli/agent.conf");
   EXPECT_EQ(agent.desiredPath, "/etc/coop/cli/agent.conf");
-  EXPECT_EQ(agent.rollbackActionLevel, cli::ConfigActionLevel::HITLESS);
+  EXPECT_EQ(agent.minActionLevel, cli::ConfigActionLevel::HITLESS);
 
   const auto& bgp = domains.get(cli::ServiceType::BGP).info();
   EXPECT_EQ(bgp.sessionPath, "/home/u/.fboss2/bgp_config.json");
   EXPECT_EQ(bgp.gitRelPath, "bgpcpp/bgpcpp.conf");
   EXPECT_EQ(bgp.desiredPath, "/etc/coop/bgpcpp/bgpcpp.conf");
-  EXPECT_EQ(bgp.rollbackActionLevel, cli::ConfigActionLevel::SERVICE_RESTART);
+  EXPECT_EQ(bgp.minActionLevel, cli::ConfigActionLevel::SERVICE_RESTART);
 
   EXPECT_EQ(&domains.get<AgentConfigDomain>(), domains.all()[0].get());
   EXPECT_EQ(&domains.get<BgpConfigDomain>(), domains.all()[1].get());

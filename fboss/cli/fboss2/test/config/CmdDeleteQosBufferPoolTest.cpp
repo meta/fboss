@@ -6,8 +6,10 @@
 #include <string>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/qos/buffer_pool/CmdDeleteQosBufferPool.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/TestableConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
@@ -57,8 +59,10 @@ class CmdDeleteQosBufferPoolTestFixture : public CmdConfigTestBase {
   }
 
   bool hasPool(const std::string& n) {
-    auto pools =
-        ConfigSession::getInstance().getAgentConfig().sw()->bufferPoolConfigs();
+    auto pools = ConfigSession::getInstance()
+                     .config<AgentConfigDomain>()
+                     .sw()
+                     ->bufferPoolConfigs();
     return pools.has_value() && pools->count(n) > 0;
   }
 

@@ -23,8 +23,10 @@
 #include <iostream>
 #include <stdexcept>
 #include <vector>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -89,7 +91,7 @@ CmdConfigDhcpReplySourceOverride::queryClient(
   const auto& ipAddress = args.getIpAddress();
 
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
 
   // The agent requires the reply-src to match a configured interface IP.
   // Validate here to surface a clear error with the list of valid addresses

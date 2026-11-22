@@ -19,9 +19,10 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
-#include "fboss/cli/fboss2/commands/delete/copp/traffic_policy/match/CmdDeleteCoppTrafficPolicyMatch.h"
 #include "fboss/cli/fboss2/commands/delete/copp/traffic_policy/match/action/CmdDeleteCoppTrafficPolicyMatchAction.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -70,7 +71,7 @@ class CmdDeleteCoppTrafficPolicyMatchActionTestFixture
   const std::string cmdPrefix_ = "delete copp traffic-policy match";
 
   cfg::MatchAction getActionForMatcher(const std::string& matcherName) {
-    auto& config = ConfigSession::getInstance().getAgentConfig();
+    auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
     const auto& matchToActions =
         *config.sw()->cpuTrafficPolicy()->trafficPolicy()->matchToAction();
     for (const auto& mta : matchToActions) {
@@ -82,7 +83,7 @@ class CmdDeleteCoppTrafficPolicyMatchActionTestFixture
   }
 
   bool hasMatcher(const std::string& matcherName) {
-    auto& config = ConfigSession::getInstance().getAgentConfig();
+    auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
     const auto& matchToActions =
         *config.sw()->cpuTrafficPolicy()->trafficPolicy()->matchToAction();
     for (const auto& mta : matchToActions) {

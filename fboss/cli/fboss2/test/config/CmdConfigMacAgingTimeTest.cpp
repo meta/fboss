@@ -14,7 +14,9 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/mac/aging_time/CmdConfigMacAgingTime.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -97,7 +99,7 @@ TEST_F(CmdConfigMacAgingTimeTestFixture, queryClient_setsNewValue) {
   auto result = cmd.queryClient(hostInfo, arg);
   EXPECT_THAT(result, HasSubstr("600"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->switchSettings()->l2AgeTimerSeconds(), 600);
 }
 
@@ -112,7 +114,7 @@ TEST_F(CmdConfigMacAgingTimeTestFixture, queryClient_setsMinimumValue) {
   auto result = cmd.queryClient(hostInfo, arg);
   EXPECT_THAT(result, HasSubstr("1"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->switchSettings()->l2AgeTimerSeconds(), 1);
 }
 

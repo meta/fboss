@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/as-path-list/CmdConfigProtocolBgpPolicyAsPathList.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -47,7 +48,7 @@ class CmdConfigBgpPolicyAsPathListTestFixture : public CmdConfigTestBase {
 
   const std::vector<bgp::bgp_policy::AsPathList>& lists() {
     return *ConfigSession::getInstance()
-                .getBgpConfig()
+                .config<BgpConfigDomain>()
                 .policies()
                 .ensure()
                 .aspath_lists();
@@ -60,7 +61,7 @@ class CmdConfigBgpPolicyAsPathListTestFixture : public CmdConfigTestBase {
       const std::string& policy,
       int64_t seq,
       const std::string& listName) {
-    auto& cfg = ConfigSession::getInstance().getBgpConfig();
+    auto& cfg = ConfigSession::getInstance().config<BgpConfigDomain>();
     auto& policies = *cfg.policies().ensure().bgp_policy_statements();
     policies.emplace_back();
     policies.back().name() = policy;
@@ -73,7 +74,7 @@ class CmdConfigBgpPolicyAsPathListTestFixture : public CmdConfigTestBase {
     matches.back().type() = bgp::bgp_policy::BgpPolicyAtomicMatchType::AS_PATH;
     matches.back().as_path_filters().ensure().as_path_list_names().ensure() = {
         listName};
-    ConfigSession::getInstance().saveBgpConfig();
+    ConfigSession::getInstance().save<BgpConfigDomain>();
     return matches.back();
   }
 

@@ -22,6 +22,7 @@
 #include <string_view>
 #include <vector>
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/as-path-list/BgpAsPathListCliUtils.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -77,7 +78,7 @@ CmdDeleteProtocolBgpPolicyAsPathList::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
-  auto& cfg = session.getBgpConfig();
+  auto& cfg = session.config<BgpConfigDomain>();
   // Delete mirrors add: an absent target is already the requested end state,
   // so this is a success with a warning. Nothing is saved, so a typo'd delete
   // can't stage an unrelated session change.
@@ -106,7 +107,7 @@ CmdDeleteProtocolBgpPolicyAsPathList::queryClient(
         if (paths.empty()) {
           list.as_paths().reset();
         }
-        session.saveBgpConfig();
+        session.save<BgpConfigDomain>();
         return fmt::format(
             "Successfully deleted BGP as-path-list {} regex {}\n"
             "Config saved to: {}",
@@ -136,7 +137,7 @@ CmdDeleteProtocolBgpPolicyAsPathList::queryClient(
         folly::join(", ", referrers));
   }
   lists.erase(it);
-  session.saveBgpConfig();
+  session.save<BgpConfigDomain>();
   return fmt::format(
       "Successfully deleted BGP as-path-list {}\nConfig saved to: {}",
       args.listName(),

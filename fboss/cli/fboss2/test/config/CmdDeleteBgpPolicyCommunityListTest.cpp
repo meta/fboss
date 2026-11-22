@@ -13,6 +13,7 @@
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/community-list/CmdConfigProtocolBgpPolicyCommunityList.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/community-list/CmdDeleteProtocolBgpPolicyCommunityList.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -57,7 +58,7 @@ class CmdDeleteBgpPolicyCommunityListTestFixture : public CmdConfigTestBase {
 
   const std::vector<bgp::bgp_policy::CommunityList>& lists() {
     return *ConfigSession::getInstance()
-                .getBgpConfig()
+                .config<BgpConfigDomain>()
                 .policies()
                 .ensure()
                 .community_lists();
@@ -77,7 +78,7 @@ class CmdDeleteBgpPolicyCommunityListTestFixture : public CmdConfigTestBase {
         bgp::bgp_policy::BgpPolicyAtomicMatchType::COMMUNITY_LIST;
     matches.back().communities_filter().ensure().community_list_names() = {
         listName};
-    ConfigSession::getInstance().saveBgpConfig();
+    ConfigSession::getInstance().save<BgpConfigDomain>();
   }
 
   // Seed a term whose community action names `listName`
@@ -91,13 +92,13 @@ class CmdDeleteBgpPolicyCommunityListTestFixture : public CmdConfigTestBase {
     actions.emplace_back();
     actions.back().community_action().ensure().community_action_list_names() = {
         listName};
-    ConfigSession::getInstance().saveBgpConfig();
+    ConfigSession::getInstance().save<BgpConfigDomain>();
   }
 
   bgp::bgp_policy::BgpPolicyTerm& addTerm(
       const std::string& policy,
       int64_t seq) {
-    auto& cfg = ConfigSession::getInstance().getBgpConfig();
+    auto& cfg = ConfigSession::getInstance().config<BgpConfigDomain>();
     auto& policies = *cfg.policies().ensure().bgp_policy_statements();
     auto it = std::find_if(policies.begin(), policies.end(), [&](auto& p) {
       return *p.name() == policy;

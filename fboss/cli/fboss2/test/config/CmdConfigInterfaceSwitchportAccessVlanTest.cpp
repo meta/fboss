@@ -8,9 +8,11 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/commands/config/interface/switchport/access/vlan/CmdConfigInterfaceSwitchportAccessVlan.h"
 #include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
 
@@ -175,7 +177,7 @@ TEST_F(
 
   // Verify the ingressVlan was updated for both ports
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& switchConfig = *config.sw();
   auto& ports = *switchConfig.ports();
   for (const auto& port : ports) {
@@ -217,7 +219,7 @@ TEST_F(
   EXPECT_THAT(result, HasSubstr("Successfully set access VLAN"));
   EXPECT_THAT(result, HasSubstr("(VLAN 4094 created)"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
 
   // The VLAN and its barebone interface were created

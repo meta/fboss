@@ -35,7 +35,8 @@ BgpConfigDomain::BgpConfigDomain(
               fmt::format("{}/bgp_config.json", sessionConfigDir),
               "bgpcpp/bgpcpp.conf",
               fmt::format("{}/bgpcpp/bgpcpp.conf", systemConfigDir),
-              // bgpd has no reload: a rollback restarts it.
+              // bgpd has no reload: a save records a restart and a rollback
+              // restarts it.
               cli::ConfigActionLevel::SERVICE_RESTART,
           },
           "bgpd") {}

@@ -20,6 +20,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -105,7 +106,7 @@ CmdDeleteProtocolBgpPolicyRoutingPolicy::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
-  auto& cfg = session.getBgpConfig();
+  auto& cfg = session.config<BgpConfigDomain>();
   // Delete mirrors add: an absent target is already the requested end state,
   // so this is a success with a warning. Nothing is saved, so a typo'd delete
   // can't stage an unrelated session change.
@@ -136,7 +137,7 @@ CmdDeleteProtocolBgpPolicyRoutingPolicy::queryClient(
         folly::join(", ", referrers));
   }
   policies.erase(it);
-  session.saveBgpConfig();
+  session.save<BgpConfigDomain>();
   return fmt::format(
       "Successfully deleted BGP routing-policy {}\nConfig saved to: {}",
       args.policyName(),

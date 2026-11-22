@@ -19,8 +19,10 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/data_plane/traffic_policy/match/action/CmdDeleteDataPlaneTrafficPolicyMatchAction.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -55,7 +57,7 @@ class CmdDeleteDataPlaneTrafficPolicyMatchActionTestFixture
   const std::string cmdPrefix_ = "delete data-plane traffic-policy match";
 
   cfg::MatchAction getActionForMatcher(const std::string& matcherName) {
-    auto& config = ConfigSession::getInstance().getAgentConfig();
+    auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
     const auto& matchToActions =
         *config.sw()->dataPlaneTrafficPolicy()->matchToAction();
     for (const auto& mta : matchToActions) {
@@ -67,7 +69,7 @@ class CmdDeleteDataPlaneTrafficPolicyMatchActionTestFixture
   }
 
   bool hasMatcher(const std::string& matcherName) {
-    auto& config = ConfigSession::getInstance().getAgentConfig();
+    auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
     const auto& matchToActions =
         *config.sw()->dataPlaneTrafficPolicy()->matchToAction();
     for (const auto& mta : matchToActions) {

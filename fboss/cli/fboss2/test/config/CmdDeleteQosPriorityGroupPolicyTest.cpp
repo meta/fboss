@@ -6,8 +6,10 @@
 #include <string>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/qos/priority_group_policy/CmdDeleteQosPriorityGroupPolicy.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/TestableConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
@@ -47,8 +49,10 @@ class CmdDeleteQosPriorityGroupPolicyTestFixture : public CmdConfigTestBase {
   }
 
   bool hasPolicy(const std::string& n) {
-    auto pgs =
-        ConfigSession::getInstance().getAgentConfig().sw()->portPgConfigs();
+    auto pgs = ConfigSession::getInstance()
+                   .config<AgentConfigDomain>()
+                   .sw()
+                   ->portPgConfigs();
     return pgs.has_value() && pgs->count(n) > 0;
   }
 };
@@ -69,7 +73,7 @@ TEST_F(CmdDeleteQosPriorityGroupPolicyTestFixture, deletesUnboundPolicy) {
   // The pool the groups pointed at is not touched.
   EXPECT_TRUE(
       ConfigSession::getInstance()
-          .getAgentConfig()
+          .config<AgentConfigDomain>()
           .sw()
           ->bufferPoolConfigs()
           ->count("pool"));

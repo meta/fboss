@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/integration_test/Fboss2IntegrationTest.h"
 #include "fboss/cli/fboss2/utils/SessionPortMap.h"
@@ -98,7 +99,7 @@ class ConfigPfcTest : public Fboss2IntegrationTest {
 
     // Watchdog enablement and PFC TX/RX must stay consistent across restarts.
     port->pfc().copy_from(originalPort->pfc());
-    auto& swConfig = *session.getAgentConfig().sw();
+    auto& swConfig = *session.config<AgentConfigDomain>().sw();
     swConfig.portPgConfigs().copy_from(pfcConfigBefore_->portPgConfigs());
     swConfig.bufferPoolConfigs().copy_from(
         pfcConfigBefore_->bufferPoolConfigs());
@@ -682,7 +683,8 @@ TEST_F(ConfigPfcTest, RxPfcDurationEnable) {
 
 TEST_F(ConfigPfcTest, BufferPoolPriorityGroupAndPortPfc) {
   std::string ifName = getRandomInterfacePortName();
-  pfcConfigBefore_ = *ConfigSession::getInstance().getAgentConfig().sw();
+  pfcConfigBefore_ =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   pfcIntfName_ = ifName;
   XLOG(INFO) << "Using test interface " << ifName;
 

@@ -16,8 +16,10 @@
 #include <string>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/config/copp/CmdConfigCopp.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -76,7 +78,7 @@ class CmdConfigCoppTestFixture : public CmdConfigTestBase {
 
   // Helper: find the cpuQueues entry with the given id, or nullptr.
   const cfg::PortQueue* findQueue(int16_t id) const {
-    auto& config = ConfigSession::getInstance().getAgentConfig();
+    auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
     for (const auto& q : *config.sw()->cpuQueues()) {
       if (*q.id() == id) {
         return &q;
@@ -87,7 +89,7 @@ class CmdConfigCoppTestFixture : public CmdConfigTestBase {
 
   // Helper: find the rxReasonToQueueOrderedList entry for a reason, or nullptr.
   const cfg::PacketRxReasonToQueue* findReason(cfg::PacketRxReason r) const {
-    auto& config = ConfigSession::getInstance().getAgentConfig();
+    auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
     const auto& policy = *config.sw()->cpuTrafficPolicy();
     for (const auto& entry : *policy.rxReasonToQueueOrderedList()) {
       if (*entry.rxReason() == r) {
@@ -99,7 +101,7 @@ class CmdConfigCoppTestFixture : public CmdConfigTestBase {
 
   // Helper: find the matchToAction entry with the given matcher, or nullptr.
   const cfg::MatchToAction* findMatchToAction(const std::string& name) const {
-    auto& config = ConfigSession::getInstance().getAgentConfig();
+    auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
     const auto& policy = *config.sw()->cpuTrafficPolicy();
     if (!policy.trafficPolicy().has_value()) {
       return nullptr;
@@ -548,7 +550,7 @@ TEST_F(CmdConfigCoppTestFixture, reason_preservesOrderingOnUpdate) {
   CmdConfigCoppReason cmd;
   HostInfo hostInfo("testhost");
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   const auto origSize =
       config.sw()->cpuTrafficPolicy()->rxReasonToQueueOrderedList()->size();
 
@@ -598,7 +600,7 @@ TEST_F(CmdConfigCoppTestFixture, reason_insertNewAtFront) {
   cmd.queryClient(hostInfo, args);
 
   const auto& list = *ConfigSession::getInstance()
-                          .getAgentConfig()
+                          .config<AgentConfigDomain>()
                           .sw()
                           ->cpuTrafficPolicy()
                           ->rxReasonToQueueOrderedList();
@@ -619,7 +621,7 @@ TEST_F(CmdConfigCoppTestFixture, reason_moveExisting) {
   cmd.queryClient(hostInfo, args);
 
   const auto& list = *ConfigSession::getInstance()
-                          .getAgentConfig()
+                          .config<AgentConfigDomain>()
                           .sw()
                           ->cpuTrafficPolicy()
                           ->rxReasonToQueueOrderedList();
@@ -800,7 +802,7 @@ TEST_F(
 
   cmd.queryClient(hostInfo, args);
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   ASSERT_TRUE(config.sw()->cpuTrafficPolicy().has_value());
   const auto& policy = *config.sw()->cpuTrafficPolicy();
   ASSERT_TRUE(policy.trafficPolicy().has_value());

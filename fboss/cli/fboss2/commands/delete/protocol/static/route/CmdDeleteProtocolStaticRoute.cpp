@@ -11,16 +11,18 @@
 #include "fboss/cli/fboss2/commands/delete/protocol/static/route/CmdDeleteProtocolStaticRoute.h"
 
 #include <fmt/format.h>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 #include "fboss/cli/fboss2/commands/config/protocol/static/route/StaticRouteUtils.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
 
 template <typename PrefixArgType>
 std::string deleteStaticRouteImpl(const PrefixArgType& prefixArg) {
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
 
   const std::string& prefix = prefixArg.getPrefix();
@@ -35,7 +37,7 @@ std::string deleteStaticRouteImpl(const PrefixArgType& prefixArg) {
     return fmt::format("Static route {} (VRF {}) not found", prefix, vrfId);
   }
 
-  ConfigSession::getInstance().saveConfig();
+  ConfigSession::getInstance().save<AgentConfigDomain>();
   return fmt::format(
       "Successfully deleted static route {} (VRF {})", prefix, vrfId);
 }

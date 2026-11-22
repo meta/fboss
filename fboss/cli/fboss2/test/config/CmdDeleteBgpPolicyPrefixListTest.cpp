@@ -14,6 +14,7 @@
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/BgpPrefixListCliUtils.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/CmdConfigProtocolBgpPolicyPrefixList.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/prefix-list/CmdDeleteProtocolBgpPolicyPrefixList.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -57,10 +58,10 @@ class CmdDeleteBgpPolicyPrefixListTestFixture : public CmdConfigTestBase {
       const std::string& listName,
       const std::string& basePrefix) {
     auto& session = ConfigSession::getInstance();
-    auto& list =
-        bgpcli::findOrCreatePrefixList(session.getBgpConfig(), listName);
+    auto& list = bgpcli::findOrCreatePrefixList(
+        session.config<BgpConfigDomain>(), listName);
     bgpcli::findOrCreatePrefixListEntry(list, basePrefix);
-    session.saveBgpConfig();
+    session.save<BgpConfigDomain>();
   }
 
   std::string del(const std::vector<std::string>& tokens) {
@@ -71,7 +72,7 @@ class CmdDeleteBgpPolicyPrefixListTestFixture : public CmdConfigTestBase {
 
   const std::vector<bgp::routing_policy::PrefixList>& lists() {
     return *ConfigSession::getInstance()
-                .getBgpConfig()
+                .config<BgpConfigDomain>()
                 .policies()
                 .ensure()
                 .prefix_lists();
@@ -84,7 +85,7 @@ class CmdDeleteBgpPolicyPrefixListTestFixture : public CmdConfigTestBase {
       const std::string& policy,
       int64_t seq,
       const std::string& listName) {
-    auto& cfg = ConfigSession::getInstance().getBgpConfig();
+    auto& cfg = ConfigSession::getInstance().config<BgpConfigDomain>();
     auto& policies = *cfg.policies().ensure().bgp_policy_statements();
     auto it = std::find_if(policies.begin(), policies.end(), [&](auto& p) {
       return *p.name() == policy;
@@ -110,7 +111,7 @@ class CmdDeleteBgpPolicyPrefixListTestFixture : public CmdConfigTestBase {
     matches.back().type() =
         bgp::bgp_policy::BgpPolicyAtomicMatchType::PREFIX_LIST;
     matches.back().prefix_filters().ensure().prefix_list_names() = {listName};
-    ConfigSession::getInstance().saveBgpConfig();
+    ConfigSession::getInstance().save<BgpConfigDomain>();
   }
 
   bool sessionFileExists() {

@@ -13,7 +13,9 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/switch/hostname/CmdConfigHostname.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -112,8 +114,10 @@ TEST_F(CmdConfigHostnameTestFixture, setNewHostname) {
   EXPECT_THAT(result, HasSubstr("newswitch.example.com"));
   EXPECT_THAT(result, HasSubstr("Successfully"));
 
-  auto& hostname =
-      *ConfigSession::getInstance().getAgentConfig().sw()->hostname();
+  auto& hostname = *ConfigSession::getInstance()
+                        .config<AgentConfigDomain>()
+                        .sw()
+                        ->hostname();
   EXPECT_EQ(hostname, "newswitch.example.com");
 }
 
@@ -142,8 +146,10 @@ TEST_F(CmdConfigHostnameAbsentTestFixture, setNewHostnameWhenAbsent) {
   EXPECT_THAT(result, HasSubstr("Successfully"));
   EXPECT_THAT(result, HasSubstr("newswitch.example.com"));
 
-  auto& hostname =
-      *ConfigSession::getInstance().getAgentConfig().sw()->hostname();
+  auto& hostname = *ConfigSession::getInstance()
+                        .config<AgentConfigDomain>()
+                        .sw()
+                        ->hostname();
   EXPECT_EQ(hostname, "newswitch.example.com");
 }
 

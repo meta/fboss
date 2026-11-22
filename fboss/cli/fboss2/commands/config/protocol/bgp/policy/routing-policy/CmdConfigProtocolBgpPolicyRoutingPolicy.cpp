@@ -23,6 +23,7 @@
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliAttrHandlers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliValueParsers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/BgpRoutingPolicyCliUtils.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -125,7 +126,7 @@ CmdConfigProtocolBgpPolicyRoutingPolicy::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
-  auto& cfg = session.getBgpConfig();
+  auto& cfg = session.config<BgpConfigDomain>();
   const bool policyCreated =
       !bgpcli::routingPolicyExists(cfg, args.policyName());
   auto& policy = bgpcli::findOrCreateRoutingPolicy(cfg, args.policyName());
@@ -146,7 +147,7 @@ CmdConfigProtocolBgpPolicyRoutingPolicy::queryClient(
       result.message +=
           fmt::format(" for routing-policy {}", args.policyName());
     }
-    session.saveBgpConfig();
+    session.save<BgpConfigDomain>();
     result.message += fmt::format(
         "\nConfig saved to: {}", session.stagedPath(cli::ServiceType::BGP));
   } else if (policyCreated) {

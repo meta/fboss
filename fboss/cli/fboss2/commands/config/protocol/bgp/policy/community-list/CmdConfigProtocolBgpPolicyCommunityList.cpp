@@ -30,6 +30,7 @@
 #include <vector>
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliAttrHandlers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/community-list/BgpCommunityListCliUtils.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -218,7 +219,7 @@ CmdConfigProtocolBgpPolicyCommunityList::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
-  auto& cfg = session.getBgpConfig();
+  auto& cfg = session.config<BgpConfigDomain>();
   const bool listCreated = !bgpcli::communityListExists(cfg, args.listName());
   auto& list = bgpcli::findOrCreateCommunityList(cfg, args.listName());
   auto& lists = *cfg.policies().ensure().community_lists();
@@ -255,7 +256,7 @@ CmdConfigProtocolBgpPolicyCommunityList::queryClient(
         }
       }
     }
-    session.saveBgpConfig();
+    session.save<BgpConfigDomain>();
     result.message += fmt::format(
         "\nConfig saved to: {}", session.stagedPath(cli::ServiceType::BGP));
   } else if (listCreated && !lists.empty()) {

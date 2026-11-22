@@ -25,6 +25,7 @@
 #include <vector>
 #include "configerator/structs/neteng/fboss/bgp/if/gen-cpp2/bgp_attr_types.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliAttrHandlers.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -603,7 +604,7 @@ CmdConfigProtocolBgpPeerGroup::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
-  auto& cfg = session.getBgpConfig();
+  auto& cfg = session.config<BgpConfigDomain>();
   PeerGroup* existing = nullptr;
   if (cfg.peer_groups()) {
     auto& groups = *cfg.peer_groups();
@@ -642,7 +643,7 @@ CmdConfigProtocolBgpPeerGroup::queryClient(
   if (!args.attr().empty()) {
     result.message += fmt::format(" for peer-group {}", args.groupName());
   }
-  session.saveBgpConfig();
+  session.save<BgpConfigDomain>();
   result.message += fmt::format(
       "\nConfig saved to: {}", session.stagedPath(cli::ServiceType::BGP));
   return result.message;

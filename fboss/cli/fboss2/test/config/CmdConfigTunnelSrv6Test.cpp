@@ -3,10 +3,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/tunnel/srv6/decap/CmdConfigTunnelSrv6Decap.h"
 #include "fboss/cli/fboss2/commands/config/tunnel/srv6/encap/CmdConfigTunnelSrv6Encap.h"
 #include "fboss/cli/fboss2/commands/delete/tunnel/srv6/decap/CmdDeleteTunnelSrv6Decap.h"
 #include "fboss/cli/fboss2/commands/delete/tunnel/srv6/encap/CmdDeleteTunnelSrv6Encap.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -65,7 +67,8 @@ class CmdConfigTunnelSrv6TestFixture : public CmdConfigTestBase {
 
  protected:
   const cfg::Srv6Tunnel* findTunnel(const std::string& id) {
-    auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+    auto& swConfig =
+        *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
     if (!swConfig.srv6Tunnels().has_value()) {
       return nullptr;
     }

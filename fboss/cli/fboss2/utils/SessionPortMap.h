@@ -15,7 +15,7 @@ namespace facebook::fboss::utils {
  */
 class SessionPortMap {
  public:
-  // Built from ConfigSession::getInstance().getAgentConfig().
+  // Built from ConfigSession::getInstance().config<AgentConfigDomain>().
   SessionPortMap();
 
   // Not copyable: a copy would duplicate every lookup map of the PortMap, and

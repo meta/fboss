@@ -38,22 +38,13 @@
 #include <utility>
 #include <vector>
 #include "fboss/agent/AgentDirectoryUtil.h"
-#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
-#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
-#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigDomainRegistry.h"
 #include "fboss/cli/fboss2/session/ConfigFileManager.h"
 #include "fboss/cli/fboss2/session/Git.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/lib/CommonFileUtils.h"
-
-#ifndef IS_OSS
-#include <configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h>
-#else
-#include <neteng/fboss/bgp/public_tld/configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h>
-#endif
 
 namespace fs = std::filesystem;
 
@@ -305,10 +296,6 @@ std::string ConfigSession::getSessionDir() {
   return getHomeDirectory() + "/.fboss2";
 }
 
-std::string ConfigSession::getSessionConfigPathStatic() {
-  return getSessionDir() + "/agent.conf";
-}
-
 std::string ConfigSession::getSessionMetadataPathStatic() {
   return getSessionDir() + "/cli_metadata.json";
 }
@@ -335,10 +322,6 @@ std::string ConfigSession::fileAtRevisionOrEmpty(
     // config). Treat as empty.
     return "";
   }
-}
-
-std::string ConfigSession::getSessionConfigPath() const {
-  return domains_.get<AgentConfigDomain>().info().sessionPath;
 }
 
 std::string ConfigSession::getCurrentConfigPath(
@@ -502,10 +485,6 @@ bool ConfigSession::domainContentEqual(
   }
 }
 
-bool ConfigSession::sessionExists() const {
-  return fs::exists(getSessionConfigPath());
-}
-
 bool ConfigSession::hasActiveSession() const {
   // A session is active when any domain has a staged file. A BGP-only session
   // never touches agent.conf, so the agent file alone is not enough.
@@ -517,21 +496,11 @@ bool ConfigSession::hasActiveSession() const {
   return false;
 }
 
-cfg::AgentConfig& ConfigSession::getAgentConfig() {
-  auto& domain = domains_.get<AgentConfigDomain>();
-  if (!domain.loaded()) {
-    loadConfig(cli::ServiceType::AGENT);
-  }
-  return domain.config();
-}
-
-const cfg::AgentConfig& ConfigSession::getAgentConfig() const {
-  const auto& domain = domains_.get<AgentConfigDomain>();
-  if (!domain.loaded()) {
-    throw std::runtime_error(
-        "Config not loaded yet. Call getAgentConfig() (non-const) first.");
-  }
-  return domain.config();
+void ConfigSession::throwConfigNotLoaded(const std::string& domainName) {
+  throw std::runtime_error(
+      fmt::format(
+          "{} config not loaded yet. Call config<D>() (non-const) first.",
+          domainName));
 }
 
 void ConfigSession::saveConfig(
@@ -566,10 +535,6 @@ void ConfigSession::saveConfig(
   recordServiceAction(service, actionLevel);
 }
 
-void ConfigSession::saveConfig() {
-  saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
-}
-
 void ConfigSession::recordServiceAction(
     cli::ServiceType service,
     cli::ConfigActionLevel actionLevel) {
@@ -593,31 +558,6 @@ void ConfigSession::recordServiceAction(
 
 std::string ConfigSession::stagedPath(cli::ServiceType service) const {
   return domains_.get(service).info().sessionPath;
-}
-
-bgp::thrift::BgpConfig& ConfigSession::getBgpConfig() {
-  auto& domain = domains_.get<BgpConfigDomain>();
-  if (!domain.loaded()) {
-    loadConfig(cli::ServiceType::BGP);
-  }
-  return domain.config();
-}
-
-const bgp::thrift::BgpConfig& ConfigSession::getBgpConfig() const {
-  const auto& domain = domains_.get<BgpConfigDomain>();
-  if (!domain.loaded()) {
-    throw std::runtime_error(
-        "BGP config not loaded yet. Call getBgpConfig() (non-const) first.");
-  }
-  return domain.config();
-}
-
-void ConfigSession::saveBgpConfig() {
-  // Convenience wrapper over the generic saveConfig(), mirroring the no-arg
-  // saveConfig() for the agent. bgpd has no hitless reload, so a staged BGP
-  // change always requires a bgpd restart (SERVICE_RESTART) on the next
-  // `config session commit`.
-  saveConfig(cli::ServiceType::BGP, cli::ConfigActionLevel::SERVICE_RESTART);
 }
 
 std::vector<GitCommit> ConfigSession::history(size_t limit) const {
@@ -1385,7 +1325,7 @@ std::string ConfigSession::rollback(
   }
 
   // Reload/restart only the services whose config changed. Each starts at its
-  // domain's default rollback action level and is promoted to the highest
+  // domain's minActionLevel and is promoted to the highest
   // level recorded by any commit being undone: undoing a change needs at least
   // the action applying it did (e.g. a VLAN membership change cannot be
   // applied with a hitless reload in either direction). Computed before any
@@ -1393,7 +1333,7 @@ std::string ConfigSession::rollback(
   auto recordedLevels = rolledBackActionLevels(resolvedSha);
   std::map<cli::ServiceType, cli::ConfigActionLevel> actions;
   for (const auto& dr : doms) {
-    auto level = dr.domain.rollbackActionLevel;
+    auto level = dr.domain.minActionLevel;
     auto it = recordedLevels.find(dr.domain.service);
     if (it != recordedLevels.end() &&
         static_cast<int>(it->second) > static_cast<int>(level)) {

@@ -19,7 +19,9 @@
 #include <utility>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
@@ -222,7 +224,7 @@ CmdConfigInterfaceDhcpRelay::queryClient(
 
   // Phase 2: apply all setters to all interfaces (and their SVI VLANs).
   auto& session = ConfigSession::getInstance();
-  cfg::SwitchConfig& swConfig = *session.getAgentConfig().sw();
+  cfg::SwitchConfig& swConfig = *session.config<AgentConfigDomain>().sw();
   for (const utils::Intf& intf : interfaces) {
     cfg::Interface& iface = *intf.getInterface();
     cfg::Vlan* vlan = findVlanForInterface(swConfig, iface);
@@ -231,7 +233,7 @@ CmdConfigInterfaceDhcpRelay::queryClient(
     }
   }
 
-  session.saveConfig();
+  session.save<AgentConfigDomain>();
 
   return fmt::format(
       "Successfully configured interface(s) {}: {}",

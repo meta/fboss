@@ -15,6 +15,8 @@
 #include <fmt/format.h>
 #include <folly/Conv.h>
 #include <iostream>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -47,7 +49,7 @@ CmdConfigMacAgingTimeTraits::RetType CmdConfigMacAgingTime::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& agingTime) {
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
 
   int32_t newSeconds = agingTime.getSeconds();

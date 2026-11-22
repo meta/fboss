@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <string>
 
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/session/Git.h"
 
@@ -50,9 +51,9 @@ class CmdConfigTestBase : public CmdHandlerTestBase {
   // unchanged. Loads the config first so the snapshot is taken after that.
   static std::string sessionConfigText() {
     auto& session = ConfigSession::getInstance();
-    session.getAgentConfig();
+    session.config<AgentConfigDomain>();
     std::string text;
-    folly::readFile(session.getSessionConfigPath().c_str(), text);
+    folly::readFile(session.stagedPath(cli::ServiceType::AGENT).c_str(), text);
     return text;
   }
 

@@ -17,6 +17,8 @@
 #include <folly/String.h>
 #include <folly/lang/Assume.h>
 #include <iostream>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -65,7 +67,7 @@ CmdConfigL2LearningModeTraits::RetType CmdConfigL2LearningMode::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& learningMode) {
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
 
   cfg::L2LearningMode newMode = learningMode.getL2LearningMode();

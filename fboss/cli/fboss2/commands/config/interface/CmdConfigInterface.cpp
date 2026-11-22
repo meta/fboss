@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/agent/types.h"
@@ -32,6 +33,7 @@
 #include <utility>
 #include <vector>
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
 #include "fboss/agent/platforms/common/PlatformMapping.h"
@@ -293,7 +295,7 @@ std::string applyProfile(
 
   const PlatformMapping platformMapping(platformMappingConfig);
   return applyProfileImpl(
-      *ConfigSession::getInstance().getAgentConfig().sw(),
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw(),
       platformMapping,
       qsfpSupportedProfiles,
       interfaces,
@@ -372,7 +374,8 @@ std::string createLoopbackInterface(
 std::vector<std::string> createMissingLoopbackInterfaces(
     const utils::InterfaceList& interfaces) {
   std::vector<std::string> created;
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   for (const utils::Intf& intf : interfaces) {
     if (intf.isValid()) {
       continue;
@@ -458,7 +461,8 @@ bool applyPortType(
   }
 
   bool changed = false;
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   for (const utils::Intf& intf : interfaces) {
     cfg::Port* port = intf.getPort();
     if (port) {
@@ -621,8 +625,10 @@ bool applyQueueConfig(
   const utils::QueueConfigName name({value});
 
   if (!name.isDefault()) {
-    const auto& portQueueConfigs =
-        *ConfigSession::getInstance().getAgentConfig().sw()->portQueueConfigs();
+    const auto& portQueueConfigs = *ConfigSession::getInstance()
+                                        .config<AgentConfigDomain>()
+                                        .sw()
+                                        ->portQueueConfigs();
     if (portQueueConfigs.find(name.getName()) == portQueueConfigs.end()) {
       throw std::invalid_argument(
           fmt::format("Queue config '{}' does not exist.", name.getName()));
@@ -701,7 +707,8 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
 
   // Validate every mirror reference before applying any attribute so a bad
   // name cannot leave earlier attributes partially staged.
-  const auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  const auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   validateMirrorAttributes(attributes, swConfig);
   // The `profile` attribute mutates the port set (adjusts/removes existing
   // ports and creates absent ones), so it must be applied first, over the

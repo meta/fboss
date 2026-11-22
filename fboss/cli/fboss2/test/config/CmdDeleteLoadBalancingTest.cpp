@@ -14,8 +14,10 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/load_balancing/CmdDeleteLoadBalancing.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -64,8 +66,10 @@ class CmdDeleteLoadBalancingTestFixture : public CmdConfigTestBase {
 
  protected:
   static const cfg::LoadBalancer* findLoadBalancer(cfg::LoadBalancerID id) {
-    const auto& loadBalancers =
-        *ConfigSession::getInstance().getAgentConfig().sw()->loadBalancers();
+    const auto& loadBalancers = *ConfigSession::getInstance()
+                                     .config<AgentConfigDomain>()
+                                     .sw()
+                                     ->loadBalancers();
     for (const auto& lb : loadBalancers) {
       if (*lb.id() == id) {
         return &lb;
@@ -76,7 +80,7 @@ class CmdDeleteLoadBalancingTestFixture : public CmdConfigTestBase {
 
   static size_t loadBalancerCount() {
     return ConfigSession::getInstance()
-        .getAgentConfig()
+        .config<AgentConfigDomain>()
         .sw()
         ->loadBalancers()
         ->size();

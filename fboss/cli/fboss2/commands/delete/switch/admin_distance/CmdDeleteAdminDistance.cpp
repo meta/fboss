@@ -14,7 +14,9 @@
 
 #include <fmt/format.h>
 #include <iostream>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/switch/admin_distance/CmdConfigAdminDistance.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -39,7 +41,7 @@ CmdDeleteAdminDistanceTraits::RetType CmdDeleteAdminDistance::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& arg) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
 
   int32_t clientId = arg.getClientId();
 

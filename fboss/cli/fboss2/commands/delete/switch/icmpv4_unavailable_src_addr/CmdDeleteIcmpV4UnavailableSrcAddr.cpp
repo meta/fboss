@@ -13,7 +13,9 @@
 #include <fmt/format.h>
 #include <iostream>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp" // NOLINT(facebook-unused-include-check)
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -21,7 +23,7 @@ namespace facebook::fboss {
 CmdDeleteIcmpV4UnavailableSrcAddrTraits::RetType
 CmdDeleteIcmpV4UnavailableSrcAddr::queryClient(const HostInfo& /* hostInfo */) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
 
   auto addrRef = swConfig.icmpV4UnavailableSrcAddress();
   if (!addrRef.has_value()) {

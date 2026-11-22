@@ -16,6 +16,8 @@
 #include <fmt/format.h>
 #include <folly/String.h>
 #include <iostream>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -54,7 +56,7 @@ CmdConfigPtpTransparentClock::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& state) {
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
 
   bool newValue = state.getEnable();

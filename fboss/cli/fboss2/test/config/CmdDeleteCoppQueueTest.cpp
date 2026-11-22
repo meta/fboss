@@ -14,8 +14,10 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/copp/queue/CmdDeleteCoppQueue.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -81,7 +83,7 @@ class CmdDeleteCoppQueueTestFixture : public CmdConfigTestBase {
 
   // Helper: find the cpuQueues entry with the given id, or nullptr.
   const cfg::PortQueue* findQueue(int16_t id) const {
-    auto& config = ConfigSession::getInstance().getAgentConfig();
+    auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
     for (const auto& q : *config.sw()->cpuQueues()) {
       if (*q.id() == id) {
         return &q;

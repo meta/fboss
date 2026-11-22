@@ -17,6 +17,9 @@
 #include <string>
 #include <utility>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/test/TestableConfigSession.h"
 #include "fboss/cli/fboss2/test/config/MockServiceControllers.h"
 #include "fboss/cli/fboss2/test/config/MockSystemdInterface.h"
@@ -79,7 +82,8 @@ class ConfigSessionTestFixture : public CmdConfigTestBase {
         std::move(mock));
     session.setCommandLine(
         "config interface eth1/1/1 description " + description);
-    (*session.getAgentConfig().sw()->ports())[0].description() = description;
+    (*session.config<AgentConfigDomain>().sw()->ports())[0].description() =
+        description;
     session.saveConfig(
         cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
     auto result = session.commit(localhost());
@@ -99,19 +103,18 @@ TEST_F(ConfigSessionTestFixture, sessionInitialization) {
       sessionDir.string(), (getTestEtcDir() / "coop").string());
 
   EXPECT_TRUE(fs::exists(sessionDir));
-  EXPECT_FALSE(session.sessionExists());
+  EXPECT_FALSE(session.hasActiveSession());
   EXPECT_FALSE(fs::exists(sessionConfig));
 
   // Loading the agent config does not stage it: a command that fails after
   // loading must not leave a session behind.
-  session.getAgentConfig();
-  EXPECT_FALSE(session.sessionExists());
+  session.config<AgentConfigDomain>();
   EXPECT_FALSE(session.hasActiveSession());
   EXPECT_FALSE(fs::exists(sessionConfig));
 
   // The first save materializes the agent session, and only that one.
-  session.saveConfig();
-  EXPECT_TRUE(session.sessionExists());
+  session.save<AgentConfigDomain>();
+  EXPECT_TRUE(session.hasActiveSession());
   EXPECT_TRUE(fs::exists(sessionConfig));
   EXPECT_FALSE(fs::exists(sessionDir / "bgp_config.json"));
 }
@@ -215,7 +218,7 @@ TEST_F(ConfigSessionTestFixture, sessionConfigModified) {
       sessionDir.string(), (getTestEtcDir() / "coop").string());
 
   // Modify the session config through the ConfigSession API
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& ports = *config.sw()->ports();
   ASSERT_FALSE(ports.empty());
   ports[0].description() = "Modified port";
@@ -251,7 +254,7 @@ TEST_F(ConfigSessionTestFixture, sessionCommit) {
         "config interface eth1/1/1 description First commit");
 
     // Modify the session config
-    auto& config = session.getAgentConfig();
+    auto& config = session.config<AgentConfigDomain>();
     auto& ports = *config.sw()->ports();
     ASSERT_FALSE(ports.empty());
     ports[0].description() = "First commit";
@@ -290,7 +293,7 @@ TEST_F(ConfigSessionTestFixture, sessionCommit) {
         "config interface eth1/1/1 description Second commit");
 
     // Verify the new session is based on the latest committed revision
-    auto& config = session.getAgentConfig();
+    auto& config = session.config<AgentConfigDomain>();
     auto& ports = *config.sw()->ports();
     ASSERT_FALSE(ports.empty());
     EXPECT_EQ(*ports[0].description(), "First commit");
@@ -351,7 +354,7 @@ TEST_F(
     ++bgpQueries;
     throw std::runtime_error("BGP should not be queried");
   });
-  session.getAgentConfig();
+  session.config<AgentConfigDomain>();
   session.setCommandLine("config interface eth1/1/1 speed 100G");
   session.saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
   ASSERT_TRUE(fs::remove(current));
@@ -389,9 +392,9 @@ TEST_F(ConfigSessionTestFixture, bgpOnlyCommitDoesNotResolveAgent) {
     throw std::runtime_error("agent should not be queried");
   });
 
-  session.getBgpConfig().router_id() = "2.2.2.2";
+  session.config<BgpConfigDomain>().router_id() = "2.2.2.2";
   session.setCommandLine("config protocol bgp global router-id 2.2.2.2");
-  session.saveBgpConfig();
+  session.save<BgpConfigDomain>();
   EXPECT_FALSE(session.commit(localhost()).commitSha.empty());
 
   EXPECT_EQ(agentQueries, 0);
@@ -417,7 +420,8 @@ TEST_F(ConfigSessionTestFixture, stagedConfigLoadsWithoutServiceDiscovery) {
   });
 
   EXPECT_EQ(
-      *session.getAgentConfig().sw()->ports()->at(0).description(), "staged");
+      *session.config<AgentConfigDomain>().sw()->ports()->at(0).description(),
+      "staged");
 }
 
 // Ensure commit() works on a newly initialized session
@@ -440,7 +444,7 @@ TEST_F(ConfigSessionTestFixture, commitOnNewlyInitializedSession) {
   EXPECT_TRUE(fs::exists(metadataPath));
 
   // Make a change so commit has something to commit
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& ports = *config.sw()->ports();
   ASSERT_FALSE(ports.empty());
   ports[0].description() = "Test change for commit";
@@ -466,7 +470,7 @@ TEST_F(ConfigSessionTestFixture, multipleChangesInOneSession) {
       sessionDir.string(), (getTestEtcDir() / "coop").string());
 
   // Make first change
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& ports = *config.sw()->ports();
   ASSERT_FALSE(ports.empty());
   ports[0].description() = "Change 1";
@@ -496,7 +500,7 @@ TEST_F(ConfigSessionTestFixture, sessionPersistsAcrossCommands) {
     TestableConfigSession session1(
         sessionDir.string(), (getTestEtcDir() / "coop").string());
 
-    auto& config = session1.getAgentConfig();
+    auto& config = session1.config<AgentConfigDomain>();
     auto& ports = *config.sw()->ports();
     ASSERT_FALSE(ports.empty());
     ports[0].description() = "Persistent change";
@@ -517,7 +521,7 @@ TEST_F(ConfigSessionTestFixture, sessionPersistsAcrossCommands) {
     TestableConfigSession session2(
         sessionDir.string(), (getTestEtcDir() / "coop").string());
 
-    auto& config = session2.getAgentConfig();
+    auto& config = session2.config<AgentConfigDomain>();
     auto& ports = *config.sw()->ports();
     ASSERT_FALSE(ports.empty());
     // Verify the change persisted
@@ -552,7 +556,7 @@ TEST_F(ConfigSessionTestFixture, configRollbackOnFailure) {
   TestableConfigSession session(
       sessionDir.string(), (getTestEtcDir() / "coop").string());
 
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& ports = *config.sw()->ports();
   ASSERT_FALSE(ports.empty());
   ports[0].description() = "Failed change";
@@ -582,7 +586,7 @@ TEST_F(ConfigSessionTestFixture, configSaveRejectsUnwritableDestination) {
   const fs::path coopDir = getTestEtcDir() / "coop";
   const fs::path cliDir = coopDir / "cli";
   TestableConfigSession session(sessionDir.string(), coopDir.string());
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   (*config.sw()->ports())[0].description() = "Must not be staged";
   fs::permissions(
       cliDir,
@@ -594,7 +598,7 @@ TEST_F(ConfigSessionTestFixture, configSaveRejectsUnwritableDestination) {
           cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS),
       std::system_error);
   EXPECT_THAT(
-      readFile(session.getSessionConfigPath()),
+      readFile(session.stagedPath(cli::ServiceType::AGENT)),
       ::testing::Not(::testing::HasSubstr("Must not be staged")));
 
   fs::permissions(cliDir, fs::perms::owner_all, fs::perm_options::replace);
@@ -620,7 +624,7 @@ TEST_F(ConfigSessionTestFixture, concurrentCommits) {
     TestableConfigSession session(
         sessionDir.string(), (getTestEtcDir() / "coop").string());
 
-    auto& config = session.getAgentConfig();
+    auto& config = session.config<AgentConfigDomain>();
     auto& ports = *config.sw()->ports();
     ASSERT_FALSE(ports.empty());
     ports[0].description() = "First commit";
@@ -640,7 +644,7 @@ TEST_F(ConfigSessionTestFixture, concurrentCommits) {
     TestableConfigSession session(
         sessionDir.string(), (getTestEtcDir() / "coop").string());
 
-    auto& config = session.getAgentConfig();
+    auto& config = session.config<AgentConfigDomain>();
     auto& ports = *config.sw()->ports();
     ASSERT_FALSE(ports.empty());
     ports[0].description() = "Second commit";
@@ -688,7 +692,7 @@ TEST_F(ConfigSessionTestFixture, rollbackToSpecificCommit) {
         "config interface eth1/1/1 description First version");
 
     // First commit
-    auto& config1 = session.getAgentConfig();
+    auto& config1 = session.config<AgentConfigDomain>();
     (*config1.sw()->ports())[0].description() = "First version";
     session.saveConfig(
         cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
@@ -705,7 +709,7 @@ TEST_F(ConfigSessionTestFixture, rollbackToSpecificCommit) {
     session.setCommandLine(
         "config interface eth1/1/1 description Second version");
 
-    auto& config2 = session.getAgentConfig();
+    auto& config2 = session.config<AgentConfigDomain>();
     (*config2.sw()->ports())[0].description() = "Second version";
     session.saveConfig(
         cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
@@ -794,7 +798,7 @@ TEST_F(ConfigSessionTestFixture, rollbackToPreviousCommit) {
     TestableConfigSession session(
         sessionDir.string(), (getTestEtcDir() / "coop").string());
 
-    auto& config1 = session.getAgentConfig();
+    auto& config1 = session.config<AgentConfigDomain>();
     (*config1.sw()->ports())[0].description() = "First version";
     session.setCommandLine(
         "config interface eth1/1/1 description First version");
@@ -806,7 +810,7 @@ TEST_F(ConfigSessionTestFixture, rollbackToPreviousCommit) {
     TestableConfigSession session(
         sessionDir.string(), (getTestEtcDir() / "coop").string());
 
-    auto& config2 = session.getAgentConfig();
+    auto& config2 = session.config<AgentConfigDomain>();
     (*config2.sw()->ports())[0].description() = "Second version";
     session.setCommandLine(
         "config interface eth1/1/1 description Second version");
@@ -902,6 +906,53 @@ TEST_F(ConfigSessionTestFixture, actionLevelHigherTakesPrecedence) {
       cli::ConfigActionLevel::SERVICE_RESTART);
 }
 
+TEST_F(ConfigSessionTestFixture, saveRecordsTheDomainsMinimumLevel) {
+  fs::path sessionDir = getTestHomeDir() / ".fboss2";
+  TestableConfigSession session(
+      sessionDir.string(), (getTestEtcDir() / "coop").string());
+
+  session.config<AgentConfigDomain>();
+  session.save<AgentConfigDomain>();
+  EXPECT_EQ(
+      session.getRequiredAction(cli::ServiceType::AGENT),
+      cli::ConfigActionLevel::HITLESS);
+
+  session.config<BgpConfigDomain>();
+  session.save<BgpConfigDomain>();
+  EXPECT_EQ(
+      session.getRequiredAction(cli::ServiceType::BGP),
+      cli::ConfigActionLevel::SERVICE_RESTART);
+}
+
+TEST_F(ConfigSessionTestFixture, saveRecordsAnExplicitLevel) {
+  fs::path sessionDir = getTestHomeDir() / ".fboss2";
+  TestableConfigSession session(
+      sessionDir.string(), (getTestEtcDir() / "coop").string());
+
+  session.config<AgentConfigDomain>();
+  session.saveConfig(
+      cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);
+  EXPECT_EQ(
+      session.getRequiredAction(cli::ServiceType::AGENT),
+      cli::ConfigActionLevel::SERVICE_RESTART);
+  EXPECT_EQ(
+      session.getRequiredAction(cli::ServiceType::BGP),
+      cli::ConfigActionLevel::HITLESS);
+}
+
+TEST_F(ConfigSessionTestFixture, constConfigThrowsBeforeLoad) {
+  fs::path sessionDir = getTestHomeDir() / ".fboss2";
+  TestableConfigSession session(
+      sessionDir.string(), (getTestEtcDir() / "coop").string());
+  const ConfigSession& constSession = session;
+
+  EXPECT_THROW(constSession.config<AgentConfigDomain>(), std::runtime_error);
+  EXPECT_THROW(constSession.config<BgpConfigDomain>(), std::runtime_error);
+
+  session.config<AgentConfigDomain>();
+  EXPECT_NO_THROW(constSession.config<AgentConfigDomain>());
+}
+
 TEST_F(ConfigSessionTestFixture, actionLevelReset) {
   fs::path sessionDir = getTestHomeDir() / ".fboss2";
 
@@ -932,7 +983,7 @@ TEST_F(ConfigSessionTestFixture, actionLevelPersistsToMetadataFile) {
         sessionDir.string(), (getTestEtcDir() / "coop").string());
 
     // Load the config (required before saveConfig)
-    session.getAgentConfig();
+    session.config<AgentConfigDomain>();
     session.saveConfig(
         cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);
   }
@@ -986,7 +1037,7 @@ TEST_F(ConfigSessionTestFixture, actionLevelPersistsAcrossSessions) {
         sessionDir.string(), (getTestEtcDir() / "coop").string());
 
     // Load the config (required before saveConfig)
-    session1.getAgentConfig();
+    session1.config<AgentConfigDomain>();
     session1.saveConfig(
         cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);
   }
@@ -1016,7 +1067,7 @@ TEST_F(ConfigSessionTestFixture, commandTrackingBasic) {
 
     // Simulate a command and save config
     session.setCommandLine("config interface eth1/1/1 description Test change");
-    auto& config = session.getAgentConfig();
+    auto& config = session.config<AgentConfigDomain>();
     auto& ports = *config.sw()->ports();
     ASSERT_FALSE(ports.empty());
     ports[0].description() = "Test change";
@@ -1053,7 +1104,7 @@ TEST_F(ConfigSessionTestFixture, commandTrackingMultipleCommands) {
       sessionDir.string(), (getTestEtcDir() / "coop").string());
 
   // Execute multiple commands
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& ports = *config.sw()->ports();
   ASSERT_FALSE(ports.empty());
 
@@ -1085,7 +1136,7 @@ TEST_F(ConfigSessionTestFixture, commandTrackingPersistsAcrossSessions) {
     TestableConfigSession session1(
         sessionDir.string(), (getTestEtcDir() / "coop").string());
 
-    auto& config = session1.getAgentConfig();
+    auto& config = session1.config<AgentConfigDomain>();
     auto& ports = *config.sw()->ports();
     ASSERT_FALSE(ports.empty());
 
@@ -1120,7 +1171,7 @@ TEST_F(ConfigSessionTestFixture, commandTrackingClearedOnReset) {
   TestableConfigSession session(
       sessionDir.string(), (getTestEtcDir() / "coop").string());
 
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& ports = *config.sw()->ports();
   ASSERT_FALSE(ports.empty());
 
@@ -1187,7 +1238,7 @@ TEST_F(ConfigSessionTestFixture, concurrentSessionConflict) {
       sessionDir2.string(), (getTestEtcDir() / "coop").string());
 
   // User1 makes a change and commits
-  auto& config1 = session1.getAgentConfig();
+  auto& config1 = session1.config<AgentConfigDomain>();
   (*config1.sw()->ports())[0].description() = "User1 change";
   session1.setCommandLine("config interface eth1/1/1 description User1 change");
   session1.saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
@@ -1195,7 +1246,7 @@ TEST_F(ConfigSessionTestFixture, concurrentSessionConflict) {
   EXPECT_FALSE(result1.commitSha.empty());
 
   // User2 makes a different change
-  auto& config2 = session2.getAgentConfig();
+  auto& config2 = session2.config<AgentConfigDomain>();
   (*config2.sw()->ports())[0].description() = "User2 change";
   session2.setCommandLine("config interface eth1/1/1 description User2 change");
   session2.saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
@@ -1247,15 +1298,15 @@ TEST_F(ConfigSessionTestFixture, concurrentBgpSessionConflict) {
   auto session2 = makeSession(sessionDir2);
 
   // User1 stages a BGP change and commits -> HEAD advances.
-  session1->getBgpConfig().router_id() = "1.1.1.1";
+  session1->config<BgpConfigDomain>().router_id() = "1.1.1.1";
   session1->setCommandLine("config protocol bgp global router-id 1.1.1.1");
-  session1->saveBgpConfig();
+  session1->save<BgpConfigDomain>();
   EXPECT_FALSE(session1->commit(localhost()).commitSha.empty());
 
   // User2 stages a different BGP change on top of the now-stale base.
-  session2->getBgpConfig().router_id() = "2.2.2.2";
+  session2->config<BgpConfigDomain>().router_id() = "2.2.2.2";
   session2->setCommandLine("config protocol bgp global router-id 2.2.2.2");
-  session2->saveBgpConfig();
+  session2->save<BgpConfigDomain>();
 
   // User2's commit must fail because user1 already advanced HEAD.
   EXPECT_THROW(
@@ -1295,7 +1346,7 @@ TEST_F(ConfigSessionTestFixture, rebaseSuccessNoConflict) {
       sessionDir2.string(), (getTestEtcDir() / "coop").string());
 
   // User1 changes port[0] description and commits
-  auto& config1 = session1.getAgentConfig();
+  auto& config1 = session1.config<AgentConfigDomain>();
   (*config1.sw()->ports())[0].description() = "User1 change";
   session1.setCommandLine("config interface eth1/1/1 description User1 change");
   session1.saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
@@ -1303,7 +1354,7 @@ TEST_F(ConfigSessionTestFixture, rebaseSuccessNoConflict) {
   EXPECT_FALSE(result1.commitSha.empty());
 
   // User2 changes port[1] description (non-conflicting - different port)
-  auto& config2 = session2.getAgentConfig();
+  auto& config2 = session2.config<AgentConfigDomain>();
   ASSERT_GE(config2.sw()->ports()->size(), 2) << "Need at least 2 ports";
   (*config2.sw()->ports())[1].description() = "User2 change";
   session2.setCommandLine("config interface eth1/1/2 description User2 change");
@@ -1345,7 +1396,7 @@ TEST_F(ConfigSessionTestFixture, rebaseFailsOnConflict) {
       sessionDir2.string(), (getTestEtcDir() / "coop").string());
 
   // User1 changes port[0] description to "User1 change"
-  auto& config1 = session1.getAgentConfig();
+  auto& config1 = session1.config<AgentConfigDomain>();
   (*config1.sw()->ports())[0].description() = "User1 change";
   session1.setCommandLine("config interface eth1/1/1 description User1 change");
   session1.saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
@@ -1353,7 +1404,7 @@ TEST_F(ConfigSessionTestFixture, rebaseFailsOnConflict) {
   EXPECT_FALSE(result1.commitSha.empty());
 
   // User2 changes the SAME port[0] description to "User2 change" (conflict!)
-  auto& config2 = session2.getAgentConfig();
+  auto& config2 = session2.config<AgentConfigDomain>();
   (*config2.sw()->ports())[0].description() = "User2 change";
   session2.setCommandLine("config interface eth1/1/1 description User2 change");
   session2.saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
@@ -1382,7 +1433,7 @@ TEST_F(ConfigSessionTestFixture, rebaseNotNeeded) {
       sessionDir.string(), (getTestEtcDir() / "coop").string());
 
   // Make a change but don't commit yet
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   (*config.sw()->ports())[0].description() = "My change";
   session.saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
 
@@ -1425,14 +1476,16 @@ TEST_F(ConfigSessionTestFixture, threeWayMergeScenarios) {
     TestableConfigSession session2(
         sessionDir2.string(), (getTestEtcDir() / "coop").string());
 
-    (*session1.getAgentConfig().sw()->ports())[0].name() = "port0_renamed";
+    (*session1.config<AgentConfigDomain>().sw()->ports())[0].name() =
+        "port0_renamed";
     session1.setCommandLine("config interface eth1/1/1 name port0_renamed");
     session1.saveConfig(
         cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
     auto result1 = session1.commit(localhost());
     EXPECT_FALSE(result1.commitSha.empty());
 
-    (*session2.getAgentConfig().sw()->ports())[1].description() = "port1_desc";
+    (*session2.config<AgentConfigDomain>().sw()->ports())[1].description() =
+        "port1_desc";
     session2.setCommandLine("config interface eth1/1/2 description port1_desc");
     session2.saveConfig(
         cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
@@ -1453,14 +1506,16 @@ TEST_F(ConfigSessionTestFixture, threeWayMergeScenarios) {
     TestableConfigSession session2(
         sessionDir2.string(), (getTestEtcDir() / "coop").string());
 
-    (*session1.getAgentConfig().sw()->ports())[0].description() = "same_value";
+    (*session1.config<AgentConfigDomain>().sw()->ports())[0].description() =
+        "same_value";
     session1.setCommandLine("config interface eth1/1/1 description same_value");
     session1.saveConfig(
         cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
     auto result1 = session1.commit(localhost());
     EXPECT_FALSE(result1.commitSha.empty());
 
-    (*session2.getAgentConfig().sw()->ports())[0].description() = "same_value";
+    (*session2.config<AgentConfigDomain>().sw()->ports())[0].description() =
+        "same_value";
     session2.setCommandLine("config interface eth1/1/1 description same_value");
     session2.saveConfig(
         cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
@@ -1482,7 +1537,8 @@ TEST_F(ConfigSessionTestFixture, threeWayMergeScenarios) {
     TestableConfigSession session2(
         sessionDir2.string(), (getTestEtcDir() / "coop").string());
 
-    (*session1.getAgentConfig().sw()->ports())[0].description() = "user1_value";
+    (*session1.config<AgentConfigDomain>().sw()->ports())[0].description() =
+        "user1_value";
     session1.setCommandLine(
         "config interface eth1/1/1 description user1_value");
     session1.saveConfig(
@@ -1490,7 +1546,8 @@ TEST_F(ConfigSessionTestFixture, threeWayMergeScenarios) {
     auto result1 = session1.commit(localhost());
     EXPECT_FALSE(result1.commitSha.empty());
 
-    (*session2.getAgentConfig().sw()->ports())[0].description() = "user2_value";
+    (*session2.config<AgentConfigDomain>().sw()->ports())[0].description() =
+        "user2_value";
     session2.setCommandLine(
         "config interface eth1/1/1 description user2_value");
     session2.saveConfig(
@@ -1516,7 +1573,7 @@ TEST_F(ConfigSessionTestFixture, sessionPortMapIsBuiltFromSessionConfig) {
   TestableConfigSession::setInstance(
       std::make_unique<TestableConfigSession>(
           sessionDir.string(), (getTestEtcDir() / "coop").string()));
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& ports = *config.sw()->ports();
   ASSERT_FALSE(ports.empty());
   const std::string existingName = *ports[0].name();
@@ -1555,7 +1612,7 @@ TEST_F(ConfigSessionTestFixture, unnamedPortIsRefusedByPortMapNotByLoad) {
   TestableConfigSession::setInstance(
       std::make_unique<TestableConfigSession>(
           sessionDir.string(), (getTestEtcDir() / "coop").string()));
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   ASSERT_EQ(config.sw()->ports()->size(), 1);
   EXPECT_FALSE((*config.sw()->ports())[0].name().has_value());
 
@@ -1585,7 +1642,7 @@ TEST_F(ConfigSessionTestFixture, emptyCommit) {
   auto commitsAfter = git.log(cliConfigPath.string(), 10);
   EXPECT_EQ(commitsBefore.size(), commitsAfter.size());
 
-  EXPECT_FALSE(session.sessionExists());
+  EXPECT_FALSE(session.hasActiveSession());
 }
 
 // Re-committing an agent config that is byte-identical to what is already
@@ -1606,7 +1663,8 @@ TEST_F(ConfigSessionTestFixture, commitUnchangedAgentConfigIsNoOp) {
   {
     TestableConfigSession session(
         sessionDir.string(), (getTestEtcDir() / "coop").string());
-    (*session.getAgentConfig().sw()->ports())[0].description() = "same_desc";
+    (*session.config<AgentConfigDomain>().sw()->ports())[0].description() =
+        "same_desc";
     session.setCommandLine("config interface eth1/1/1 description same_desc");
     session.saveConfig(
         cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
@@ -1618,7 +1676,8 @@ TEST_F(ConfigSessionTestFixture, commitUnchangedAgentConfigIsNoOp) {
   {
     TestableConfigSession session(
         sessionDir.string(), (getTestEtcDir() / "coop").string());
-    (*session.getAgentConfig().sw()->ports())[0].description() = "same_desc";
+    (*session.config<AgentConfigDomain>().sw()->ports())[0].description() =
+        "same_desc";
     session.setCommandLine("config interface eth1/1/1 description same_desc");
     session.saveConfig(
         cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
@@ -1644,7 +1703,7 @@ TEST_F(ConfigSessionTestFixture, commitTwiceSecondIsEmpty) {
     TestableConfigSession session(
         sessionDir.string(), (getTestEtcDir() / "coop").string());
 
-    auto& config = session.getAgentConfig();
+    auto& config = session.config<AgentConfigDomain>();
     auto& ports = *config.sw()->ports();
     ASSERT_FALSE(ports.empty());
     ports[0].description() = "First commit change";
@@ -1689,12 +1748,12 @@ TEST_F(ConfigSessionTestFixture, bgpConfigEditPreservesOtherSections) {
   ASSERT_TRUE(folly::writeFile(folly::toPrettyJson(staged), bgpPath.c_str()));
 
   // Edit a top-level field via the typed API and persist.
-  auto& bgp = session.getBgpConfig();
+  auto& bgp = session.config<BgpConfigDomain>();
   bgp.router_id() = "10.0.0.1";
   bgp.count_confeds_in_as_path_len() = true;
   session.setCommandLine(
       "fboss2-dev config protocol bgp global router-id 10.0.0.1");
-  session.saveBgpConfig();
+  session.save<BgpConfigDomain>();
 
   // The saved file carries the edited fields AND the untouched peers/groups.
   std::string content;
@@ -1730,18 +1789,18 @@ TEST_F(ConfigSessionTestFixture, bgpConfigEditPersistsAndSeeds) {
   {
     TestableConfigSession session(
         sessionDir.string(), (getTestEtcDir() / "coop").string());
-    auto& bgp = session.getBgpConfig();
+    auto& bgp = session.config<BgpConfigDomain>();
     bgp.local_as_4_byte() = 65001;
     session.setCommandLine(
         "fboss2-dev config protocol bgp global local-asn 65001");
-    session.saveBgpConfig();
+    session.save<BgpConfigDomain>();
   }
   ASSERT_TRUE(fs::exists(bgpPath));
 
   {
     TestableConfigSession session(
         sessionDir.string(), (getTestEtcDir() / "coop").string());
-    auto& bgp = session.getBgpConfig();
+    auto& bgp = session.config<BgpConfigDomain>();
     ASSERT_TRUE(bgp.local_as_4_byte().has_value());
     EXPECT_EQ(*bgp.local_as_4_byte(), 65001);
   }
@@ -1764,15 +1823,16 @@ TEST_F(ConfigSessionTestFixture, lazyBgpSessionStartsFromCurrentHead) {
   useClassicBgpSystemd(session2);
 
   // user1 commits an agent change -> HEAD advances, session2's base goes stale.
-  (*session1.getAgentConfig().sw()->ports())[0].description() = "User1 change";
+  (*session1.config<AgentConfigDomain>().sw()->ports())[0].description() =
+      "User1 change";
   session1.setCommandLine("config interface eth1/1/1 description User1");
   session1.saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
   EXPECT_FALSE(session1.commit(localhost()).commitSha.empty());
 
   // user2 stages a BGP change.
-  session2.getBgpConfig().router_id() = "7.7.7.7";
+  session2.config<BgpConfigDomain>().router_id() = "7.7.7.7";
   session2.setCommandLine("config protocol bgp global router-id 7.7.7.7");
-  session2.saveBgpConfig();
+  session2.save<BgpConfigDomain>();
 
   EXPECT_FALSE(session2.commit(localhost()).commitSha.empty());
 
@@ -1795,10 +1855,10 @@ TEST_F(ConfigSessionTestFixture, rebaseReloadsMergedBgpConfig) {
     TestableConfigSession seed(
         (getTestHomeDir() / ".fboss2_seed").string(), coop);
     useClassicBgpSystemd(seed);
-    seed.getBgpConfig().router_id() = "0.0.0.0";
-    seed.getBgpConfig().hold_time() = 30;
+    seed.config<BgpConfigDomain>().router_id() = "0.0.0.0";
+    seed.config<BgpConfigDomain>().hold_time() = 30;
     seed.setCommandLine("config protocol bgp global hold-time 30");
-    seed.saveBgpConfig();
+    seed.save<BgpConfigDomain>();
     ASSERT_FALSE(seed.commit(localhost()).commitSha.empty());
   }
   TestableConfigSession session1(
@@ -1809,22 +1869,22 @@ TEST_F(ConfigSessionTestFixture, rebaseReloadsMergedBgpConfig) {
   useClassicBgpSystemd(session2);
 
   // Both sessions load the BGP config from the same base.
-  session1.getBgpConfig();
-  session2.getBgpConfig();
+  session1.config<BgpConfigDomain>();
+  session2.config<BgpConfigDomain>();
 
-  session1.getBgpConfig().router_id() = "1.1.1.1";
+  session1.config<BgpConfigDomain>().router_id() = "1.1.1.1";
   session1.setCommandLine("config protocol bgp global router-id 1.1.1.1");
-  session1.saveBgpConfig();
+  session1.save<BgpConfigDomain>();
   ASSERT_FALSE(session1.commit(localhost()).commitSha.empty());
 
-  session2.getBgpConfig().hold_time() = 99;
+  session2.config<BgpConfigDomain>().hold_time() = 99;
   session2.setCommandLine("config protocol bgp global hold-time 99");
-  session2.saveBgpConfig();
+  session2.save<BgpConfigDomain>();
   EXPECT_THROW(session2.commit(localhost()), std::runtime_error);
 
   session2.rebase();
   // The const accessor does not load: it throws unless rebase() already did.
-  const auto& merged = std::as_const(session2).getBgpConfig();
+  const auto& merged = std::as_const(session2).config<BgpConfigDomain>();
   EXPECT_EQ(*merged.router_id(), "1.1.1.1");
   EXPECT_EQ(*merged.hold_time(), 99);
 }
@@ -1846,17 +1906,17 @@ TEST_F(ConfigSessionTestFixture, rollbackBgpConfig) {
   std::string sha1;
   {
     auto s = makeSession();
-    s->getBgpConfig().router_id() = "1.1.1.1";
+    s->config<BgpConfigDomain>().router_id() = "1.1.1.1";
     s->setCommandLine("config protocol bgp global router-id 1.1.1.1");
-    s->saveBgpConfig();
+    s->save<BgpConfigDomain>();
     sha1 = s->commit(localhost()).commitSha;
     ASSERT_FALSE(sha1.empty());
   }
   {
     auto s = makeSession();
-    s->getBgpConfig().router_id() = "2.2.2.2";
+    s->config<BgpConfigDomain>().router_id() = "2.2.2.2";
     s->setCommandLine("config protocol bgp global router-id 2.2.2.2");
-    s->saveBgpConfig();
+    s->save<BgpConfigDomain>();
     ASSERT_FALSE(s->commit(localhost()).commitSha.empty());
   }
 
@@ -1878,7 +1938,7 @@ TEST_F(ConfigSessionTestFixture, rollbackBgpConfig) {
 
 // Re-committing a BGP config that is byte-identical to the running
 // /etc/coop/bgpcpp/bgpcpp.conf must be a no-op: no git commit and (crucially)
-// no disruptive bgpd restart. saveBgpConfig() records a restart
+// no disruptive bgpd restart. save<BgpConfigDomain>() records a restart
 // unconditionally, so commit() compares staged vs running content.
 TEST_F(ConfigSessionTestFixture, commitUnchangedBgpConfigIsNoOp) {
   fs::path sessionDir = getTestHomeDir() / ".fboss2";
@@ -1891,18 +1951,18 @@ TEST_F(ConfigSessionTestFixture, commitUnchangedBgpConfigIsNoOp) {
 
   {
     auto s = makeSession();
-    s->getBgpConfig().router_id() = "1.1.1.1";
+    s->config<BgpConfigDomain>().router_id() = "1.1.1.1";
     s->setCommandLine("config protocol bgp global router-id 1.1.1.1");
-    s->saveBgpConfig();
+    s->save<BgpConfigDomain>();
     ASSERT_FALSE(s->commit(localhost()).commitSha.empty());
   }
   // Stage the SAME value again and commit -> no-op (empty commitSha, so no git
   // revision and no bgpd restart).
   {
     auto s = makeSession();
-    s->getBgpConfig().router_id() = "1.1.1.1";
+    s->config<BgpConfigDomain>().router_id() = "1.1.1.1";
     s->setCommandLine("config protocol bgp global router-id 1.1.1.1");
-    s->saveBgpConfig();
+    s->save<BgpConfigDomain>();
     auto result = s->commit(localhost());
     EXPECT_TRUE(result.commitSha.empty())
         << "committing an unchanged BGP config should be a no-op (no restart)";
@@ -1927,9 +1987,9 @@ TEST_F(ConfigSessionTestFixture, commitThrowsWhenRunningBgpConfigUnreadable) {
 
   {
     auto s = makeSession();
-    s->getBgpConfig().router_id() = "1.1.1.1";
+    s->config<BgpConfigDomain>().router_id() = "1.1.1.1";
     s->setCommandLine("config protocol bgp global router-id 1.1.1.1");
-    s->saveBgpConfig();
+    s->save<BgpConfigDomain>();
     ASSERT_FALSE(s->commit(localhost()).commitSha.empty());
   }
   ASSERT_TRUE(fs::exists(bgpSys));
@@ -1940,9 +2000,9 @@ TEST_F(ConfigSessionTestFixture, commitThrowsWhenRunningBgpConfigUnreadable) {
   fs::permissions(bgpSys, fs::perms::none);
   if (::geteuid() != 0) {
     auto s = makeSession();
-    s->getBgpConfig().router_id() = "2.2.2.2";
+    s->config<BgpConfigDomain>().router_id() = "2.2.2.2";
     s->setCommandLine("config protocol bgp global router-id 2.2.2.2");
-    s->saveBgpConfig();
+    s->save<BgpConfigDomain>();
     EXPECT_THROW(s->commit(localhost()), std::runtime_error);
   }
   // Restore perms so fixture teardown can remove the temp tree.
@@ -1966,9 +2026,9 @@ TEST_F(ConfigSessionTestFixture, bgpOnlySessionResumesAcrossInvocations) {
 
   {
     auto s = makeSession();
-    s->getBgpConfig().router_id() = "9.9.9.9";
+    s->config<BgpConfigDomain>().router_id() = "9.9.9.9";
     s->setCommandLine("config protocol bgp global router-id 9.9.9.9");
-    s->saveBgpConfig();
+    s->save<BgpConfigDomain>();
   }
   // Simulate a pure BGP-only session: drop the agent session file that the
   // first construction seeded, leaving only the staged BGP config + metadata.
@@ -2002,9 +2062,9 @@ TEST_F(ConfigSessionTestFixture, noArgRollbackReachesBaseline) {
 
   {
     auto s = makeSession();
-    s->getBgpConfig().router_id() = "1.1.1.1";
+    s->config<BgpConfigDomain>().router_id() = "1.1.1.1";
     s->setCommandLine("config protocol bgp global router-id 1.1.1.1");
-    s->saveBgpConfig();
+    s->save<BgpConfigDomain>();
     ASSERT_FALSE(s->commit(localhost()).commitSha.empty());
   }
   ASSERT_TRUE(fs::is_symlink(bgpCurrent));
@@ -2048,7 +2108,7 @@ TEST_F(ConfigSessionTestFixture, rollbackUsesRecordedActionLevel) {
     EXPECT_CALL(*mock, reloadConfig(::testing::_)).Times(1);
     session->setCommandLine(
         "config interface eth1/1/1 description First version");
-    (*session->getAgentConfig().sw()->ports())[0].description() =
+    (*session->config<AgentConfigDomain>().sw()->ports())[0].description() =
         "First version";
     session->saveConfig(
         cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
@@ -2067,7 +2127,7 @@ TEST_F(ConfigSessionTestFixture, rollbackUsesRecordedActionLevel) {
         .WillOnce(::testing::Return(true));
     session->setCommandLine(
         "config interface eth1/1/1 switchport access vlan 3000");
-    (*session->getAgentConfig().sw()->ports())[0].description() =
+    (*session->config<AgentConfigDomain>().sw()->ports())[0].description() =
         "Second version";
     session->saveConfig(
         cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART);

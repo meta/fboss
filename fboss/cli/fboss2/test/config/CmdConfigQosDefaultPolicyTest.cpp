@@ -5,7 +5,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/qos/default_policy/CmdConfigQosDefaultPolicy.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -80,7 +82,7 @@ TEST_F(CmdConfigQosDefaultPolicyTestFixture, setsDefaultQosPolicy) {
   EXPECT_THAT(result, ::testing::HasSubstr("Successfully set"));
   EXPECT_THAT(result, ::testing::HasSubstr("default_qos_policy"));
 
-  auto& agentConfig = ConfigSession::getInstance().getAgentConfig();
+  auto& agentConfig = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   ASSERT_TRUE(switchConfig.dataPlaneTrafficPolicy().has_value());
   ASSERT_TRUE(
@@ -93,7 +95,7 @@ TEST_F(CmdConfigQosDefaultPolicyTestFixture, setsDefaultQosPolicy) {
 TEST_F(CmdConfigQosDefaultPolicyTestFixture, overwritesExistingDefaultPolicy) {
   setupTestableConfigSession(cmdPrefix_, "new_policy");
 
-  auto& agentConfig = ConfigSession::getInstance().getAgentConfig();
+  auto& agentConfig = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
 
   // Add new_policy to qosPolicies so the existence check passes
@@ -120,7 +122,7 @@ TEST_F(CmdConfigQosDefaultPolicyTestFixture, overwritesExistingDefaultPolicy) {
 TEST_F(CmdConfigQosDefaultPolicyTestFixture, createsTrafficPolicyIfAbsent) {
   setupTestableConfigSession(cmdPrefix_, "default_qos_policy");
 
-  auto& agentConfig = ConfigSession::getInstance().getAgentConfig();
+  auto& agentConfig = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   switchConfig.dataPlaneTrafficPolicy().reset();
 

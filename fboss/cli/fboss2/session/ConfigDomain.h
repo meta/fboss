@@ -22,9 +22,10 @@ struct ConfigDomainInfo {
   std::string sessionPath; // staged edits (~/.fboss2/...)
   std::string gitRelPath; // path within the /etc/coop git repo
   std::string desiredPath; // CLI-owned, git-tracked config
-  // Minimum action used when a rollback changes this domain. rollback()
-  // promotes this to the highest level recorded by the commits being undone.
-  cli::ConfigActionLevel rollbackActionLevel;
+  // Least disruptive action that makes the service pick up a change. A save
+  // records it by default. rollback() starts from it and promotes it to the
+  // highest level recorded by the commits being undone.
+  cli::ConfigActionLevel minActionLevel;
 };
 
 /**

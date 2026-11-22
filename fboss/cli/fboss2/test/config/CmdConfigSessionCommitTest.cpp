@@ -9,7 +9,9 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/session/CmdConfigSessionCommit.h"
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/test/TestableConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -70,7 +72,7 @@ TEST_F(CmdConfigSessionCommitTestFixture, commitWithChanges) {
   auto session = std::make_unique<TestableConfigSession>(
       sessionDir.string(), (getTestEtcDir() / "coop").string());
 
-  auto& config = session->getAgentConfig();
+  auto& config = session->config<AgentConfigDomain>();
   auto& ports = *config.sw()->ports();
   ASSERT_FALSE(ports.empty());
   ports[0].description() = "Test change";
@@ -101,7 +103,7 @@ TEST_F(CmdConfigSessionCommitTestFixture, commitTwiceSecondReportsNoSession) {
     auto session = std::make_unique<TestableConfigSession>(
         sessionDir.string(), (getTestEtcDir() / "coop").string());
 
-    auto& config = session->getAgentConfig();
+    auto& config = session->config<AgentConfigDomain>();
     auto& ports = *config.sw()->ports();
     ASSERT_FALSE(ports.empty());
     ports[0].description() = "First commit change";

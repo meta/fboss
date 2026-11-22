@@ -39,9 +39,10 @@ don't have to reconstruct the reasoning.
   overlaps with subcommand names — especially protocol names like `arp`,
   `ndp`, `bgp`, `lldp` which are subcommands of `show`, `clear`, and
   `config`.
-- **Using `session.saveConfig()` without args** when the action level is not
-  HITLESS — the overload defaults to `AGENT` + `HITLESS`. Always pass the
-  explicit service + level pair unless HITLESS is correct.
+- **Using `session.save<AgentConfigDomain>()` without a level** when the
+  action level is not HITLESS — it records the domain's minimum level
+  (HITLESS for the agent). Pass the level,
+  `saveConfig(cli::ServiceType::AGENT, level)`, unless HITLESS is correct.
 - **Missing `#include "fboss/cli/fboss2/CmdHandler.cpp"`** in the .cpp file
   — you'll get a link error about missing `CmdHandler<...>::run()`
   instantiation.

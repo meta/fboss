@@ -8,9 +8,11 @@
 #include <string>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h"
 #include "fboss/cli/fboss2/commands/delete/interface/CmdDeleteInterface.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/TestableConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
@@ -89,8 +91,10 @@ class CmdConfigInterfaceLoopbackTestFixture : public CmdConfigTestBase {
   const std::string cmdPrefix_ = "config interface";
 
   static const cfg::Interface* findIntf(int32_t intfId) {
-    const auto& intfs =
-        *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+    const auto& intfs = *ConfigSession::getInstance()
+                             .config<AgentConfigDomain>()
+                             .sw()
+                             ->interfaces();
     for (const auto& intf : intfs) {
       if (*intf.intfID() == intfId) {
         return &intf;
@@ -101,7 +105,7 @@ class CmdConfigInterfaceLoopbackTestFixture : public CmdConfigTestBase {
 
   static const cfg::Vlan* findVlan(int32_t vlanId) {
     const auto& vlans =
-        *ConfigSession::getInstance().getAgentConfig().sw()->vlans();
+        *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->vlans();
     for (const auto& vlan : vlans) {
       if (*vlan.id() == vlanId) {
         return &vlan;
@@ -341,7 +345,11 @@ TEST_F(CmdConfigInterfaceLoopbackTestFixture, deletePortAndLoopbackTogether) {
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
   EXPECT_THAT(result, HasSubstr("loopback1"));
   EXPECT_TRUE(
-      ConfigSession::getInstance().getAgentConfig().sw()->ports()->empty());
+      ConfigSession::getInstance()
+          .config<AgentConfigDomain>()
+          .sw()
+          ->ports()
+          ->empty());
   EXPECT_EQ(findIntf(11), nullptr);
   EXPECT_EQ(findVlan(11), nullptr);
 }

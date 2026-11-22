@@ -10,6 +10,7 @@
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/neighbor/CmdConfigProtocolBgpNeighbor.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/neighbor/CmdDeleteProtocolBgpNeighbor.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -51,7 +52,7 @@ class CmdDeleteBgpNeighborTestFixture : public CmdConfigTestBase {
   }
 
   const std::vector<bgp::thrift::BgpPeer>& peers() {
-    return *ConfigSession::getInstance().getBgpConfig().peers();
+    return *ConfigSession::getInstance().config<BgpConfigDomain>().peers();
   }
 
   bool sessionFileExists() {

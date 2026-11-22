@@ -12,6 +12,7 @@
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/as-path-list/CmdConfigProtocolBgpPolicyAsPathList.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/as-path-list/CmdDeleteProtocolBgpPolicyAsPathList.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -55,7 +56,7 @@ class CmdDeleteBgpPolicyAsPathListTestFixture : public CmdConfigTestBase {
 
   const std::vector<bgp::bgp_policy::AsPathList>& lists() {
     return *ConfigSession::getInstance()
-                .getBgpConfig()
+                .config<BgpConfigDomain>()
                 .policies()
                 .ensure()
                 .aspath_lists();
@@ -68,7 +69,7 @@ class CmdDeleteBgpPolicyAsPathListTestFixture : public CmdConfigTestBase {
       const std::string& policy,
       int64_t seq,
       const std::string& listName) {
-    auto& cfg = ConfigSession::getInstance().getBgpConfig();
+    auto& cfg = ConfigSession::getInstance().config<BgpConfigDomain>();
     auto& policies = *cfg.policies().ensure().bgp_policy_statements();
     auto it = std::find_if(policies.begin(), policies.end(), [&](auto& p) {
       return *p.name() == policy;
@@ -87,7 +88,7 @@ class CmdDeleteBgpPolicyAsPathListTestFixture : public CmdConfigTestBase {
     matches.back().type() = bgp::bgp_policy::BgpPolicyAtomicMatchType::AS_PATH;
     matches.back().as_path_filters().ensure().as_path_list_names().ensure() = {
         listName};
-    ConfigSession::getInstance().saveBgpConfig();
+    ConfigSession::getInstance().save<BgpConfigDomain>();
   }
 
   bool sessionFileExists() {
@@ -228,7 +229,7 @@ TEST_F(
     rejectedDeleteDoesNotStageWhenNothingStaged) {
   // Seed the reference without going through the session file, then confirm
   // the refused delete writes nothing.
-  auto& cfg = ConfigSession::getInstance().getBgpConfig();
+  auto& cfg = ConfigSession::getInstance().config<BgpConfigDomain>();
   auto& list = cfg.policies().ensure().aspath_lists()->emplace_back();
   list.name() = "AS100";
   auto& policies = *cfg.policies()->bgp_policy_statements();

@@ -25,9 +25,11 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/if/gen-cpp2/common_types.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
@@ -409,7 +411,7 @@ std::string configureTunnel(
     const std::string& tunnelId,
     const std::map<std::string, std::string>& attrs) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
 
   auto results = applyTunnelConfig(swConfig, tunnelType, tunnelId, attrs);
 

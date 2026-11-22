@@ -15,8 +15,10 @@
 #include <stdexcept>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/platforms/common/PlatformMapping.h"
 #include "fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -386,7 +388,7 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientAppliesMirrorsToPorts) {
   EXPECT_THAT(result, HasSubstr("mirror-ingress=span0"));
   EXPECT_THAT(result, HasSubstr("mirror-egress=span0"));
   const auto& ports =
-      *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     ASSERT_TRUE(port.ingressMirror().has_value());
     EXPECT_EQ(*port.ingressMirror(), "span0");
@@ -407,7 +409,7 @@ TEST_F(
   EXPECT_THROW(cmd.queryClient(localhost(), config), std::invalid_argument);
 
   const auto& ports =
-      *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   EXPECT_EQ(*ports[0].description(), "original description of eth1/1/1");
   EXPECT_FALSE(ports[0].ingressMirror().has_value());
 }
@@ -427,7 +429,7 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientSetsDescription) {
 
   // Verify the description was updated
   auto& session = ConfigSession::getInstance();
-  auto& agentConfig = session.getAgentConfig();
+  auto& agentConfig = session.config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   auto& ports = *switchConfig.ports();
   for (const auto& port : ports) {
@@ -454,7 +456,7 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientSetsMtu) {
 
   // Verify the MTU was updated
   auto& session = ConfigSession::getInstance();
-  auto& agentConfig = session.getAgentConfig();
+  auto& agentConfig = session.config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   auto& intfs = *switchConfig.interfaces();
   for (const auto& intf : intfs) {
@@ -478,8 +480,10 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientSetsInterfaceName) {
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
   EXPECT_THAT(result, HasSubstr("name=\"uplink_1\""));
 
-  auto& intfs =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& intfs = *ConfigSession::getInstance()
+                     .config<AgentConfigDomain>()
+                     .sw()
+                     ->interfaces();
   for (const auto& intf : intfs) {
     if (*intf.intfID() == 1) {
       EXPECT_EQ(*intf.name(), "uplink_1");
@@ -501,8 +505,10 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientSetsNameOnNamelessInterface) {
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
   EXPECT_THAT(result, HasSubstr("name=\"svi_mgmt\""));
 
-  auto& intfs =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& intfs = *ConfigSession::getInstance()
+                     .config<AgentConfigDomain>()
+                     .sw()
+                     ->interfaces();
   bool found = false;
   for (const auto& intf : intfs) {
     if (*intf.intfID() == 3001) {
@@ -577,7 +583,7 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientIpAddressesPersistedToDisk) {
 
   // Verify the addresses were added to the in-memory config
   auto& session = ConfigSession::getInstance();
-  auto& intfs = *session.getAgentConfig().sw()->interfaces();
+  auto& intfs = *session.config<AgentConfigDomain>().sw()->interfaces();
   for (const auto& intf : intfs) {
     if (*intf.name() == "eth1/1/1") {
       EXPECT_THAT(
@@ -612,7 +618,7 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientSetsBothAttributes) {
 
   // Verify both were updated
   auto& session = ConfigSession::getInstance();
-  auto& agentConfig = session.getAgentConfig();
+  auto& agentConfig = session.config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
 
   auto& ports = *switchConfig.ports();
@@ -646,7 +652,7 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientMultipleInterfaces) {
 
   // Verify both descriptions were updated
   auto& session = ConfigSession::getInstance();
-  auto& agentConfig = session.getAgentConfig();
+  auto& agentConfig = session.config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   auto& ports = *switchConfig.ports();
   for (const auto& port : ports) {
@@ -846,7 +852,7 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientSetsProfile) {
 
   // Verify the profile was updated
   auto& session = ConfigSession::getInstance();
-  auto& agentConfig = session.getAgentConfig();
+  auto& agentConfig = session.config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   auto& ports = *switchConfig.ports();
   for (const auto& port : ports) {
@@ -868,7 +874,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLoopbackModeNone) {
   EXPECT_THAT(result, HasSubstr("loopback-mode=none"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_EQ(*port.loopbackMode(), cfg::PortLoopbackMode::NONE);
@@ -928,7 +934,7 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientSetProfileMultiPort) {
 
   // Verify both ports were updated
   auto& session = ConfigSession::getInstance();
-  auto& agentConfig = session.getAgentConfig();
+  auto& agentConfig = session.config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   auto& ports = *switchConfig.ports();
   for (const auto& port : ports) {
@@ -947,7 +953,8 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientDeduplicatesInterfaceNames) {
   auto result = cmd.queryClient(localhost(), config);
 
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_EQ(*port.profileID(), cfg::PortProfileID::PROFILE_100G_4_NRZ_CL91);
@@ -976,7 +983,7 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientSetProfileAndDescription) {
 
   // Verify both were updated
   auto& session = ConfigSession::getInstance();
-  auto& agentConfig = session.getAgentConfig();
+  auto& agentConfig = session.config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   auto& ports = *switchConfig.ports();
   for (const auto& port : ports) {
@@ -994,7 +1001,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLoopbackModeNIF) {
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_EQ(*port.loopbackMode(), cfg::PortLoopbackMode::NIF);
@@ -1010,7 +1017,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLoopbackModeMAC) {
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_EQ(*port.loopbackMode(), cfg::PortLoopbackMode::MAC);
@@ -1026,7 +1033,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLoopbackModeCaseInsensitive) {
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_EQ(*port.loopbackMode(), cfg::PortLoopbackMode::PHY);
@@ -1051,7 +1058,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLoopbackModeMultiPort) {
   EXPECT_THAT(result, HasSubstr("eth1/2/1"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     EXPECT_EQ(*port.loopbackMode(), cfg::PortLoopbackMode::PHY);
   }
@@ -1070,7 +1077,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLoopbackModeCombinedWithDescription) {
   EXPECT_THAT(result, HasSubstr("testport"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_EQ(*port.loopbackMode(), cfg::PortLoopbackMode::MAC);
@@ -1092,7 +1099,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetFlowControlRxEnable) {
   EXPECT_THAT(result, HasSubstr("flow-control-rx=enable"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_TRUE(*port.pause()->rx());
@@ -1109,7 +1116,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetFlowControlRxDisable) {
   EXPECT_THAT(result, HasSubstr("flow-control-rx=disable"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_FALSE(*port.pause()->rx());
@@ -1126,7 +1133,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetFlowControlTxEnable) {
   EXPECT_THAT(result, HasSubstr("flow-control-tx=enable"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_TRUE(*port.pause()->tx());
@@ -1143,7 +1150,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetFlowControlTxDisable) {
   EXPECT_THAT(result, HasSubstr("flow-control-tx=disable"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_FALSE(*port.pause()->tx());
@@ -1159,7 +1166,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetFlowControlRxCaseInsensitive) {
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_TRUE(*port.pause()->rx());
@@ -1189,7 +1196,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetFlowControlRxAndTxIndependent) {
   cmd1.queryClient(localhost(), config1);
 
   auto& session1 = ConfigSession::getInstance();
-  auto& ports1 = *session1.getAgentConfig().sw()->ports();
+  auto& ports1 = *session1.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports1) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_TRUE(*port.pause()->rx());
@@ -1204,7 +1211,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetFlowControlRxAndTxIndependent) {
   cmd2.queryClient(localhost(), config2);
 
   auto& session2 = ConfigSession::getInstance();
-  auto& ports2 = *session2.getAgentConfig().sw()->ports();
+  auto& ports2 = *session2.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports2) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_TRUE(*port.pause()->tx());
@@ -1224,7 +1231,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetFlowControlMultiPort) {
   EXPECT_THAT(result, HasSubstr("eth1/2/1"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     EXPECT_TRUE(*port.pause()->rx());
   }
@@ -1245,7 +1252,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLldpExpectedValue) {
   EXPECT_THAT(result, HasSubstr("ge-0/0/0"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       const auto& lldpMap = *port.expectedLLDPValues();
@@ -1272,7 +1279,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLldpExpectedValueOverwrites) {
   cmd2.queryClient(localhost(), config2);
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       const auto& lldpMap = *port.expectedLLDPValues();
@@ -1305,7 +1312,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLldpExpectedValueMultiPort) {
   EXPECT_THAT(result, HasSubstr("eth1/2/1"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     const auto& lldpMap = *port.expectedLLDPValues();
     auto it = lldpMap.find(cfg::LLDPTag::PORT);
@@ -1322,7 +1329,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLldpExpectedValueOnlySetsPORTTag) {
   cmd.queryClient(localhost(), config);
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       const auto& lldpMap = *port.expectedLLDPValues();
@@ -1343,7 +1350,8 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLldpExpectedChassis) {
   auto result = cmd.queryClient(localhost(), config);
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       const auto& lldpMap = *port.expectedLLDPValues();
@@ -1361,7 +1369,8 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLldpExpectedTtl) {
   auto result = cmd.queryClient(localhost(), config);
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       const auto& lldpMap = *port.expectedLLDPValues();
@@ -1380,7 +1389,8 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLldpExpectedPortDesc) {
   auto result = cmd.queryClient(localhost(), config);
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       const auto& lldpMap = *port.expectedLLDPValues();
@@ -1399,7 +1409,8 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLldpExpectedSystemName) {
   auto result = cmd.queryClient(localhost(), config);
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       const auto& lldpMap = *port.expectedLLDPValues();
@@ -1419,7 +1430,8 @@ TEST_F(CmdConfigInterfaceTestFixture, SetLldpExpectedSystemDesc) {
   auto result = cmd.queryClient(localhost(), config);
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       const auto& lldpMap = *port.expectedLLDPValues();
@@ -1447,7 +1459,8 @@ TEST_F(
        "spine1"});
   cmd.queryClient(localhost(), config);
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       const auto& lldpMap = *port.expectedLLDPValues();
@@ -1477,7 +1490,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetTypeRoutedPort) {
   EXPECT_THAT(result, HasSubstr("type=routed-port"));
 
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
 
   // Port fields
   for (const auto& port : *swConfig.ports()) {
@@ -1503,7 +1516,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetTypeCaseInsensitive) {
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_EQ(*port.portType(), cfg::PortType::INTERFACE_PORT);
@@ -1535,7 +1548,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetTypeMultiPort) {
   EXPECT_THAT(result, HasSubstr("eth1/2/1"));
 
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
 
   for (const auto& port : *swConfig.ports()) {
     EXPECT_EQ(*port.portType(), cfg::PortType::INTERFACE_PORT);
@@ -1560,7 +1573,7 @@ TEST_F(CmdConfigInterfaceTestFixture, SetTypeWithDescription) {
   EXPECT_THAT(result, HasSubstr("uplink"));
 
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
   for (const auto& port : *swConfig.ports()) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_EQ(*port.portType(), cfg::PortType::INTERFACE_PORT);
@@ -1597,8 +1610,10 @@ TEST_F(
   InterfacesConfig config({"eth1/1/1", "type", "routed-port"});
   cmd.queryClient(localhost(), config);
 
-  const auto& vps =
-      *ConfigSession::getInstance().getAgentConfig().sw()->vlanPorts();
+  const auto& vps = *ConfigSession::getInstance()
+                         .config<AgentConfigDomain>()
+                         .sw()
+                         ->vlanPorts();
   ASSERT_EQ(vps.size(), 1u);
   EXPECT_EQ(*vps[0].logicalPort(), 2);
   EXPECT_EQ(*vps[0].vlanID(), 2);
@@ -1617,7 +1632,7 @@ TEST_F(CmdConfigInterfaceTestFixture, ShutdownSetsStateDisabled) {
   EXPECT_THAT(result, HasSubstr("state=disabled"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_EQ(*port.state(), cfg::PortState::DISABLED);
@@ -1635,7 +1650,7 @@ TEST_F(CmdConfigInterfaceTestFixture, NoShutdownSetsStateEnabled) {
   EXPECT_THAT(result, HasSubstr("state=enabled"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_EQ(*port.state(), cfg::PortState::ENABLED);
@@ -1653,7 +1668,7 @@ TEST_F(CmdConfigInterfaceTestFixture, ShutdownMultiPort) {
   EXPECT_THAT(result, HasSubstr("eth1/2/1"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     EXPECT_EQ(*port.state(), cfg::PortState::DISABLED);
   }
@@ -1669,7 +1684,7 @@ TEST_F(CmdConfigInterfaceTestFixture, NoShutdownMultiPort) {
   EXPECT_THAT(result, HasSubstr("eth1/2/1"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     EXPECT_EQ(*port.state(), cfg::PortState::ENABLED);
   }
@@ -1684,7 +1699,7 @@ TEST_F(CmdConfigInterfaceTestFixture, ShutdownThenNoShutdown) {
     cmd.queryClient(localhost(), config);
   }
   auto& session1 = ConfigSession::getInstance();
-  for (const auto& port : *session1.getAgentConfig().sw()->ports()) {
+  for (const auto& port : *session1.config<AgentConfigDomain>().sw()->ports()) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_EQ(*port.state(), cfg::PortState::DISABLED);
     }
@@ -1698,7 +1713,7 @@ TEST_F(CmdConfigInterfaceTestFixture, ShutdownThenNoShutdown) {
     cmd2.queryClient(localhost(), config2);
   }
   auto& session2 = ConfigSession::getInstance();
-  for (const auto& port : *session2.getAgentConfig().sw()->ports()) {
+  for (const auto& port : *session2.config<AgentConfigDomain>().sw()->ports()) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_EQ(*port.state(), cfg::PortState::ENABLED);
     }
@@ -1716,7 +1731,7 @@ TEST_F(CmdConfigInterfaceTestFixture, ShutdownWithDescription) {
   EXPECT_THAT(result, HasSubstr("description=\"downlink\""));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       EXPECT_EQ(*port.state(), cfg::PortState::DISABLED);
@@ -1819,7 +1834,8 @@ TEST_F(
   setupTestableConfigSession(
       "config interface", "eth1/1/1 profile PROFILE_400G_8_PAM4_RS544X2N");
   auto platformMapping = makeSubsumePlatformMapping();
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   utils::InterfaceList interfaces({"eth1/1/1"});
 
   auto result = applyProfileImpl(
@@ -1861,7 +1877,8 @@ TEST_F(ApplyProfileSubsumeTestFixture, subsumeEscalatesToColdboot) {
   setupTestableConfigSession(
       "config interface", "eth1/1/1 profile PROFILE_400G_8_PAM4_RS544X2N");
   auto platformMapping = makeSubsumePlatformMapping();
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   utils::InterfaceList interfaces({"eth1/1/1"});
 
   cli::ConfigActionLevel actionLevel = cli::ConfigActionLevel::HITLESS;
@@ -2131,7 +2148,7 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientSetsLookupClass) {
   EXPECT_THAT(result, HasSubstr("lookup-class=10"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       ASSERT_EQ(port.lookupClasses()->size(), 1);
@@ -2157,7 +2174,8 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientSetsLookupClassList) {
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
   EXPECT_THAT(result, HasSubstr("lookup-class=10,11,12,13,14"));
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       ASSERT_EQ(port.lookupClasses()->size(), 5);
@@ -2204,7 +2222,7 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientLookupClassReplacesList) {
       localhost(), InterfacesConfig({"eth1/1/1", "lookup-class", "12,13,14"}));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       ASSERT_EQ(port.lookupClasses()->size(), 3);
@@ -2234,7 +2252,7 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientLookupClassMultiPort) {
   EXPECT_THAT(result, HasSubstr("eth1/2/1"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     ASSERT_EQ(port.lookupClasses()->size(), 1);
     EXPECT_EQ(
@@ -2256,7 +2274,7 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientLookupClassByName) {
   EXPECT_THAT(result, HasSubstr("Successfully configured"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ports = *session.getAgentConfig().sw()->ports();
+  auto& ports = *session.config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     if (*port.name() == "eth1/1/1") {
       ASSERT_EQ(port.lookupClasses()->size(), 1);
@@ -2329,7 +2347,8 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientLookupClassRejectsDuplicate) {
 
   // The list is fully parsed before any port is mutated, so a rejected list
   // must leave lookupClasses empty — the valid prefix "10" is not applied.
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     EXPECT_TRUE(port.lookupClasses()->empty());
   }
@@ -2363,7 +2382,8 @@ TEST_F(CmdConfigInterfaceTestFixture, queryClientLookupClassRejectsBadInList) {
 
   // The list is fully parsed before any port is mutated, so a rejected list
   // must leave lookupClasses empty — the valid prefix "10" is not applied.
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     EXPECT_TRUE(port.lookupClasses()->empty());
   }
@@ -2410,7 +2430,7 @@ class QueueConfigAttrTestFixture : public CmdConfigTestBase {
  protected:
   static const cfg::Port* findPort(const std::string& name) {
     const auto& ports =
-        *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+        *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
     for (const auto& port : ports) {
       if (*port.name() == name) {
         return &port;

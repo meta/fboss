@@ -10,6 +10,7 @@
 
 #include "configerator/structs/neteng/fboss/bgp/if/gen-cpp2/bgp_attr_types.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/peer-group/CmdConfigProtocolBgpPeerGroup.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -46,11 +47,14 @@ class CmdConfigBgpPeerGroupTestFixture : public CmdConfigTestBase {
   }
 
   const std::vector<bgp::thrift::PeerGroup>& groups() {
-    return ConfigSession::getInstance().getBgpConfig().peer_groups().ensure();
+    return ConfigSession::getInstance()
+        .config<BgpConfigDomain>()
+        .peer_groups()
+        .ensure();
   }
 
   bgp::thrift::BgpConfig& config() {
-    return ConfigSession::getInstance().getBgpConfig();
+    return ConfigSession::getInstance().config<BgpConfigDomain>();
   }
 
   bool sessionFileExists() {

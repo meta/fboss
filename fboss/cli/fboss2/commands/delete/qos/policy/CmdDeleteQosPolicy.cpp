@@ -19,8 +19,10 @@
 #include <string>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/config/qos/QosPolicyUtils.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -78,7 +80,7 @@ CmdDeleteQosPolicyTraits::RetType CmdDeleteQosPolicy::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& policyName) {
   auto& session = ConfigSession::getInstance();
-  auto& agentConfig = session.getAgentConfig();
+  auto& agentConfig = session.config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
 
   const std::string name = policyName.getName();
@@ -109,7 +111,7 @@ CmdDeleteQosPolicyTraits::RetType CmdDeleteQosPolicy::queryClient(
   }
 
   qosPolicies.erase(it);
-  session.saveConfig();
+  session.save<AgentConfigDomain>();
 
   return fmt::format("Successfully deleted QoS policy '{}'", name);
 }

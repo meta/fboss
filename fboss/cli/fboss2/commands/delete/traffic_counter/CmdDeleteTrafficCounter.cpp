@@ -18,7 +18,9 @@
 #include <iostream>
 #include <vector>
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -56,7 +58,7 @@ CmdDeleteTrafficCounterTraits::RetType CmdDeleteTrafficCounter::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& arg) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
 
   const std::string& name = arg.getName();
 

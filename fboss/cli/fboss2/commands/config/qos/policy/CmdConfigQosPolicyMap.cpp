@@ -25,9 +25,11 @@
 #include <utility>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/config/qos/QosPolicyUtils.h"
 #include "fboss/cli/fboss2/commands/config/qos/policy/CmdConfigQosPolicy.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -310,7 +312,7 @@ CmdConfigQosPolicyMapTraits::RetType CmdConfigQosPolicyMap::queryClient(
     const QosPolicyName& policyName,
     const ObjectArgType& config) {
   auto& session = ConfigSession::getInstance();
-  auto& agentConfig = session.getAgentConfig();
+  auto& agentConfig = session.config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
 
   const std::string& name = policyName.getName();
@@ -378,7 +380,7 @@ CmdConfigQosPolicyMapTraits::RetType CmdConfigQosPolicyMap::queryClient(
         break;
     }
 
-    session.saveConfig();
+    session.save<AgentConfigDomain>();
 
     return fmt::format(
         "Successfully set QoS policy '{}' {} [tc={}] = {}",
@@ -417,7 +419,7 @@ CmdConfigQosPolicyMapTraits::RetType CmdConfigQosPolicyMap::queryClient(
         break;
     }
 
-    session.saveConfig();
+    session.save<AgentConfigDomain>();
 
     return fmt::format(
         "Successfully set QoS policy '{}' {} [{}] = {}",

@@ -8,8 +8,10 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/interface/mirror/CmdConfigInterfaceMirror.h"
 #include "fboss/cli/fboss2/commands/delete/interface/mirror/CmdDeleteInterfaceMirror.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
 
@@ -89,7 +91,8 @@ class CmdConfigInterfaceMirrorTestFixture : public CmdConfigTestBase {
   }
 
   static const cfg::Port& portOf(const std::string& portName) {
-    auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+    auto& swConfig =
+        *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
     for (const auto& port : *swConfig.ports()) {
       if (*port.name() == portName) {
         return port;

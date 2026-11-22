@@ -15,7 +15,9 @@
 #include <fmt/format.h>
 #include <iostream>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -24,7 +26,7 @@ namespace facebook::fboss {
 CmdDeleteQosDefaultPolicyTraits::RetType CmdDeleteQosDefaultPolicy::queryClient(
     const HostInfo& /* hostInfo */) {
   auto& session = ConfigSession::getInstance();
-  auto& agentConfig = session.getAgentConfig();
+  auto& agentConfig = session.config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
 
   if (!switchConfig.dataPlaneTrafficPolicy().has_value() ||

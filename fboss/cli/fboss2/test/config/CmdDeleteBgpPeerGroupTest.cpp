@@ -10,6 +10,7 @@
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/peer-group/CmdConfigProtocolBgpPeerGroup.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/peer-group/CmdDeleteProtocolBgpPeerGroup.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -51,7 +52,10 @@ class CmdDeleteBgpPeerGroupTestFixture : public CmdConfigTestBase {
   }
 
   const std::vector<bgp::thrift::PeerGroup>& groups() {
-    return ConfigSession::getInstance().getBgpConfig().peer_groups().ensure();
+    return ConfigSession::getInstance()
+        .config<BgpConfigDomain>()
+        .peer_groups()
+        .ensure();
   }
 
   // Reference a peer-group from a neighbor the way a committed config would,
@@ -64,7 +68,7 @@ class CmdDeleteBgpPeerGroupTestFixture : public CmdConfigTestBase {
     peer.local_addr() = "10.0.0.1";
     peer.peer_addr() = peerAddr;
     peer.peer_group_name() = groupName;
-    ConfigSession::getInstance().getBgpConfig().peers()->push_back(
+    ConfigSession::getInstance().config<BgpConfigDomain>().peers()->push_back(
         std::move(peer));
   }
 

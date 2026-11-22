@@ -13,16 +13,18 @@
 
 #include <fmt/format.h>
 #include <folly/String.h>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 #include "fboss/cli/fboss2/commands/config/protocol/static/route/StaticRouteUtils.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
 
 template <typename RouteArgType>
 std::string addStaticRouteImpl(const RouteArgType& routeArg) {
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
 
   const std::string& prefix = routeArg.getPrefix();
@@ -46,7 +48,7 @@ std::string addStaticRouteImpl(const RouteArgType& routeArg) {
 
     nullRoutes.push_back(newRoute);
 
-    ConfigSession::getInstance().saveConfig();
+    ConfigSession::getInstance().save<AgentConfigDomain>();
     return fmt::format(
         "Successfully added static null0 route {} (VRF {})", prefix, vrfId);
   } else if (routeType == StaticRouteType::CPU_ROUTE) {
@@ -65,7 +67,7 @@ std::string addStaticRouteImpl(const RouteArgType& routeArg) {
 
     cpuRoutes.push_back(newRoute);
 
-    ConfigSession::getInstance().saveConfig();
+    ConfigSession::getInstance().save<AgentConfigDomain>();
     return fmt::format(
         "Successfully added static CPU route {} (VRF {})", prefix, vrfId);
   } else {
@@ -79,7 +81,7 @@ std::string addStaticRouteImpl(const RouteArgType& routeArg) {
     if (it != nhopRoutes.end()) {
       it->nexthops() = routeArg.getNexthops();
 
-      ConfigSession::getInstance().saveConfig();
+      ConfigSession::getInstance().save<AgentConfigDomain>();
       std::string nexthopsList = folly::join(", ", routeArg.getNexthops());
       return fmt::format(
           "Successfully updated static route {} (VRF {}) with nexthop{}: {}",
@@ -94,7 +96,7 @@ std::string addStaticRouteImpl(const RouteArgType& routeArg) {
 
     nhopRoutes.push_back(newRoute);
 
-    ConfigSession::getInstance().saveConfig();
+    ConfigSession::getInstance().save<AgentConfigDomain>();
     std::string nexthopsList = folly::join(", ", routeArg.getNexthops());
     return fmt::format(
         "Successfully added static route {} (VRF {}) with nexthop{}: {}",

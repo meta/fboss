@@ -38,8 +38,9 @@ AgentConfigDomain::AgentConfigDomain(
               fmt::format("{}/agent.conf", sessionConfigDir),
               "cli/agent.conf",
               fmt::format("{}/cli/agent.conf", systemConfigDir),
-              // A rollback reloads the agent, unless a commit being undone
-              // recorded a higher level.
+              // A save records a reload by default, and a rollback reloads
+              // the agent unless a commit being undone recorded a higher
+              // level.
               cli::ConfigActionLevel::HITLESS,
           }) {}
 

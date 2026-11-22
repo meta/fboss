@@ -13,8 +13,10 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/interface/CmdDeleteInterface.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -94,7 +96,8 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientResetsLoopbackMode) {
   EXPECT_THAT(result, HasSubstr("loopback-mode"));
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   EXPECT_EQ(*ports[0].loopbackMode(), cfg::PortLoopbackMode::NONE);
 }
 
@@ -130,7 +133,8 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientMultiplePortsLoopbackMode) {
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
   EXPECT_THAT(result, HasSubstr("eth1/2/1"));
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     EXPECT_EQ(*port.loopbackMode(), cfg::PortLoopbackMode::NONE);
   }
@@ -150,7 +154,8 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientRemovesLldpExpectedValue) {
   EXPECT_THAT(result, HasSubstr("lldp-expected-value"));
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   const auto& lldpValues = *ports[0].expectedLLDPValues();
   EXPECT_EQ(lldpValues.count(cfg::LLDPTag::PORT), 0);
 }
@@ -188,7 +193,8 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientMultiplePortsLldpValue) {
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
   EXPECT_THAT(result, HasSubstr("eth1/2/1"));
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     EXPECT_EQ(port.expectedLLDPValues()->count(cfg::LLDPTag::PORT), 0);
   }
@@ -211,7 +217,8 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientMultipleAttrs) {
   EXPECT_THAT(result, HasSubstr("lldp-expected-value"));
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   EXPECT_EQ(*ports[0].loopbackMode(), cfg::PortLoopbackMode::NONE);
   EXPECT_EQ(ports[0].expectedLLDPValues()->count(cfg::LLDPTag::PORT), 0);
 }
@@ -228,7 +235,7 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientClearsPortMirrors) {
   EXPECT_THAT(result, HasSubstr("mirror-ingress"));
   EXPECT_THAT(result, HasSubstr("mirror-egress"));
   const auto& ports =
-      *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   EXPECT_FALSE(ports[0].ingressMirror().has_value());
   EXPECT_FALSE(ports[0].egressMirror().has_value());
 }
@@ -242,7 +249,7 @@ TEST_F(
 
   EXPECT_NO_THROW(cmd.queryClient(localhost(), deleteAttrs));
   const auto& ports =
-      *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   EXPECT_FALSE(ports[1].ingressMirror().has_value());
 }
 
@@ -255,7 +262,8 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientResetsDescription) {
   auto cmd = CmdDeleteInterface();
   auto deleteAttrs = InterfaceDeleteConfig({"eth1/1/1", "description"});
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   ASSERT_EQ(*ports[0].description(), "to-spine1");
 
   auto result = cmd.queryClient(localhost(), deleteAttrs);
@@ -275,7 +283,8 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientIdempotentNoDescription) {
   auto result = cmd.queryClient(localhost(), deleteAttrs);
 
   EXPECT_THAT(result, HasSubstr("eth1/2/1"));
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   EXPECT_FALSE(ports[1].description().has_value());
 }
 
@@ -288,8 +297,10 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientResetsMtu) {
   auto cmd = CmdDeleteInterface();
   auto deleteAttrs = InterfaceDeleteConfig({"eth1/1/1", "mtu"});
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   ASSERT_EQ(*ifaces[0].mtu(), 9000);
 
   auto result = cmd.queryClient(localhost(), deleteAttrs);
@@ -312,8 +323,10 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientIdempotentNoMtu) {
   // "No interface config found for: eth1/2/1" failure message also contains it.
   EXPECT_THAT(result, HasSubstr("Successfully reset attribute 'mtu'"));
   EXPECT_THAT(result, Not(HasSubstr("No interface config found")));
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_FALSE(ifaces[1].mtu().has_value());
 }
 
@@ -329,7 +342,7 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientDescriptionAndMtuTogether) {
   EXPECT_THAT(result, HasSubstr("description"));
   EXPECT_THAT(result, HasSubstr("mtu"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_FALSE((*config.sw()->ports())[0].description().has_value());
   EXPECT_FALSE((*config.sw()->interfaces())[0].mtu().has_value());
 }
@@ -372,7 +385,8 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientClearsLookupClasses) {
   EXPECT_THAT(result, HasSubstr("lookup-class"));
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   EXPECT_TRUE(ports[0].lookupClasses()->empty());
   // Clearing lookup-class must not disturb the port's other attributes.
   EXPECT_EQ(*ports[0].loopbackMode(), cfg::PortLoopbackMode::PHY);
@@ -393,7 +407,8 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientIdempotentNoLookupClasses) {
   EXPECT_THAT(result, HasSubstr("lookup-class"));
 
   // eth1/2/1 had no lookupClasses; delete is a no-op and leaves it empty.
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   EXPECT_TRUE(ports[1].lookupClasses()->empty());
 }
 
@@ -413,7 +428,8 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientMultiplePortsLookupClasses) {
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
   EXPECT_THAT(result, HasSubstr("eth1/2/1"));
 
-  auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  auto& ports =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
   for (const auto& port : ports) {
     EXPECT_TRUE(port.lookupClasses()->empty());
   }

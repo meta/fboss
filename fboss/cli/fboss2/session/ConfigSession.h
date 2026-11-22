@@ -15,17 +15,11 @@
 #include <string>
 #include <string_view>
 #include <vector>
-
-#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
 #include "fboss/cli/fboss2/session/ConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigDomainRegistry.h"
 #include "fboss/cli/fboss2/session/Git.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
-
-namespace facebook::bgp::thrift {
-class BgpConfig;
-}
 
 namespace facebook::fboss {
 
@@ -48,23 +42,30 @@ class ConfigFileManager;
  * TYPICAL USAGE:
  * Most CLI commands follow this pattern:
  *   1. Get the singleton: auto& session = ConfigSession::getInstance();
- *   2. Access the config: auto& config = session.getAgentConfig();
+ *   2. Access the config:
+ *        auto& config = session.config<AgentConfigDomain>();
  *   3. Modify the config: config.sw()->ports()[0].name() = "eth0";
- *   4. Save changes: session.saveConfig();
+ *   4. Save changes: session.save<AgentConfigDomain>(), or
+ *        session.saveConfig(cli::ServiceType::AGENT, level) when the change
+ *        needs more than the service's least disruptive action.
  *
- * The changes are saved to the session file (currently ~/.fboss2/agent.conf)
- * but are NOT applied to the running system until explicitly committed.
+ * The changes are saved to the service's session file (~/.fboss2/agent.conf
+ * for the agent, ~/.fboss2/bgp_config.json for BGP) but are NOT applied to
+ * the running system until explicitly committed.
  *
  * COMMIT FLOW:
  * To apply session changes to the system:
- *   1. User runs: fboss2 config session commit
- *   2. ConfigSession::commit() is called, which:
- *      a. Atomically writes the session config to /etc/coop/cli/agent.conf
- *      b. Updates the config path reported by the affected service
- *      c. Creates a Git commit with the updated agent.conf and metadata
- *      d. Calls reloadConfig() on wedge_agent (or restarts it for
- *         AGENT_RESTART changes)
- *   3. The session file is cleared (ready for next edit session)
+ *   1. User runs: fboss2-dev config session commit
+ *   2. ConfigSession::commit() is called, which, for every service whose
+ *      staged config differs from its committed one:
+ *      a. Atomically writes the staged config to the service's Git-tracked
+ *         file (e.g. /etc/coop/cli/agent.conf) and points the path the
+ *         service reads at it
+ *      b. Applies the recorded action: a config reload for HITLESS, a
+ *         restart of the service for SERVICE_RESTART or
+ *         DISRUPTIVE_SERVICE_RESTART
+ *      c. Creates one Git commit with the updated configs and the metadata
+ *   3. The session files are cleared (ready for next edit session)
  *
  * ROLLBACK FLOW:
  * To revert to a previous configuration:
@@ -76,10 +77,12 @@ class ConfigFileManager;
  *      d. Calls wedge_agent to reload the configuration (or restarts
  *         it if necessary)
  *
- * CONFIGURATION FILES:
- * - Session file: ~/.fboss2/agent.conf (per-user, temporary edits)
+ * CONFIGURATION FILES (per service; see each ConfigDomain for the paths):
+ * - Session file: ~/.fboss2/agent.conf, ~/.fboss2/bgp_config.json (per-user,
+ *   temporary edits)
  * - Current config: discovered lazily from each service's `config` option
- * - CLI config: /etc/coop/cli/agent.conf (actual config file, Git-versioned)
+ * - CLI config: /etc/coop/cli/agent.conf, /etc/coop/bgpcpp/bgpcpp.conf
+ *   (actual config files, Git-versioned)
  * - Metadata: /etc/coop/cli/cli_metadata.json (commit metadata, Git-versioned)
  *
  * VERSION CONTROL:
@@ -112,18 +115,11 @@ class ConfigSession {
   // session, re-reading config from disk.
   static void resetInstance();
 
-  // ~/.fboss2/agent.conf. Static so callers can check for a staged agent
-  // config without creating a session instance.
-  static std::string getSessionConfigPathStatic();
-
   // All per-session staged files under ~/.fboss2 that `config session clear`
   // should remove: every config domain's staged file plus the session
   // metadata. Static so callers can clear a session without getInstance()
   // (which would create one).
   static std::vector<std::string> stagedSessionFilePaths();
-
-  // Get the path to the session config file (~/.fboss2/agent.conf)
-  std::string getSessionConfigPath() const;
 
   // The file under ~/.fboss2 that holds a service's staged edits.
   std::string stagedPath(cli::ServiceType service) const;
@@ -160,10 +156,10 @@ class ConfigSession {
   std::optional<std::string> readStagedContent(
       const ConfigDomainInfo& domain) const;
 
-  // Atomically commit the session to /etc/coop/cli/agent.conf and create a git
-  // commit. For HITLESS changes, also calls reloadConfig() on the agent.
-  // For AGENT_RESTART changes, restarts the agent via systemd.
-  // Returns CommitResult with git commit SHA and action level.
+  // Atomically commit every service's staged config to its Git-tracked file,
+  // apply each service's recorded action (a config reload for HITLESS, a
+  // restart otherwise) and create a git commit.
+  // Returns CommitResult with the git commit SHA and the actions applied.
   CommitResult commit(const HostInfo& hostInfo);
 
   // Rebase the session onto the current HEAD.
@@ -179,48 +175,41 @@ class ConfigSession {
   std::string rollback(const HostInfo& hostInfo);
   std::string rollback(const HostInfo& hostInfo, const std::string& commitSha);
 
-  // Check if an agent config session exists (~/.fboss2/agent.conf staged).
-  bool sessionExists() const;
-
-  // Check if any committable session is staged: either an agent config session
-  // (agent.conf) or a protocol session persisted outside agent.conf (e.g. a
-  // BGP++ session at ~/.fboss2/bgp_config.json recorded via
-  // recordServiceAction()). The commit path uses this rather than
-  // sessionExists() so a BGP-only change can be committed.
+  // True when any service has staged edits.
   bool hasActiveSession() const;
 
-  // Get the parsed agent configuration
-  cfg::AgentConfig& getAgentConfig();
-  const cfg::AgentConfig& getAgentConfig() const;
+  // The typed config of domain D (e.g. AgentConfigDomain), loaded on first
+  // use. Edit it, then call save<D>().
+  template <class D>
+  auto& config() {
+    auto& domain = domains_.get<D>();
+    if (!domain.loaded()) {
+      loadConfig(domain.info().service);
+    }
+    return domain.config();
+  }
+  // Read-only view. Throws unless the non-const overload loaded it first.
+  template <class D>
+  const auto& config() const {
+    const auto& domain = domains_.get<D>();
+    if (!domain.loaded()) {
+      throwConfigNotLoaded(domain.info().name);
+    }
+    return domain.config();
+  }
+
+  // Stages domain D's config at the least disruptive level that makes its
+  // service pick up a change. Use saveConfig() to record a higher level.
+  template <class D>
+  void save() {
+    const auto& info = domains_.get<D>().info();
+    saveConfig(info.service, info.minActionLevel);
+  }
 
   // Serialize the given service's typed config to that domain's staged
-  // session file, and record the
-  // command + bump the service's required action level (if the new level is
-  // higher than the current one). One generic entry point for every service.
+  // session file, and record the command + bump the service's required action
+  // level (if the new level is higher than the current one).
   void saveConfig(cli::ServiceType service, cli::ConfigActionLevel actionLevel);
-  // Save the configuration for AGENT service with HITLESS action level.
-  void saveConfig();
-
-  // ==================== BGP configuration ====================
-  // ConfigSession owns the BGP config as a typed bgp::thrift::BgpConfig,
-  // exactly the way it owns cfg::AgentConfig for the agent. It is BGP-*aware*
-  // but agnostic about the config's internal structure: getBgpConfig() exposes
-  // the WHOLE typed config (router_id, ASNs, peers, peer_groups, networks, ...)
-  // and commands mutate whichever typed fields they need -- mirroring how
-  // interface commands mutate getAgentConfig().sw()->ports(). ConfigSession has
-  // no notion of "global" vs "peer" vs "peer-group".
-
-  // Typed, mutable view of the entire BGP config. Lazily seeded from the staged
-  // ~/.fboss2/bgp_config.json, else the path reported by bgpd, else schema
-  // defaults. Mirrors getAgentConfig().
-  bgp::thrift::BgpConfig& getBgpConfig();
-  const bgp::thrift::BgpConfig& getBgpConfig() const;
-
-  // Convenience wrapper over saveConfig(BGP, SERVICE_RESTART): persists the
-  // typed BGP config to ~/.fboss2/bgp_config.json and records that bgpd must be
-  // restarted on the next `config session commit`. Mirrors the no-arg
-  // saveConfig() for the agent.
-  void saveBgpConfig();
 
   // Commits that changed any service's config or the commit metadata, most
   // recent first. This covers every revision rollback() walks.
@@ -298,6 +287,9 @@ class ConfigSession {
       const HostInfo& hostInfo);
 
  private:
+  // Out of line so this header needs neither fmt nor <stdexcept>.
+  [[noreturn]] static void throwConfigNotLoaded(const std::string& domainName);
+
   std::string sessionConfigDir_; // Typically ~/.fboss2
   std::string systemConfigDir_; // Typically /etc/coop
   bool readOnly_{false};
@@ -320,7 +312,7 @@ class ConfigSession {
   // next access re-seeds from disk. Called after a successful commit.
   void clearStagedDomain(const ConfigDomainInfo& domain);
   // Compare two serialized configs for a domain by deserializing each into its
-  // typed thrift struct (cfg::AgentConfig / bgp::thrift::BgpConfig) and using
+  // typed thrift struct and using
   // struct equality. This is a SEMANTIC comparison, so formatting-only
   // differences (whitespace, key ordering, integer-vs-string map keys, a
   // raw-seeded file vs a round-tripped one) do not count as a change. Falls

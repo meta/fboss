@@ -13,7 +13,9 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/arp/CmdDeleteArp.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -90,7 +92,7 @@ TEST_F(CmdDeleteArpTestFixture, resetTimeout) {
   EXPECT_THAT(result, HasSubstr("timeout"));
   EXPECT_THAT(result, HasSubstr("60"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->arpTimeoutSeconds(), 60);
   // Other attrs untouched
   EXPECT_EQ(*config.sw()->arpAgerInterval(), 7);
@@ -107,7 +109,7 @@ TEST_F(CmdDeleteArpTestFixture, resetAgeInterval) {
   auto result = cmd.queryClient(hostInfo, args);
   EXPECT_THAT(result, HasSubstr("age-interval"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->arpAgerInterval(), 5);
   EXPECT_EQ(*config.sw()->arpTimeoutSeconds(), 120);
 }
@@ -121,7 +123,7 @@ TEST_F(CmdDeleteArpTestFixture, resetMaxProbes) {
   auto result = cmd.queryClient(hostInfo, args);
   EXPECT_THAT(result, HasSubstr("max-probes"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->maxNeighborProbes(), 300);
   EXPECT_EQ(*config.sw()->staleEntryInterval(), 20);
 }
@@ -135,7 +137,7 @@ TEST_F(CmdDeleteArpTestFixture, resetStaleInterval) {
   auto result = cmd.queryClient(hostInfo, args);
   EXPECT_THAT(result, HasSubstr("stale-interval"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->staleEntryInterval(), 10);
   EXPECT_EQ(*config.sw()->maxNeighborProbes(), 500);
 }
@@ -154,7 +156,7 @@ TEST_F(CmdDeleteArpTestFixture, resetAllAttrs) {
   EXPECT_THAT(result, HasSubstr("max-probes"));
   EXPECT_THAT(result, HasSubstr("stale-interval"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->arpTimeoutSeconds(), 60);
   EXPECT_EQ(*config.sw()->arpAgerInterval(), 5);
   EXPECT_EQ(*config.sw()->maxNeighborProbes(), 300);
@@ -171,7 +173,7 @@ TEST_F(CmdDeleteArpTestFixture, idempotentOnDefaults) {
   cmd.queryClient(hostInfo, args);
   cmd.queryClient(hostInfo, args);
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->arpTimeoutSeconds(), 60);
 }
 

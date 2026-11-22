@@ -28,6 +28,7 @@
 
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/config/interface/pfc_config/PfcConfigUtils.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
@@ -173,7 +174,7 @@ CmdConfigInterfacePfcConfig::queryClient(
     }
   }
 
-  ConfigSession::getInstance().saveConfig();
+  ConfigSession::getInstance().save<AgentConfigDomain>();
 
   std::string interfaceList = folly::join(", ", interfaces.getNames());
   return fmt::format(

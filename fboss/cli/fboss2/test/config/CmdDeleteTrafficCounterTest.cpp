@@ -17,7 +17,9 @@
 #include <string>
 
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/traffic_counter/CmdDeleteTrafficCounter.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 using namespace ::testing;
@@ -67,8 +69,10 @@ class CmdDeleteTrafficCounterTestFixture : public CmdConfigTestBase {
   }
 
   static bool hasCounter(const std::string& name) {
-    const auto& counters =
-        *ConfigSession::getInstance().getAgentConfig().sw()->trafficCounters();
+    const auto& counters = *ConfigSession::getInstance()
+                                .config<AgentConfigDomain>()
+                                .sw()
+                                ->trafficCounters();
     return std::any_of(
         counters.cbegin(), counters.cend(), [&name](const auto& counter) {
           return *counter.name() == name;
@@ -77,7 +81,7 @@ class CmdDeleteTrafficCounterTestFixture : public CmdConfigTestBase {
 
   static size_t counterCount() {
     return ConfigSession::getInstance()
-        .getAgentConfig()
+        .config<AgentConfigDomain>()
         .sw()
         ->trafficCounters()
         ->size();

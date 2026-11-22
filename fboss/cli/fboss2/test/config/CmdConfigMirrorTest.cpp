@@ -4,8 +4,10 @@
 #include <gtest/gtest.h>
 
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/mirror/CmdConfigMirror.h"
 #include "fboss/cli/fboss2/commands/delete/mirror/CmdDeleteMirror.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -83,8 +85,10 @@ class CmdConfigMirrorTestFixture : public CmdConfigTestBase {
 
  protected:
   const cfg::Mirror* findMirror(const std::string& name) {
-    const auto& mirrors =
-        *ConfigSession::getInstance().getAgentConfig().sw()->mirrors();
+    const auto& mirrors = *ConfigSession::getInstance()
+                               .config<AgentConfigDomain>()
+                               .sw()
+                               ->mirrors();
     auto it = std::find_if(
         mirrors.begin(), mirrors.end(), [&](const cfg::Mirror& mirror) {
           return *mirror.name() == name;
@@ -239,7 +243,8 @@ TEST_F(CmdConfigMirrorTestFixture, rejectsIncompleteAndInvalidDestinations) {
 }
 
 TEST_F(CmdConfigMirrorTestFixture, rejectsEgressPortReferencingSameMirror) {
-  auto& port = ConfigSession::getInstance().getAgentConfig().sw()->ports()[1];
+  auto& port =
+      ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports()[1];
   port.ingressMirror() = "existing_sflow";
   const auto original = *findMirror("existing_sflow");
 
@@ -287,7 +292,8 @@ TEST_F(CmdConfigMirrorTestFixture, deletesUnreferencedMirror) {
 }
 
 TEST_F(CmdConfigMirrorTestFixture, refusesToDeleteReferencedMirror) {
-  auto& port = ConfigSession::getInstance().getAgentConfig().sw()->ports()[0];
+  auto& port =
+      ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports()[0];
   port.ingressMirror() = "existing_span";
 
   CmdDeleteMirror cmd;
@@ -303,7 +309,8 @@ TEST_F(CmdConfigMirrorTestFixture, refusesToDeleteReferencedMirror) {
 TEST_F(
     CmdConfigMirrorTestFixture,
     refusesToDeleteMirrorReferencedByDataPlanePolicy) {
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   swConfig.dataPlaneTrafficPolicy() = makeMirrorTrafficPolicy("existing_span");
 
   CmdDeleteMirror cmd;
@@ -314,7 +321,8 @@ TEST_F(
 }
 
 TEST_F(CmdConfigMirrorTestFixture, refusesToDeleteMirrorReferencedByCpuPolicy) {
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   cfg::CPUTrafficPolicyConfig cpuPolicy;
   cpuPolicy.trafficPolicy() = makeMirrorTrafficPolicy("existing_span");
   swConfig.cpuTrafficPolicy() = std::move(cpuPolicy);
@@ -329,7 +337,8 @@ TEST_F(CmdConfigMirrorTestFixture, refusesToDeleteMirrorReferencedByCpuPolicy) {
 TEST_F(
     CmdConfigMirrorTestFixture,
     refusesToDeleteMirrorReferencedByDeprecatedGlobalEgressPolicy) {
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   swConfig.globalEgressTrafficPolicy_DEPRECATED() =
       makeMirrorTrafficPolicy("existing_span");
 

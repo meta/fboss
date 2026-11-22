@@ -14,9 +14,11 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/vlan/CmdConfigVlan.h"
 #include "fboss/cli/fboss2/commands/config/vlan/static_mac/add/CmdConfigVlanStaticMacAdd.h"
 #include "fboss/cli/fboss2/commands/config/vlan/static_mac/delete/CmdConfigVlanStaticMacDelete.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -224,7 +226,7 @@ TEST_F(CmdConfigVlanStaticMacTestFixture, addStaticMacSuccess) {
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
 
   // Verify the entry was added to config
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   ASSERT_TRUE(swConfig.staticMacAddrs().has_value());
   const auto& staticMacAddrs = *swConfig.staticMacAddrs();
@@ -247,7 +249,7 @@ TEST_F(CmdConfigVlanStaticMacTestFixture, addStaticMacVlanNotFoundAutoCreates) {
   EXPECT_THAT(result, HasSubstr("VLAN 999"));
 
   // Verify VLAN was created
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto vlanIt = std::find_if(
       swConfig.vlans()->cbegin(),
@@ -299,7 +301,7 @@ TEST_F(CmdConfigVlanStaticMacTestFixture, deleteStaticMacSuccess) {
 
   // Verify it was added
   {
-    auto& config = ConfigSession::getInstance().getAgentConfig();
+    auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
     auto& swConfig = *config.sw();
     ASSERT_TRUE(swConfig.staticMacAddrs().has_value());
     ASSERT_EQ(swConfig.staticMacAddrs()->size(), 1);
@@ -318,7 +320,7 @@ TEST_F(CmdConfigVlanStaticMacTestFixture, deleteStaticMacSuccess) {
 
   // Verify it was removed
   {
-    auto& config = ConfigSession::getInstance().getAgentConfig();
+    auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
     auto& swConfig = *config.sw();
     EXPECT_TRUE(
         !swConfig.staticMacAddrs().has_value() ||
@@ -338,7 +340,7 @@ TEST_F(CmdConfigVlanStaticMacTestFixture, deleteStaticMacVlanNotFound) {
   EXPECT_THAT(result, HasSubstr("does not exist"));
 
   // Verify VLAN was NOT created
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto vlanIt = std::find_if(
       swConfig.vlans()->cbegin(),

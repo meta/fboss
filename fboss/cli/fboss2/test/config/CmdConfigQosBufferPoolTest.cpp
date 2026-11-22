@@ -5,7 +5,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/qos/buffer_pool/CmdConfigQosBufferPool.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -108,7 +110,7 @@ TEST_F(CmdConfigQosBufferPoolTestFixture, sharedBytesCreatesBufferPool) {
   EXPECT_THAT(result, ::testing::HasSubstr("test_pool"));
 
   // Verify the config was actually modified
-  auto& agentConfig = ConfigSession::getInstance().getAgentConfig();
+  auto& agentConfig = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   ASSERT_TRUE(switchConfig.bufferPoolConfigs().has_value());
 
@@ -131,7 +133,7 @@ TEST_F(CmdConfigQosBufferPoolTestFixture, headroomBytesCreatesBufferPool) {
   EXPECT_THAT(result, ::testing::HasSubstr("headroom_pool"));
 
   // Verify the config was actually modified
-  auto& agentConfig = ConfigSession::getInstance().getAgentConfig();
+  auto& agentConfig = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   ASSERT_TRUE(switchConfig.bufferPoolConfigs().has_value());
 
@@ -156,7 +158,7 @@ TEST_F(CmdConfigQosBufferPoolTestFixture, reservedBytesCreatesBufferPool) {
   EXPECT_THAT(result, ::testing::HasSubstr("reserved_pool"));
 
   // Verify the config was actually modified
-  auto& agentConfig = ConfigSession::getInstance().getAgentConfig();
+  auto& agentConfig = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   ASSERT_TRUE(switchConfig.bufferPoolConfigs().has_value());
 
@@ -180,7 +182,7 @@ TEST_F(CmdConfigQosBufferPoolTestFixture, updateExistingBufferPool) {
   cmd.queryClient(localhost(), config);
 
   // Verify all values are set correctly
-  auto& agentConfig = ConfigSession::getInstance().getAgentConfig();
+  auto& agentConfig = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   ASSERT_TRUE(switchConfig.bufferPoolConfigs().has_value());
 

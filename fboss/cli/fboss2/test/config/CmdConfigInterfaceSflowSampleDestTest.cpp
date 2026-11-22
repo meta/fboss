@@ -8,8 +8,10 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/interface/sflow/CmdConfigInterfaceSflow.h"
 #include "fboss/cli/fboss2/commands/delete/interface/sflow/CmdDeleteInterfaceSflow.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
 
@@ -63,7 +65,8 @@ class CmdConfigInterfaceSflowSampleDestTestFixture : public CmdConfigTestBase {
 
   static std::optional<cfg::SampleDestination> sampleDestOf(
       const std::string& portName) {
-    auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+    auto& swConfig =
+        *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
     for (const auto& port : *swConfig.ports()) {
       if (*port.name() == portName) {
         return port.sampleDest().to_optional();
@@ -73,7 +76,8 @@ class CmdConfigInterfaceSflowSampleDestTestFixture : public CmdConfigTestBase {
   }
 
   static int64_t ingressRateOf(const std::string& portName) {
-    auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+    auto& swConfig =
+        *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
     for (const auto& port : *swConfig.ports()) {
       if (*port.name() == portName) {
         return *port.sFlowIngressRate();
@@ -83,7 +87,8 @@ class CmdConfigInterfaceSflowSampleDestTestFixture : public CmdConfigTestBase {
   }
 
   static int64_t egressRateOf(const std::string& portName) {
-    auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+    auto& swConfig =
+        *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
     for (const auto& port : *swConfig.ports()) {
       if (*port.name() == portName) {
         return *port.sFlowEgressRate();

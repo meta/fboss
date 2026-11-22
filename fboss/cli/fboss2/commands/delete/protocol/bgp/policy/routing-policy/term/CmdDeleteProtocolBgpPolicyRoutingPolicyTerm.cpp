@@ -20,6 +20,7 @@
 #include <vector>
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliValueParsers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/BgpRoutingPolicyCliUtils.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -61,7 +62,7 @@ CmdDeleteProtocolBgpPolicyRoutingPolicyTerm::queryClient(
     const BgpRoutingPolicyRef& policyArgs,
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
-  auto& cfg = session.getBgpConfig();
+  auto& cfg = session.config<BgpConfigDomain>();
   // Delete mirrors add: an absent policy or term is already the requested end
   // state, so this is a success with a warning. Nothing is saved, so a typo'd
   // delete can't stage an unrelated session change.
@@ -83,7 +84,7 @@ CmdDeleteProtocolBgpPolicyRoutingPolicyTerm::queryClient(
         args.seqNum());
   }
   terms.erase(it);
-  session.saveBgpConfig();
+  session.save<BgpConfigDomain>();
   return fmt::format(
       "Successfully deleted BGP routing-policy {} term {}\n"
       "Config saved to: {}",

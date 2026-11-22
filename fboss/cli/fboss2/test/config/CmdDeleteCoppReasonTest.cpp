@@ -14,8 +14,10 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/copp/reason/CmdDeleteCoppReason.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -53,7 +55,7 @@ class CmdDeleteCoppReasonTestFixture : public CmdConfigTestBase {
   // Helper: find the rxReasonToQueueOrderedList entry for a reason, or
   // nullptr.
   const cfg::PacketRxReasonToQueue* findReason(cfg::PacketRxReason r) const {
-    auto& config = ConfigSession::getInstance().getAgentConfig();
+    auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
     const auto& policy = *config.sw()->cpuTrafficPolicy();
     for (const auto& entry : *policy.rxReasonToQueueOrderedList()) {
       if (*entry.rxReason() == r) {
@@ -64,7 +66,7 @@ class CmdDeleteCoppReasonTestFixture : public CmdConfigTestBase {
   }
 
   size_t reasonListSize() const {
-    auto& config = ConfigSession::getInstance().getAgentConfig();
+    auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
     return config.sw()
         ->cpuTrafficPolicy()
         ->rxReasonToQueueOrderedList()
@@ -155,7 +157,7 @@ TEST_F(CmdDeleteCoppReasonNoPolicyFixture, noCpuTrafficPolicyIsNoop) {
   // The no-op must not create the policy.
   EXPECT_FALSE(
       ConfigSession::getInstance()
-          .getAgentConfig()
+          .config<AgentConfigDomain>()
           .sw()
           ->cpuTrafficPolicy()
           .has_value());
@@ -187,7 +189,7 @@ TEST_F(CmdDeleteCoppReasonNoListFixture, noReasonListIsNoop) {
   // The no-op must not create the reason list.
   EXPECT_FALSE(
       ConfigSession::getInstance()
-          .getAgentConfig()
+          .config<AgentConfigDomain>()
           .sw()
           ->cpuTrafficPolicy()
           ->rxReasonToQueueOrderedList()

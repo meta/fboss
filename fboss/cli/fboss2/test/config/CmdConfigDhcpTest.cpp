@@ -19,9 +19,11 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/config/dhcp/relay_source_override/CmdConfigDhcpRelaySourceOverride.h"
 #include "fboss/cli/fboss2/commands/config/dhcp/reply_source_override/CmdConfigDhcpReplySourceOverride.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -160,7 +162,7 @@ TEST_F(CmdConfigDhcpTestFixture, setRelayIpv4) {
   EXPECT_THAT(result, HasSubstr("ipv4"));
   EXPECT_THAT(result, HasSubstr("10.5.6.7"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   ASSERT_TRUE(config.sw()->dhcpRelaySrcOverrideV4().has_value());
   EXPECT_EQ(*config.sw()->dhcpRelaySrcOverrideV4(), "10.5.6.7");
 }
@@ -177,7 +179,7 @@ TEST_F(CmdConfigDhcpTestFixture, setRelayIpv6) {
   EXPECT_THAT(result, HasSubstr("ipv6"));
   EXPECT_THAT(result, HasSubstr("2401:db00:eef0:a67::1"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   ASSERT_TRUE(config.sw()->dhcpRelaySrcOverrideV6().has_value());
   EXPECT_EQ(*config.sw()->dhcpRelaySrcOverrideV6(), "2401:db00:eef0:a67::1");
 }
@@ -194,7 +196,7 @@ TEST_F(CmdConfigDhcpReplyTestFixture, setReplyIpv4) {
   EXPECT_THAT(result, HasSubstr("ipv4"));
   EXPECT_THAT(result, HasSubstr("10.5.6.8"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   ASSERT_TRUE(config.sw()->dhcpReplySrcOverrideV4().has_value());
   EXPECT_EQ(*config.sw()->dhcpReplySrcOverrideV4(), "10.5.6.8");
 }
@@ -211,7 +213,7 @@ TEST_F(CmdConfigDhcpReplyTestFixture, setReplyIpv6) {
   EXPECT_THAT(result, HasSubstr("ipv6"));
   EXPECT_THAT(result, HasSubstr("2401:db00:eef0:a67::2"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   ASSERT_TRUE(config.sw()->dhcpReplySrcOverrideV6().has_value());
   EXPECT_EQ(*config.sw()->dhcpReplySrcOverrideV6(), "2401:db00:eef0:a67::2");
 }
@@ -250,7 +252,7 @@ TEST_F(CmdConfigDhcpTestFixture, setRelayIpv4_overwrites) {
   HostInfo hostInfo("testhost");
 
   cmd.queryClient(hostInfo, DhcpSourceOverrideArgs({"ipv4", "192.0.2.10"}));
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->dhcpRelaySrcOverrideV4(), "192.0.2.10");
 
   cmd.queryClient(hostInfo, DhcpSourceOverrideArgs({"ipv4", "192.0.2.11"}));

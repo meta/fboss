@@ -15,6 +15,8 @@
 
 #include <fmt/format.h>
 #include <iostream>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -25,7 +27,7 @@ CmdConfigSrv6MySidEntryTraits::RetType CmdConfigSrv6MySidEntry::queryClient(
     const LocatorPrefixArg& prefixArg,
     const ObjectArgType& entryArg) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
 
   auto& mySidConfig = requireMySidConfig(swConfig);
   requireMatchingLocatorPrefix(mySidConfig, prefixArg.getPrefix());

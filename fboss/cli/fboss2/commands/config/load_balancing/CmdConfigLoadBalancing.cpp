@@ -26,7 +26,9 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -356,7 +358,7 @@ std::string runLoadBalancerConfig(
     cfg::LoadBalancerID id,
     const LoadBalancingConfigArgs& args) {
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto msg = applyLoadBalancerConfig(
       *config.sw(), id, args.getAttribute(), args.getValue());
   session.saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);

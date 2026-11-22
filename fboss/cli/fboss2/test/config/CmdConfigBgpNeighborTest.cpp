@@ -11,6 +11,7 @@
 
 #include "configerator/structs/neteng/fboss/bgp/if/gen-cpp2/bgp_attr_types.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/neighbor/CmdConfigProtocolBgpNeighbor.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -47,11 +48,11 @@ class CmdConfigBgpNeighborTestFixture : public CmdConfigTestBase {
   }
 
   const std::vector<bgp::thrift::BgpPeer>& peers() {
-    return *ConfigSession::getInstance().getBgpConfig().peers();
+    return *ConfigSession::getInstance().config<BgpConfigDomain>().peers();
   }
 
   bgp::thrift::BgpConfig& config() {
-    return ConfigSession::getInstance().getBgpConfig();
+    return ConfigSession::getInstance().config<BgpConfigDomain>();
   }
 
   // Stage a peer group directly in the session config (the peer-group command

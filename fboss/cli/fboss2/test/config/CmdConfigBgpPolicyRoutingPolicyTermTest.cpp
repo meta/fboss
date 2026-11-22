@@ -10,6 +10,7 @@
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/CmdConfigProtocolBgpPolicyRoutingPolicy.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -61,7 +62,7 @@ class CmdConfigBgpPolicyRoutingPolicyTermTestFixture
 
   const std::vector<bgp::bgp_policy::BgpPolicyStatement>& policies() {
     return *ConfigSession::getInstance()
-                .getBgpConfig()
+                .config<BgpConfigDomain>()
                 .policies()
                 .ensure()
                 .bgp_policy_statements();

@@ -19,6 +19,7 @@
 #include <utility>
 #include <vector>
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpPeerAddr.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -49,7 +50,7 @@ CmdDeleteProtocolBgpNeighbor::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
-  auto& cfg = session.getBgpConfig();
+  auto& cfg = session.config<BgpConfigDomain>();
   auto it = bgpcli::findBgpPeer(cfg, args.peerAddr());
   if (it == cfg.peers()->end()) {
     // Delete mirrors add: an absent neighbor is already the requested end
@@ -60,7 +61,7 @@ CmdDeleteProtocolBgpNeighbor::queryClient(
         args.peerAddr());
   }
   cfg.peers()->erase(it);
-  session.saveBgpConfig();
+  session.save<BgpConfigDomain>();
   return fmt::format(
       "Successfully deleted BGP neighbor {}\nConfig saved to: {}",
       args.peerAddr(),
