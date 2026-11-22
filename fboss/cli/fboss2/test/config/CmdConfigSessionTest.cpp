@@ -19,6 +19,7 @@
 #include "fboss/cli/fboss2/test/TestableConfigSession.h"
 #include "fboss/cli/fboss2/test/config/MockFbossServiceUtil.h"
 #include "fboss/cli/fboss2/test/config/MockSystemdInterface.h"
+#include "fboss/cli/fboss2/utils/SessionPortMap.h"
 
 namespace fs = std::filesystem;
 
@@ -1501,33 +1502,58 @@ TEST_F(ConfigSessionTestFixture, threeWayMergeScenarios) {
   }
 }
 
-// Test that rebuildPortMap() regenerates the cached PortMap from the current
-// in-memory agentConfig_, so a newly added port becomes visible.
-TEST_F(ConfigSessionTestFixture, rebuildPortMap) {
+// A SessionPortMap is a snapshot of the session's agent config: one built
+// before a port is added does not see it, one built afterwards does.
+TEST_F(ConfigSessionTestFixture, sessionPortMapIsBuiltFromSessionConfig) {
   fs::path sessionDir = getTestHomeDir() / ".fboss2";
 
-  TestableConfigSession session(
-      sessionDir.string(), (getTestEtcDir() / "coop").string());
-
-  const std::string newName = "eth1/1/3";
-
-  // Add a new port to the in-memory config.
-  auto& config = session.getAgentConfig();
+  TestableConfigSession::setInstance(
+      std::make_unique<TestableConfigSession>(
+          sessionDir.string(), (getTestEtcDir() / "coop").string()));
+  auto& config = ConfigSession::getInstance().getAgentConfig();
   auto& ports = *config.sw()->ports();
+  ASSERT_FALSE(ports.empty());
+  const std::string existingName = *ports[0].name();
+  const std::string newName = "eth1/1/3";
+  // Reserve first so the push_back below cannot move the ports the first map
+  // points at.
+  ports.reserve(ports.size() + 1);
+
+  const utils::SessionPortMap before;
+  EXPECT_NE(before->getPort(existingName), nullptr);
+  EXPECT_EQ(before->getPort(newName), nullptr);
+
   cfg::Port newPort;
   newPort.logicalID() = 3;
   newPort.name() = newName;
   ports.push_back(newPort);
 
-  // The cached PortMap still reflects the config as loaded from disk, so the
-  // new port is not visible yet.
-  EXPECT_EQ(session.getPortMap().getPort(newName), nullptr);
-
-  // After rebuilding, the new port is resolvable.
-  session.rebuildPortMap();
-  auto* port = session.getPortMap().getPort(newName);
+  EXPECT_EQ(before->getPort(newName), nullptr);
+  const utils::SessionPortMap after;
+  auto* port = after->getPort(newName);
   ASSERT_NE(port, nullptr);
   EXPECT_EQ(*port->name(), newName);
+}
+
+// An agent config with an unnamed port still loads, so commands that need no
+// port lookup work on it; it is refused once a command builds a port map.
+TEST_F(ConfigSessionTestFixture, unnamedPortIsRefusedByPortMapNotByLoad) {
+  fs::path sessionDir = getTestHomeDir() / ".fboss2";
+  fs::path agentConfigPath = getTestEtcDir() / "coop" / "agent.conf";
+  ASSERT_TRUE(
+      folly::writeFile(
+          std::string(
+              R"({"sw": {"ports": [{"logicalID": 1, "state": 2, "speed": 100000}]}})"),
+          agentConfigPath.c_str()));
+
+  TestableConfigSession::setInstance(
+      std::make_unique<TestableConfigSession>(
+          sessionDir.string(), (getTestEtcDir() / "coop").string()));
+  auto& config = ConfigSession::getInstance().getAgentConfig();
+  ASSERT_EQ(config.sw()->ports()->size(), 1);
+  EXPECT_FALSE((*config.sw()->ports())[0].name().has_value());
+
+  EXPECT_THROW(utils::SessionPortMap(), std::runtime_error);
 }
 
 // Constructing a session no longer stages the agent config by itself.

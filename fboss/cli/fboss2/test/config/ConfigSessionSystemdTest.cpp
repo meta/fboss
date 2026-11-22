@@ -38,11 +38,20 @@ using ::testing::Throw;
 
 namespace facebook::fboss {
 
+namespace {
+// Exposes protected FbossServiceUtil members to the tests.
+class TestableFbossServiceUtil : public FbossServiceUtil {
+ public:
+  using FbossServiceUtil::FbossServiceUtil;
+  using FbossServiceUtil::isSplitMode;
+};
+} // namespace
+
 // Test: isSplitMode() returns true when multi_switch flag is set
 TEST(FbossServiceUtilTest, IsSplitMode_ReturnsTrueWhenMultiSwitchSet) {
   auto mockSystemd = std::make_unique<MockSystemdInterface>();
 
-  FbossServiceUtil util(
+  TestableFbossServiceUtil util(
       std::vector<int>{0}, /*multiSwitch=*/true, std::move(mockSystemd));
   EXPECT_TRUE(util.isSplitMode());
 }
@@ -51,7 +60,7 @@ TEST(FbossServiceUtilTest, IsSplitMode_ReturnsTrueWhenMultiSwitchSet) {
 TEST(FbossServiceUtilTest, IsSplitMode_ReturnsFalseWhenMultiSwitchNotSet) {
   auto mockSystemd = std::make_unique<MockSystemdInterface>();
 
-  FbossServiceUtil util(
+  TestableFbossServiceUtil util(
       std::vector<int>{}, /*multiSwitch=*/false, std::move(mockSystemd));
   EXPECT_FALSE(util.isSplitMode());
 }

@@ -1405,6 +1405,7 @@ cpp_library(
         "session/Git.cpp",
         "session/SystemdInterface.cpp",
         "utils/InterfaceList.cpp",
+        "utils/SessionPortMap.cpp",
     ],
     headers = [
         "commands/config/CmdConfigAppliedInfo.h",
@@ -1588,6 +1589,7 @@ cpp_library(
         "session/Git.h",
         "session/SystemdInterface.h",
         "utils/InterfaceList.h",
+        "utils/SessionPortMap.h",
     ],
     deps = [
         "fbsource//third-party/glog:glog",
