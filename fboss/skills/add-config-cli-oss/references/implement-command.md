@@ -15,7 +15,7 @@ For a single one-off command with a complex arg shape, follow
 Code review style rejects literal string constants sprinkled inside
 handler logic — lift them to named `constexpr std::string_view` in an
 anonymous namespace at the top of the `.cpp`. See
-`fboss/cli/fboss2/session/FbossServiceUtil.cpp`
+`fboss/cli/fboss2/session/AgentServiceController.cpp`
 for the canonical pattern (e.g. `kWedgeAgent`, `kSwAgent`,
 `kHwAgentPrefix`). Apply the same style to every CLI attribute name
 the dispatch code compares against, and build `k<Area>ValidAttrs`

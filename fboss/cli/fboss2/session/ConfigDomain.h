@@ -4,6 +4,7 @@
 
 #include <string>
 #include <string_view>
+#include <vector>
 // Forward declarations only: this header is included widely, and the enums
 // are used here by value without naming an enumerator.
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types_fwd.h"
@@ -56,6 +57,22 @@ class ConfigDomain {
   virtual void load(const std::string& json) = 0;
   virtual void unload() = 0;
   virtual std::string serialize() const = 0;
+
+  // Decides how apply() will reach the service at this level. Throws if it
+  // cannot. apply() runs it before it reloads or restarts anything.
+  virtual void prepare(
+      cli::ConfigActionLevel level,
+      const HostInfo& hostInfo) = 0;
+
+  // Makes the service pick up its on-disk config at the given level and
+  // returns the systemd units that were restarted or reloaded. Returns only
+  // once the service can take further commands.
+  virtual std::vector<std::string> apply(
+      cli::ConfigActionLevel level,
+      const HostInfo& hostInfo) = 0;
+
+  // What apply() does at this level, e.g. "warmboot" or "restart".
+  virtual std::string actionName(cli::ConfigActionLevel level) const = 0;
 };
 
 } // namespace facebook::fboss

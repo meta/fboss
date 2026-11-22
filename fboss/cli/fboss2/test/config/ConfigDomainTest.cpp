@@ -1,6 +1,7 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <folly/json/json.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <exception>
 #include <memory>
@@ -12,6 +13,9 @@
 #include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigDomainRegistry.h"
+#include "fboss/cli/fboss2/test/config/MockServiceControllers.h"
+#include "fboss/cli/fboss2/utils/HostInfo.h"
+#include "folly/IPAddress.h"
 
 #ifndef IS_OSS
 #include <configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h>
@@ -30,7 +34,7 @@ const std::string kBareOtherName =
     R"({"ports": [{"logicalID": 1, "name": "eth1/2/1"}]})";
 } // namespace
 
-TEST(ConfigDomainTest, RegistryListsAgentThenBgp) {
+TEST(ConfigDomainTest, RegistryListsAgentAndBgp) {
   const auto domains = makeDefaultConfigDomains("/home/u/.fboss2", "/etc/coop");
   ASSERT_EQ(domains.all().size(), 2);
   EXPECT_EQ(domains.all()[0]->info().service, cli::ServiceType::AGENT);
@@ -154,6 +158,106 @@ TEST(ConfigDomainTest, BgpLoadFallsBackToDefaults) {
 
   bgp.load(R"({"router_id": "1.2.3.4"})");
   EXPECT_EQ(*bgp.config().router_id(), "1.2.3.4");
+}
+
+namespace {
+class AgentDomainWithController : public AgentConfigDomain {
+ public:
+  explicit AgentDomainWithController(
+      std::unique_ptr<AgentServiceController> controller)
+      : AgentConfigDomain("", "") {
+    controller_ = std::move(controller);
+  }
+};
+
+class BgpDomainWithController : public BgpConfigDomain {
+ public:
+  explicit BgpDomainWithController(
+      std::unique_ptr<BgpServiceController> controller)
+      : BgpConfigDomain("", "") {
+    controller_ = std::move(controller);
+  }
+};
+
+HostInfo localhost() {
+  return {"localhost", "localhost-oob", folly::IPAddress("127.0.0.1")};
+}
+} // namespace
+
+// An agent restart is not done until the agent reports itself configured.
+TEST(ConfigDomainTest, AgentApplyRestartWaitsForAgent) {
+  auto controller =
+      std::make_unique<::testing::StrictMock<MockAgentServiceController>>();
+  ::testing::InSequence seq;
+  EXPECT_CALL(*controller, restart(cli::ConfigActionLevel::SERVICE_RESTART))
+      .WillOnce(::testing::Return(std::vector<std::string>{"wedge_agent"}));
+  EXPECT_CALL(*controller, isAgentConfigured(::testing::_))
+      .WillOnce(::testing::Return(true));
+  AgentDomainWithController agent(std::move(controller));
+
+  const auto units =
+      agent.apply(cli::ConfigActionLevel::SERVICE_RESTART, localhost());
+  EXPECT_EQ(units, std::vector<std::string>{"wedge_agent"});
+}
+
+TEST(ConfigDomainTest, AgentApplyHitlessReloads) {
+  auto controller =
+      std::make_unique<::testing::StrictMock<MockAgentServiceController>>();
+  EXPECT_CALL(*controller, reloadConfig(::testing::_))
+      .WillOnce(::testing::Return(std::vector<std::string>{"fboss_sw_agent"}));
+  AgentDomainWithController agent(std::move(controller));
+
+  const auto units = agent.apply(cli::ConfigActionLevel::HITLESS, localhost());
+  EXPECT_EQ(units, std::vector<std::string>{"fboss_sw_agent"});
+}
+
+TEST(ConfigDomainTest, BgpApplyRestarts) {
+  auto controller =
+      std::make_unique<::testing::StrictMock<MockBgpServiceController>>();
+  EXPECT_CALL(*controller, restart())
+      .WillOnce(::testing::Return(std::vector<std::string>{"bgpd"}));
+  BgpDomainWithController bgp(std::move(controller));
+
+  const auto units =
+      bgp.apply(cli::ConfigActionLevel::SERVICE_RESTART, localhost());
+  EXPECT_EQ(units, std::vector<std::string>{"bgpd"});
+}
+
+// bgpd has no reload, so a HITLESS action never reaches the controller.
+TEST(ConfigDomainTest, BgpApplyHitlessThrows) {
+  BgpDomainWithController bgp(
+      std::make_unique<::testing::StrictMock<MockBgpServiceController>>());
+  EXPECT_THROW(
+      bgp.apply(cli::ConfigActionLevel::HITLESS, localhost()),
+      std::runtime_error);
+}
+
+// A HITLESS request for a restart-only service is refused in prepare(), which
+// apply() runs before it restarts anything.
+TEST(ConfigDomainTest, RestartOnlyPrepareRejectsHitless) {
+  BgpConfigDomain bgp("", "");
+  EXPECT_THROW(
+      bgp.prepare(cli::ConfigActionLevel::HITLESS, localhost()),
+      std::runtime_error);
+  EXPECT_NO_THROW(
+      bgp.prepare(cli::ConfigActionLevel::SERVICE_RESTART, localhost()));
+}
+
+TEST(ConfigDomainTest, ActionNames) {
+  const AgentConfigDomain agent("", "");
+  const BgpConfigDomain bgp("", "");
+  EXPECT_EQ(
+      agent.actionName(cli::ConfigActionLevel::SERVICE_RESTART), "warmboot");
+  EXPECT_EQ(
+      agent.actionName(cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART),
+      "coldboot");
+  EXPECT_EQ(bgp.actionName(cli::ConfigActionLevel::SERVICE_RESTART), "restart");
+  EXPECT_EQ(
+      bgp.actionName(cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART),
+      "restart");
+  // HITLESS keeps its name for both, although bgpd rejects the level.
+  EXPECT_EQ(agent.actionName(cli::ConfigActionLevel::HITLESS), "reload");
+  EXPECT_EQ(bgp.actionName(cli::ConfigActionLevel::HITLESS), "reload");
 }
 
 } // namespace facebook::fboss

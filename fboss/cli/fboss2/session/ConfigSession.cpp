@@ -39,16 +39,13 @@
 #include <vector>
 #include "fboss/agent/AgentDirectoryUtil.h"
 #include "fboss/agent/gen-cpp2/agent_config_types.h"
-#include "fboss/agent/if/gen-cpp2/ctrl_types.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
 #include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigDomainRegistry.h"
 #include "fboss/cli/fboss2/session/ConfigFileManager.h"
-#include "fboss/cli/fboss2/session/FbossServiceUtil.h"
 #include "fboss/cli/fboss2/session/Git.h"
-#include "fboss/cli/fboss2/utils/CmdClientUtils.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/lib/CommonFileUtils.h"
 
@@ -252,27 +249,26 @@ ConfigSession::ConfigSession(SessionInit init) {
 ConfigSession::ConfigSession(
     std::string sessionConfigDir,
     std::string systemConfigDir,
+    ConfigDomainRegistry domains,
     SessionInit init)
     : sessionConfigDir_(std::move(sessionConfigDir)),
       systemConfigDir_(std::move(systemConfigDir)),
       readOnly_(init == SessionInit::ReadOnly),
       username_(getUsername()),
       git_(std::make_unique<Git>(systemConfigDir_)),
-      domains_(makeDefaultConfigDomains(sessionConfigDir_, systemConfigDir_)) {
+      domains_(std::move(domains)) {
   initializeSession(init);
 }
 
 ConfigSession::ConfigSession(
     std::string sessionConfigDir,
     std::string systemConfigDir,
-    std::unique_ptr<FbossServiceUtil> fbossServiceUtil)
-    : fbossServiceUtil_(std::move(fbossServiceUtil)),
-      sessionConfigDir_(std::move(sessionConfigDir)),
+    ConfigDomainRegistry domains)
+    : sessionConfigDir_(std::move(sessionConfigDir)),
       systemConfigDir_(std::move(systemConfigDir)),
       username_(getUsername()),
       git_(std::make_unique<Git>(systemConfigDir_)),
-      domains_(makeDefaultConfigDomains(sessionConfigDir_, systemConfigDir_)) {
-  fbossServiceUtilHasAgentState_ = true;
+      domains_(std::move(domains)) {
   // Don't call initializeSession() - this constructor is for testing only
   // and tests don't need git initialization or config file copying
 }
@@ -342,7 +338,7 @@ std::string ConfigSession::fileAtRevisionOrEmpty(
 }
 
 std::string ConfigSession::getSessionConfigPath() const {
-  return domains_.get(cli::ServiceType::AGENT).info().sessionPath;
+  return domains_.get<AgentConfigDomain>().info().sessionPath;
 }
 
 std::string ConfigSession::getCurrentConfigPath(
@@ -440,7 +436,7 @@ std::string ConfigSession::getCliConfigDir() const {
 }
 
 std::string ConfigSession::getCliConfigPath() const {
-  return domains_.get(cli::ServiceType::AGENT).info().desiredPath;
+  return domains_.get<AgentConfigDomain>().info().desiredPath;
 }
 
 std::vector<ConfigDomainInfo> ConfigSession::configDomains() const {
@@ -772,40 +768,10 @@ const std::vector<std::string>& ConfigSession::getCommands() const {
   return commands_;
 }
 
-void ConfigSession::ensureFbossServiceUtil(
-    const HostInfo& hostInfo,
-    bool needsAgentState) {
-  if (fbossServiceUtil_ &&
-      (!needsAgentState || fbossServiceUtilHasAgentState_)) {
-    return;
-  }
-  if (!needsAgentState) {
-    fbossServiceUtil_ =
-        std::make_unique<FbossServiceUtil>(std::vector<int>{}, false);
-    return;
-  }
-
-  MultiSwitchRunState runState;
-  try {
-    runState = utils::getMultiSwitchRunState(hostInfo);
-  } catch (const std::exception& e) {
-    throw std::runtime_error(
-        fmt::format(
-            "Failed to query agent run state from {}. "
-            "Is the agent running? Error: {}",
-            hostInfo.getName(),
-            e.what()));
-  }
-
-  std::vector<int> switchIndexes;
-  for (const auto& [idx, _] : *runState.hwIndexToRunState()) {
-    switchIndexes.push_back(idx);
-  }
-  std::sort(switchIndexes.begin(), switchIndexes.end());
-
-  fbossServiceUtil_ = std::make_unique<FbossServiceUtil>(
-      std::move(switchIndexes), *runState.multiSwitchEnabled());
-  fbossServiceUtilHasAgentState_ = true;
+std::string ConfigSession::actionName(
+    cli::ServiceType service,
+    cli::ConfigActionLevel level) const {
+  return domains_.get(service).actionName(level);
 }
 
 std::map<cli::ServiceType, std::vector<std::string>>
@@ -816,24 +782,9 @@ ConfigSession::applyServiceActions(
     return {};
   }
 
-  ensureFbossServiceUtil(hostInfo, actions.contains(cli::ServiceType::AGENT));
-
   std::map<cli::ServiceType, std::vector<std::string>> serviceNames;
   for (const auto& [service, level] : actions) {
-    switch (level) {
-      case cli::ConfigActionLevel::DISRUPTIVE_SERVICE_RESTART:
-      case cli::ConfigActionLevel::SERVICE_RESTART:
-        serviceNames[service] =
-            fbossServiceUtil_->restartService(service, level);
-        if (service == cli::ServiceType::AGENT) {
-          fbossServiceUtil_->waitForAgentConfigured(hostInfo);
-        }
-        break;
-      case cli::ConfigActionLevel::HITLESS:
-        serviceNames[service] =
-            fbossServiceUtil_->reloadConfig(service, hostInfo);
-        break;
-    }
+    serviceNames[service] = domains_.get(service).apply(level, hostInfo);
   }
   return serviceNames;
 }
@@ -1081,11 +1032,11 @@ ConfigSession::CommitResult ConfigSession::commit(const HostInfo& hostInfo) {
 
   createDir(getCliConfigDir());
 
-  // Per-domain staged/changed analysis, applied uniformly to agent and BGP.
+  // Per-domain staged/changed analysis, the same for every domain.
   // A domain is "staged" when a session edit exists; it is "pending" (needs
   // a file update + a service action) when either its content or the path used
-  // by the service differs from the desired state. This rule is the same for
-  // both domains, so re-committing an unchanged config is a true no-op.
+  // by the service differs from the desired state. Re-committing an unchanged
+  // config is therefore a true no-op.
   struct Pending {
     ConfigDomainInfo domain;
     std::string staged;
@@ -1547,9 +1498,8 @@ std::string ConfigSession::rollback(
     base_ = newCommitSha;
 
     // Only re-seed a session file that already exists, and seed each domain
-    // from its own rolled-back data. Unconditionally writing the agent session
-    // file would materialize a phantom agent session after a BGP-only rollback
-    // (and leave the BGP session file stale); keep the two domains symmetric.
+    // from its own rolled-back data. Writing a session file that was not
+    // there would create a phantom session for a domain the user never edited.
     for (const auto& dr : doms) {
       if (!fs::exists(dr.domain.sessionPath)) {
         continue;

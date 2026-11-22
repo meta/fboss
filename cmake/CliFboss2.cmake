@@ -1538,8 +1538,11 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/delete/vlan/CmdDeleteVlan.h
   fboss/cli/fboss2/session/AgentConfigDomain.cpp
   fboss/cli/fboss2/session/AgentConfigDomain.h
+  fboss/cli/fboss2/session/AgentServiceController.cpp
+  fboss/cli/fboss2/session/AgentServiceController.h
   fboss/cli/fboss2/session/BgpConfigDomain.cpp
   fboss/cli/fboss2/session/BgpConfigDomain.h
+  fboss/cli/fboss2/session/BgpServiceController.h
   fboss/cli/fboss2/session/ConfigDomain.h
   fboss/cli/fboss2/session/ConfigDomainRegistry.cpp
   fboss/cli/fboss2/session/ConfigDomainRegistry.h
@@ -1547,12 +1550,16 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/session/ConfigFileManager.h
   fboss/cli/fboss2/session/ConfigSession.cpp
   fboss/cli/fboss2/session/ConfigSession.h
-  fboss/cli/fboss2/session/FbossServiceUtil.cpp
-  fboss/cli/fboss2/session/FbossServiceUtil.h
   fboss/cli/fboss2/session/Git.cpp
   fboss/cli/fboss2/session/Git.h
+  fboss/cli/fboss2/session/RestartOnlyConfigDomain-defs.h
+  fboss/cli/fboss2/session/RestartOnlyConfigDomain.h
+  fboss/cli/fboss2/session/RestartOnlyServiceController.cpp
+  fboss/cli/fboss2/session/RestartOnlyServiceController.h
   fboss/cli/fboss2/session/SystemdInterface.cpp
   fboss/cli/fboss2/session/SystemdInterface.h
+  fboss/cli/fboss2/session/SystemdSequencer.cpp
+  fboss/cli/fboss2/session/SystemdSequencer.h
   fboss/cli/fboss2/session/TypedConfigDomain-defs.h
   fboss/cli/fboss2/session/TypedConfigDomain.h
   fboss/cli/fboss2/utils/InterfaceList.cpp

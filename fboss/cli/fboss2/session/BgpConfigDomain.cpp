@@ -6,9 +6,11 @@
 #include <glog/logging.h>
 #include <exception>
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
-// Needed by the explicit instantiation below, which include-cleaner does not
+#include "fboss/cli/fboss2/session/BgpServiceController.h"
+// Needed by the explicit instantiations below, which include-cleaner does not
 // count as a use.
-#include "fboss/cli/fboss2/session/TypedConfigDomain-defs.h" // NOLINT(misc-include-cleaner)
+#include "fboss/cli/fboss2/session/RestartOnlyConfigDomain-defs.h" // NOLINT(misc-include-cleaner)
+#include "fboss/cli/fboss2/session/RestartOnlyServiceController.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtils.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -21,11 +23,12 @@
 namespace facebook::fboss {
 
 template class TypedConfigDomain<bgp::thrift::BgpConfig>;
+template class RestartOnlyConfigDomain<bgp::thrift::BgpConfig>;
 
 BgpConfigDomain::BgpConfigDomain(
     const std::string& sessionConfigDir,
     const std::string& systemConfigDir)
-    : TypedConfigDomain(
+    : RestartOnlyConfigDomain(
           ConfigDomainInfo{
               cli::ServiceType::BGP,
               "BGP",
@@ -34,7 +37,8 @@ BgpConfigDomain::BgpConfigDomain(
               fmt::format("{}/bgpcpp/bgpcpp.conf", systemConfigDir),
               // bgpd has no reload: a rollback restarts it.
               cli::ConfigActionLevel::SERVICE_RESTART,
-          }) {}
+          },
+          "bgpd") {}
 
 std::string BgpConfigDomain::queryCurrentPath(const HostInfo& hostInfo) const {
   std::string configPath;
@@ -54,6 +58,11 @@ void BgpConfigDomain::load(const std::string& json) {
     }
   }
   setConfig(bgp::thrift::BgpConfig());
+}
+
+std::unique_ptr<RestartOnlyServiceController> BgpConfigDomain::makeController()
+    const {
+  return std::make_unique<BgpServiceController>();
 }
 
 } // namespace facebook::fboss

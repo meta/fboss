@@ -15,9 +15,10 @@
 #include <fstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include "fboss/cli/fboss2/test/TestableConfigSession.h"
-#include "fboss/cli/fboss2/test/config/MockFbossServiceUtil.h"
+#include "fboss/cli/fboss2/test/config/MockServiceControllers.h"
 #include "fboss/cli/fboss2/test/config/MockSystemdInterface.h"
 #include "fboss/cli/fboss2/utils/SessionPortMap.h"
 
@@ -53,7 +54,7 @@ class ConfigSessionTestFixture : public CmdConfigTestBase {
     return std::make_unique<TestableConfigSession>(
         (getTestHomeDir() / ".fboss2").string(),
         (getTestEtcDir() / "coop").string(),
-        std::make_unique<::testing::StrictMock<MockFbossServiceUtil>>());
+        std::make_unique<::testing::StrictMock<MockAgentServiceController>>());
   }
 
   void useClassicBgpSystemd(TestableConfigSession& session) {
@@ -68,10 +69,10 @@ class ConfigSessionTestFixture : public CmdConfigTestBase {
   }
 
   std::string commitDescription(const std::string& description) {
-    auto mock = std::make_unique<::testing::StrictMock<MockFbossServiceUtil>>();
+    auto mock =
+        std::make_unique<::testing::StrictMock<MockAgentServiceController>>();
     auto* mockPtr = mock.get();
-    EXPECT_CALL(*mockPtr, reloadConfig(cli::ServiceType::AGENT, ::testing::_))
-        .Times(1);
+    EXPECT_CALL(*mockPtr, reloadConfig(::testing::_)).Times(1);
     TestableConfigSession session(
         (getTestHomeDir() / ".fboss2").string(),
         (getTestEtcDir() / "coop").string(),
@@ -2029,8 +2030,9 @@ TEST_F(ConfigSessionTestFixture, noArgRollbackReachesBaseline) {
 TEST_F(ConfigSessionTestFixture, rollbackUsesRecordedActionLevel) {
   fs::path sessionDir = getTestHomeDir() / ".fboss2";
 
-  auto makeSession = [&](MockFbossServiceUtil*& mockOut) {
-    auto mock = std::make_unique<::testing::StrictMock<MockFbossServiceUtil>>();
+  auto makeSession = [&](MockAgentServiceController*& mockOut) {
+    auto mock =
+        std::make_unique<::testing::StrictMock<MockAgentServiceController>>();
     mockOut = mock.get();
     return std::make_unique<TestableConfigSession>(
         sessionDir.string(),
@@ -2041,10 +2043,9 @@ TEST_F(ConfigSessionTestFixture, rollbackUsesRecordedActionLevel) {
   std::string firstCommitSha;
   // First commit: a HITLESS change (e.g. a description edit).
   {
-    MockFbossServiceUtil* mock = nullptr;
+    MockAgentServiceController* mock = nullptr;
     auto session = makeSession(mock);
-    EXPECT_CALL(*mock, reloadConfig(cli::ServiceType::AGENT, ::testing::_))
-        .Times(1);
+    EXPECT_CALL(*mock, reloadConfig(::testing::_)).Times(1);
     session->setCommandLine(
         "config interface eth1/1/1 description First version");
     (*session->getAgentConfig().sw()->ports())[0].description() =
@@ -2058,12 +2059,9 @@ TEST_F(ConfigSessionTestFixture, rollbackUsesRecordedActionLevel) {
   // Second commit: a change that requires an agent warmboot, like
   // `config interface eth1/1/1 switchport access vlan 3000` does.
   {
-    MockFbossServiceUtil* mock = nullptr;
+    MockAgentServiceController* mock = nullptr;
     auto session = makeSession(mock);
-    EXPECT_CALL(
-        *mock,
-        restartService(
-            cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART))
+    EXPECT_CALL(*mock, restart(cli::ConfigActionLevel::SERVICE_RESTART))
         .Times(1);
     EXPECT_CALL(*mock, isAgentConfigured(::testing::_))
         .WillOnce(::testing::Return(true));
@@ -2080,12 +2078,9 @@ TEST_F(ConfigSessionTestFixture, rollbackUsesRecordedActionLevel) {
   // must warmboot-restart the agent. reloadConfig() must NOT be called (the
   // StrictMock enforces this).
   {
-    MockFbossServiceUtil* mock = nullptr;
+    MockAgentServiceController* mock = nullptr;
     auto session = makeSession(mock);
-    EXPECT_CALL(
-        *mock,
-        restartService(
-            cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART))
+    EXPECT_CALL(*mock, restart(cli::ConfigActionLevel::SERVICE_RESTART))
         .Times(1);
     EXPECT_CALL(*mock, isAgentConfigured(::testing::_))
         .WillOnce(::testing::Return(true));
@@ -2099,13 +2094,10 @@ TEST_F(ConfigSessionTestFixture, rollbackUsesRecordedActionLevel) {
   // applied.
   std::string headBeforeSecondRollback;
   {
-    MockFbossServiceUtil* mock = nullptr;
+    MockAgentServiceController* mock = nullptr;
     auto session = makeSession(mock);
     headBeforeSecondRollback = session->getGit().getHead();
-    EXPECT_CALL(
-        *mock,
-        restartService(
-            cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART))
+    EXPECT_CALL(*mock, restart(cli::ConfigActionLevel::SERVICE_RESTART))
         .Times(1);
     EXPECT_CALL(*mock, isAgentConfigured(::testing::_))
         .WillOnce(::testing::Return(true));
