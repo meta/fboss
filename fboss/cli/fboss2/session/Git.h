@@ -99,6 +99,12 @@ class Git {
   std::vector<GitCommit> log(const std::string& filePath, size_t limit = 0)
       const;
 
+  // As above, for commits that touched any of the given files. An empty list
+  // matches no commit.
+  std::vector<GitCommit> log(
+      const std::vector<std::string>& filePaths,
+      size_t limit = 0) const;
+
   /**
    * Get the contents of a file at a specific revision.
    *

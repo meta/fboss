@@ -132,9 +132,6 @@ class ConfigSession {
   // Discovery is lazy and falls back to the last committed path for recovery.
   std::string getCurrentConfigPath(cli::ServiceType service) const;
 
-  // Get the path to the actual CLI config file (/etc/coop/cli/agent.conf)
-  std::string getCliConfigPath() const;
-
   // Result of a commit operation
   struct CommitResult {
     std::string commitSha; // The git commit SHA of the committed config
@@ -225,10 +222,9 @@ class ConfigSession {
   // saveConfig() for the agent.
   void saveBgpConfig();
 
-  // Read-only view of the committed history. Paths are as git_->log() and
-  // fileAtRevision() take them.
-  std::vector<GitCommit> history(const std::string& path, size_t limit = 0)
-      const;
+  // Commits that changed any service's config or the commit metadata, most
+  // recent first. This covers every revision rollback() walks.
+  std::vector<GitCommit> history(size_t limit = 0) const;
   std::string head() const;
   // Resolves a ref or abbreviated SHA to a full SHA. Throws if it is unknown.
   std::string resolveRevision(const std::string& ref) const;

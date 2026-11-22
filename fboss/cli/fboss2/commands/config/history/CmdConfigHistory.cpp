@@ -44,8 +44,7 @@ CmdConfigHistoryTraits::RetType CmdConfigHistory::queryClient(
   auto& session =
       ConfigSession::getInstance(ConfigSession::SessionInit::ReadOnly);
 
-  // Get the commit history from Git for the CLI config file
-  auto commits = session.history(session.getCliConfigPath());
+  auto commits = session.history();
 
   if (commits.empty()) {
     return "No config revisions found in Git history";

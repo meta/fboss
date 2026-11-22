@@ -101,8 +101,46 @@ TEST_F(CmdConfigHistoryTestFixture, historyIgnoresNonMatchingFiles) {
 
   EXPECT_NE(result.find("Initial commit"), std::string::npos);
   EXPECT_NE(result.find("Config update"), std::string::npos);
-  // The "Other file commit" should not appear since it doesn't touch agent.conf
+  // "Other file commit" touches no service's config.
   EXPECT_EQ(result.find("Other file commit"), std::string::npos);
+}
+
+TEST_F(CmdConfigHistoryTestFixture, historyListsEveryServicesCommits) {
+  const auto coop = getTestEtcDir() / "coop";
+  std::filesystem::create_directories(coop / "bgpcpp");
+  createTestConfig(coop / "bgpcpp" / "bgpcpp.conf", "{}");
+  git().commit({"bgpcpp/bgpcpp.conf"}, "BGP only commit");
+
+  setupTestableConfigSession();
+
+  auto cmd = CmdConfigHistory();
+  auto result = cmd.queryClient(localhost());
+
+  const auto bgp = result.find("BGP only commit");
+  const auto initial = result.find("Initial commit");
+  ASSERT_NE(bgp, std::string::npos) << result;
+  ASSERT_NE(initial, std::string::npos) << result;
+  EXPECT_LT(bgp, initial);
+}
+
+// A commit that changed only the metadata is a revision rollback can step
+// back to, so the history lists it. Nothing stops such a commit from being
+// made under /etc/coop outside the CLI.
+TEST_F(CmdConfigHistoryTestFixture, historyListsMetadataOnlyCommits) {
+  createTestConfig(
+      getCliConfigDir() / "cli_metadata.json", R"({"commands": ["by hand"]})");
+  git().commit({"cli/cli_metadata.json"}, "Metadata only commit");
+
+  setupTestableConfigSession();
+
+  auto cmd = CmdConfigHistory();
+  auto result = cmd.queryClient(localhost());
+
+  const auto metadataOnly = result.find("Metadata only commit");
+  const auto initial = result.find("Initial commit");
+  ASSERT_NE(metadataOnly, std::string::npos) << result;
+  ASSERT_NE(initial, std::string::npos) << result;
+  EXPECT_LT(metadataOnly, initial);
 }
 
 TEST_F(CmdConfigHistoryTestFixture, historyEmptyDirectory) {

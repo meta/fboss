@@ -435,10 +435,6 @@ std::string ConfigSession::getCliConfigDir() const {
   return systemConfigDir_ + "/cli";
 }
 
-std::string ConfigSession::getCliConfigPath() const {
-  return domains_.get<AgentConfigDomain>().info().desiredPath;
-}
-
 std::vector<ConfigDomainInfo> ConfigSession::configDomains() const {
   std::vector<ConfigDomainInfo> infos;
   for (const auto& domain : domains_.all()) {
@@ -624,10 +620,16 @@ void ConfigSession::saveBgpConfig() {
   saveConfig(cli::ServiceType::BGP, cli::ConfigActionLevel::SERVICE_RESTART);
 }
 
-std::vector<GitCommit> ConfigSession::history(
-    const std::string& path,
-    size_t limit) const {
-  return git_->log(path, limit);
+std::vector<GitCommit> ConfigSession::history(size_t limit) const {
+  std::vector<std::string> paths;
+  for (const auto& domain : domains_.all()) {
+    paths.push_back(domain->info().gitRelPath);
+  }
+  // Every config commit writes the metadata, and rollback walks its log.
+  // Listing it too means every revision rollback can step back to is in the
+  // history, including a commit that changed the metadata but no config.
+  paths.emplace_back(kMetadataGitRelPath);
+  return git_->log(paths, limit);
 }
 
 std::string ConfigSession::head() const {
