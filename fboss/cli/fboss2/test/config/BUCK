@@ -91,6 +91,7 @@ cpp_unittest(
         "CmdDeleteTrafficCounterTest.cpp",
         "CmdDeleteTunnelIpInIpTest.cpp",
         "CmdDeleteVlanTest.cpp",
+        "ConfigDomainTest.cpp",
         "ConfigFileManagerTest.cpp",
         "ConfigSessionSystemdTest.cpp",
     ],

@@ -91,7 +91,6 @@ TEST_F(ConfigSessionTestFixture, sessionInitialization) {
   // Initially, session directory should not exist
   fs::path sessionDir = getTestHomeDir() / ".fboss2";
   fs::path sessionConfig = sessionDir / "agent.conf";
-  fs::path cliConfigPath = getTestEtcDir() / "coop" / "cli" / "agent.conf";
   EXPECT_FALSE(fs::exists(sessionDir));
 
   // Construction creates shared metadata but does not load either service.
@@ -102,12 +101,18 @@ TEST_F(ConfigSessionTestFixture, sessionInitialization) {
   EXPECT_FALSE(session.sessionExists());
   EXPECT_FALSE(fs::exists(sessionConfig));
 
-  // The first agent access materializes only the agent session.
+  // Loading the agent config does not stage it: a command that fails after
+  // loading must not leave a session behind.
   session.getAgentConfig();
+  EXPECT_FALSE(session.sessionExists());
+  EXPECT_FALSE(session.hasActiveSession());
+  EXPECT_FALSE(fs::exists(sessionConfig));
+
+  // The first save materializes the agent session, and only that one.
+  session.saveConfig();
   EXPECT_TRUE(session.sessionExists());
-  std::string systemContent = readFile(cliConfigPath);
-  std::string sessionContent = readFile(sessionConfig);
-  EXPECT_EQ(systemContent, sessionContent);
+  EXPECT_TRUE(fs::exists(sessionConfig));
+  EXPECT_FALSE(fs::exists(sessionDir / "bgp_config.json"));
 }
 
 TEST_F(
@@ -1778,6 +1783,49 @@ TEST_F(ConfigSessionTestFixture, lazyBgpSessionStartsFromCurrentHead) {
   EXPECT_THAT(bgp, ::testing::HasSubstr("7.7.7.7"));
   // The unrelated agent domain was never materialized in user2's session.
   EXPECT_FALSE(fs::exists(sessionDir2 / "agent.conf"));
+}
+
+// A rebase that merges the BGP domain reloads the in-memory BGP config at
+// once: the next read sees the other session's change without a reload.
+TEST_F(ConfigSessionTestFixture, rebaseReloadsMergedBgpConfig) {
+  const std::string coop = (getTestEtcDir() / "coop").string();
+  // A common base for the three-way merge: a first commit of the BGP config.
+  {
+    TestableConfigSession seed(
+        (getTestHomeDir() / ".fboss2_seed").string(), coop);
+    useClassicBgpSystemd(seed);
+    seed.getBgpConfig().router_id() = "0.0.0.0";
+    seed.getBgpConfig().hold_time() = 30;
+    seed.setCommandLine("config protocol bgp global hold-time 30");
+    seed.saveBgpConfig();
+    ASSERT_FALSE(seed.commit(localhost()).commitSha.empty());
+  }
+  TestableConfigSession session1(
+      (getTestHomeDir() / ".fboss2_user1").string(), coop);
+  TestableConfigSession session2(
+      (getTestHomeDir() / ".fboss2_user2").string(), coop);
+  useClassicBgpSystemd(session1);
+  useClassicBgpSystemd(session2);
+
+  // Both sessions load the BGP config from the same base.
+  session1.getBgpConfig();
+  session2.getBgpConfig();
+
+  session1.getBgpConfig().router_id() = "1.1.1.1";
+  session1.setCommandLine("config protocol bgp global router-id 1.1.1.1");
+  session1.saveBgpConfig();
+  ASSERT_FALSE(session1.commit(localhost()).commitSha.empty());
+
+  session2.getBgpConfig().hold_time() = 99;
+  session2.setCommandLine("config protocol bgp global hold-time 99");
+  session2.saveBgpConfig();
+  EXPECT_THROW(session2.commit(localhost()), std::runtime_error);
+
+  session2.rebase();
+  // The const accessor does not load: it throws unless rebase() already did.
+  const auto& merged = std::as_const(session2).getBgpConfig();
+  EXPECT_EQ(*merged.router_id(), "1.1.1.1");
+  EXPECT_EQ(*merged.hold_time(), 99);
 }
 
 // Rolling back to an earlier commit must restore the BGP system config and
