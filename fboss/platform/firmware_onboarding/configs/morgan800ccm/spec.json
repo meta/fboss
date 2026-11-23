@@ -63,17 +63,6 @@
         "priority": 6,
         "shared_with_platforms": []
       }
-    },
-    {
-      "name": "bios",
-      "platform_identifier": "morgan800ccm",
-      "location": "System Control Module",
-      "display_location": "scm",
-      "field_replaceable": true,
-      "firmware": {
-        "priority": 1,
-        "shared_with_platforms": []
-      }
     }
   ],
   "_review_notes": [
