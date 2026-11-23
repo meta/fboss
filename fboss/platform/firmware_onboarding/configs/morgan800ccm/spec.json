@@ -1,0 +1,82 @@
+{
+  "spec_version": "1.0",
+  "platform": {
+    "name": "morgan800ccm",
+    "silicon": [
+      {
+        "name": "G200X"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "dom1_fpga",
+      "platform_identifier": "morgan800ccm",
+      "location": "Switch Main Board",
+      "display_location": "smb",
+      "field_replaceable": false,
+      "firmware": {
+        "priority": 2,
+        "shared_with_platforms": []
+      }
+    },
+    {
+      "name": "dom2_fpga",
+      "platform_identifier": "morgan800ccm",
+      "location": "Switch Main Board",
+      "display_location": "smb",
+      "field_replaceable": false,
+      "firmware": {
+        "priority": 3,
+        "shared_with_platforms": []
+      }
+    },
+    {
+      "name": "mcb_fpga",
+      "platform_identifier": "morgan800ccm",
+      "location": "Main Control Board",
+      "display_location": "mcb",
+      "field_replaceable": false,
+      "firmware": {
+        "priority": 4,
+        "shared_with_platforms": []
+      }
+    },
+    {
+      "name": "iob_fpga",
+      "platform_identifier": "morgan800ccm",
+      "location": "Main Board",
+      "display_location": "mb",
+      "field_replaceable": false,
+      "firmware": {
+        "priority": 5,
+        "shared_with_platforms": []
+      }
+    },
+    {
+      "name": "scm_fpga",
+      "platform_identifier": "morgan800ccm",
+      "location": "System Control Module",
+      "display_location": "scm",
+      "field_replaceable": true,
+      "firmware": {
+        "priority": 6,
+        "shared_with_platforms": []
+      }
+    },
+    {
+      "name": "bios",
+      "platform_identifier": "morgan800ccm",
+      "location": "System Control Module",
+      "display_location": "scm",
+      "field_replaceable": true,
+      "firmware": {
+        "priority": 1,
+        "shared_with_platforms": []
+      }
+    }
+  ],
+  "_review_notes": [
+    "Omitted alternate upgrade paths for existing physical components: mcbi2c_fpga -> mcb_fpga."
+  ]
+}
