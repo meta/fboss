@@ -147,10 +147,9 @@ reboot_cause_config::RebootCauseStatus rebootCauseStatus(
 
 // How a run ended, for the one structured event Main logs per run.
 enum class RunOutcome {
-  // Did nothing: the boot id or the history dir could not be read, or a redo
-  // could not remove the existing record.
+  // Did nothing: the boot id or the history dir could not be read.
   NOT_RUN,
-  // This boot already has a record and no redo was asked for.
+  // This boot already has a record.
   ALREADY_HANDLED,
   // The finished record is on disk.
   RECORDED,
@@ -193,7 +192,7 @@ class RebootCauseFinderImpl {
       Paths paths = defaultPaths());
 
   // Read all providers, determine the reboot cause, persist the record, and
-  // optionally clear providers (when --clear_reboot_causes is set).
+  // clear the providers that were read cleanly (--clear_reboot_causes).
   // Invoked once when the one-shot binary runs.
   RunResult determineRebootCause();
 
@@ -201,6 +200,8 @@ class RebootCauseFinderImpl {
   const reboot_cause_config::RebootCauseConfig config_;
   const Paths paths_;
 
+  // Writes the provider's clear path, then logs an error if reading it back
+  // does not come up empty.
   void clearProvider(
       const reboot_cause_config::RebootCauseProviderConfig& config);
 

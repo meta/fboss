@@ -162,7 +162,7 @@ void readRebootHistory(
   }
 
   // Newest boot first, like `last reboot`. Ordering by detectedAtSec would
-  // move a boot whose cause was determined late (a manual or redo run) above
+  // move a boot whose cause was determined late (a manual run) above
   // later boots. A record with no boot time sorts last.
   std::sort(
       history.records.begin(),

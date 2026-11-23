@@ -34,16 +34,9 @@ DEFINE_int32(
     "How long to keep retrying the BMC logfile endpoint before giving up.");
 
 DEFINE_bool(
-    redo_current_boot,
-    false,
-    "Discard this boot's existing record and determine the cause again. For "
-    "debugging: the service is a oneshot and normally refuses to run twice "
-    "for one boot.");
-
-DEFINE_bool(
     clear_reboot_causes,
-    false,
-    "Clear reboot causes from all providers after reading");
+    true,
+    "Clear every provider read cleanly once this boot's record is written");
 
 // Must span shutdown, POST and the bootloader. On a switch whose firmware
 // attempts a network boot before falling back to local disk, the gap between
@@ -217,52 +210,6 @@ std::optional<bool> recordExistsForBoot(
     }
   }
   return false;
-}
-
-// Deletes this boot's record so the cause can be determined again. False if
-// anything could not be removed, which must stop the caller: writing a
-// second record for one boot would leave two answers and no way to tell
-// which is current.
-bool removeRecordForBoot(
-    const std::string& historyDir,
-    const std::string& bootId) {
-  std::error_code ec;
-  std::filesystem::directory_iterator it(historyDir, ec);
-  if (ec == std::errc::no_such_file_or_directory) {
-    return true;
-  }
-  if (ec) {
-    XLOG(ERR) << fmt::format(
-        "Failed to read history dir '{}': {}", historyDir, ec.message());
-    return false;
-  }
-
-  const std::filesystem::directory_iterator end;
-  const auto suffix = recordFilenameSuffix(bootId);
-  bool removedAll = true;
-  while (it != end) {
-    const auto path = it->path();
-    if (path.filename().string().ends_with(suffix)) {
-      std::error_code removeEc;
-      std::filesystem::remove(path, removeEc);
-      if (removeEc) {
-        XLOG(ERR) << fmt::format(
-            "Failed to remove '{}': {}", path.string(), removeEc.message());
-        removedAll = false;
-      } else {
-        XLOG(INFO) << fmt::format("Removed '{}'", path.string());
-      }
-    }
-    it.increment(ec);
-    if (ec) {
-      XLOG(ERR) << fmt::format(
-          "Failed while scanning history dir '{}': {}",
-          historyDir,
-          ec.message());
-      return false;
-    }
-  }
-  return removedAll;
 }
 
 // Start of the newest boot recorded before btimeSec, in epoch seconds. A boot
@@ -1238,6 +1185,19 @@ void RebootCauseFinderImpl::clearProvider(
     XLOG(ERR) << fmt::format(
         "Failed to clear reboot causes at '{}'",
         *providerConfig.sysfsClearPath());
+    return;
+  }
+  const auto after = detail::readProvider(providerConfig);
+  if (*after.status() != reboot_cause_config::RebootCauseProviderStatus::OK) {
+    XLOG(ERR) << fmt::format(
+        "Could not read provider '{}' after clearing: {}",
+        *providerConfig.name(),
+        *after.detail());
+  } else if (!after.causes()->empty()) {
+    XLOG(ERR) << fmt::format(
+        "Provider '{}' still reports {} cause(s) after clearing",
+        *providerConfig.name(),
+        after.causes()->size());
   }
 }
 
@@ -1270,31 +1230,11 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
     return result;
   }
   if (*alreadyHandled) {
-    if (!FLAGS_redo_current_boot) {
-      XLOG(INFO) << fmt::format(
-          "Reboot causes were already determined during boot {}. Nothing to "
-          "do.",
-          bootId);
-      result.outcome = RunOutcome::ALREADY_HANDLED;
-      return result;
-    }
-    if (!removeRecordForBoot(paths_.historyDir, bootId)) {
-      XLOG(ERR) << "Doing nothing: asked to redo this boot, but the existing "
-                   "record could not be removed and a second record for one "
-                   "boot would leave two answers with no way to tell which "
-                   "is current.";
-      return result;
-    }
-    XLOG(WARNING) << fmt::format(
-        "Discarded the record for boot {} and re-reading every provider, "
-        "because --redo_current_boot was set.",
+    XLOG(INFO) << fmt::format(
+        "Reboot causes were already determined during boot {}. Nothing to do.",
         bootId);
-    if (FLAGS_clear_reboot_causes) {
-      XLOG(WARNING)
-          << "--clear_reboot_causes is also set. If an earlier run this boot "
-             "already cleared the hardware providers, they have nothing left "
-             "to report and this run will find less than that one did.";
-    }
+    result.outcome = RunOutcome::ALREADY_HANDLED;
+    return result;
   }
 
   const auto btime = detail::readBootTimeSec(paths_.procStat);
@@ -1400,9 +1340,18 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
     }
   }
 
+  // Clearing an unread provider would discard causes the record does not hold.
+  std::vector<std::pair<
+      const reboot_cause_config::RebootCauseProviderConfig*,
+      bool /* readCleanly */>>
+      providersRead;
   for (const auto& providerConfig : providerConfigs) {
     XLOG(INFO) << fmt::format("Reading provider '{}'", *providerConfig.name());
     auto attempt = detail::readProvider(providerConfig);
+    providersRead.emplace_back(
+        &providerConfig,
+        *attempt.status() ==
+            reboot_cause_config::RebootCauseProviderStatus::OK);
     // Providers are sorted by priority, so the first one with a cause dated
     // inside this boot's window is the highest-priority hardware answer. It
     // only applies when neither implicit provider found a cause.
@@ -1508,10 +1457,14 @@ RunResult RebootCauseFinderImpl::determineRebootCause() {
   result.record = record;
 
   if (shouldClearProviders(recorded)) {
-    for (const auto& providerConfig : providerConfigs) {
-      XLOG(INFO) << fmt::format(
-          "Clearing provider '{}'", *providerConfig.name());
-      clearProvider(providerConfig);
+    for (const auto& [providerConfig, readCleanly] : providersRead) {
+      if (!readCleanly) {
+        XLOG(WARNING) << fmt::format(
+            "Not clearing provider '{}': it was not read cleanly",
+            *providerConfig->name());
+        continue;
+      }
+      clearProvider(*providerConfig);
     }
   }
   return result;

@@ -123,7 +123,7 @@ TEST_F(RebootHistoryTest, OrdersNewestFirstByBootTime) {
   EXPECT_EQ(*response.records.at(2).bootId(), "boot-oldest");
 }
 
-// A boot whose cause was determined long after it (a manual or redo run) stays
+// A boot whose cause was determined long after it (a manual run) stays
 // in boot order rather than jumping to the top.
 TEST_F(RebootHistoryTest, LateDeterminationKeepsBootOrder) {
   write(path("reboot-cause-a.json"), makeRecord("older", 9000, 1000));

@@ -3,7 +3,6 @@
 #include "fboss/platform/reboot_cause_finder/RebootCauseFinderImpl.h"
 
 DECLARE_int32(bmc_logfile_poll_timeout_s);
-DECLARE_bool(redo_current_boot);
 DECLARE_bool(clear_reboot_causes);
 
 #include <sys/stat.h>
@@ -1548,31 +1547,22 @@ TEST_F(DetermineRebootCauseTest, UnparseableEarlierRecordDoesNotLoseTheBound) {
   EXPECT_EQ(readThisBootsRecord().count("determinedCause"), 0);
 }
 
-// --redo_current_boot lifts that guard, for debugging a boot in place.
-TEST_F(DetermineRebootCauseTest, RedoCurrentBootReplacesTheRecord) {
+// To determine a boot again, move its record aside so its name no longer ends
+// in "-<bootId>.json". The next run records the boot afresh and the original
+// is kept.
+TEST_F(DetermineRebootCauseTest, MovingTheRecordAsideAllowsARerun) {
   RebootCauseFinderImpl(rcc::RebootCauseConfig{}, paths())
       .determineRebootCause();
+  const auto original = singleRecordPath();
+  const auto aside = original + ".bak";
+  std::filesystem::rename(original, aside);
 
-  // Mark the record rather than comparing detectedAtMs: that has millisecond
-  // resolution and both runs can land inside the same millisecond, which
-  // makes the timestamp a coin flip rather than a signal. The guard matches
-  // on the filename, so the contents can be anything.
-  ASSERT_TRUE(
-      folly::writeFile(std::string("SENTINEL"), singleRecordPath().c_str()));
+  const auto result = RebootCauseFinderImpl(rcc::RebootCauseConfig{}, paths())
+                          .determineRebootCause();
 
-  FLAGS_redo_current_boot = true;
-  SCOPE_EXIT {
-    FLAGS_redo_current_boot = false;
-  };
-  RebootCauseFinderImpl(rcc::RebootCauseConfig{}, paths())
-      .determineRebootCause();
-
-  // singleRecordPath() asserts there is exactly one file, so this pins both
-  // halves: the marked record is gone and no second one was left beside it.
-  std::string contents;
-  ASSERT_TRUE(folly::readFile(singleRecordPath().c_str(), contents));
-  EXPECT_THAT(contents, testing::Not(testing::HasSubstr("SENTINEL")));
-  EXPECT_THAT(contents, testing::HasSubstr("detectedAtMs"));
+  EXPECT_EQ(result.outcome, RunOutcome::RECORDED);
+  EXPECT_TRUE(std::filesystem::exists(original));
+  EXPECT_TRUE(std::filesystem::exists(aside));
 }
 
 // The filename stamp is the boot time, not the time of the run, so a record
@@ -1737,64 +1727,74 @@ TEST(RebootCauseStatusTest, SeparatesUnexplainedFromInconclusive) {
       RebootCauseStatus::INCONCLUSIVE);
 }
 
-// A redo that cannot clear the way for itself must stop. Writing a second
-// record for one boot would leave two answers and no way to tell which is
-// current, which is worse than refusing to redo.
-TEST_F(DetermineRebootCauseTest, RedoStopsWhenTheRecordCannotBeRemoved) {
-  if (::geteuid() == 0) {
-    GTEST_SKIP() << "root ignores the directory permissions this relies on";
-  }
-  RebootCauseFinderImpl(rcc::RebootCauseConfig{}, paths())
-      .determineRebootCause();
-  const auto first = readRecord()["detectedAtMs"].asInt();
-
-  // Removing a file needs write permission on its directory, not the file.
-  std::filesystem::permissions(
-      historyDir_,
-      std::filesystem::perms::owner_write,
-      std::filesystem::perm_options::remove);
-  SCOPE_EXIT {
-    std::filesystem::permissions(
-        historyDir_,
-        std::filesystem::perms::owner_write,
-        std::filesystem::perm_options::add);
-  };
-
-  FLAGS_redo_current_boot = true;
-  SCOPE_EXIT {
-    FLAGS_redo_current_boot = false;
-  };
-  RebootCauseFinderImpl(rcc::RebootCauseConfig{}, paths())
-      .determineRebootCause();
-
-  // readRecord() asserts on there being exactly one file, so this pins both
-  // halves: the original survived and no second record was written.
-  std::filesystem::permissions(
-      historyDir_,
-      std::filesystem::perms::owner_write,
-      std::filesystem::perm_options::add);
-  EXPECT_EQ(readRecord()["detectedAtMs"].asInt(), first);
-}
-
-// Clearing the providers is destructive, so a redo that follows a run which
-// already cleared them will quietly find less. It is allowed, but it says so.
-TEST_F(DetermineRebootCauseTest, RedoWarnsWhenProviderClearingIsAlsoOn) {
-  RebootCauseFinderImpl(rcc::RebootCauseConfig{}, paths())
-      .determineRebootCause();
-
-  FLAGS_redo_current_boot = true;
-  FLAGS_clear_reboot_causes = true;
-  SCOPE_EXIT {
-    FLAGS_redo_current_boot = false;
-    FLAGS_clear_reboot_causes = false;
-  };
-
+// Clearing is on by default. A provider that could not be read has its causes
+// nowhere in the record, so it must not be cleared.
+TEST_F(DetermineRebootCauseTest, UnreadProviderIsNotCleared) {
+  const auto path = (tmpDir_ / "absent").string();
   testing::internal::CaptureStderr();
-  RebootCauseFinderImpl(rcc::RebootCauseConfig{}, paths())
+  RebootCauseFinderImpl(configWithProvider(path), paths())
       .determineRebootCause();
   const auto logs = testing::internal::GetCapturedStderr();
 
-  EXPECT_THAT(logs, testing::HasSubstr("--clear_reboot_causes is also set"));
+  EXPECT_FALSE(std::filesystem::exists(path + ".clear"));
+  EXPECT_THAT(logs, testing::HasSubstr("Not clearing provider 'TEST_CPLD'"));
+}
+
+// A provider read cleanly is cleared after the record is written. This test
+// file does not change when "cleared", so the read-back still finds the cause
+// and says so.
+TEST_F(DetermineRebootCauseTest, ReadProviderIsClearedAndReadBack) {
+  const auto path = (tmpDir_ / "causes").string();
+  ASSERT_TRUE(
+      folly::writeFile(
+          std::string(
+              R"({"causes":[{"description":"Power loss","date":)"
+              R"("09-24-2026 16:32:00"}]})"),
+          path.c_str()));
+  testing::internal::CaptureStderr();
+  RebootCauseFinderImpl(configWithProvider(path), paths())
+      .determineRebootCause();
+  const auto logs = testing::internal::GetCapturedStderr();
+
+  std::string written;
+  ASSERT_TRUE(folly::readFile((path + ".clear").c_str(), written));
+  EXPECT_EQ(written, "1");
+  EXPECT_THAT(
+      logs,
+      testing::HasSubstr(
+          "Provider 'TEST_CPLD' still reports 1 cause(s) after clearing"));
+}
+
+// Clearing an empty provider changes nothing, so it logs nothing.
+TEST_F(DetermineRebootCauseTest, EmptyProviderClearLogsNothing) {
+  const auto path = (tmpDir_ / "causes").string();
+  ASSERT_TRUE(folly::writeFile(std::string(R"({"causes":[]})"), path.c_str()));
+  testing::internal::CaptureStderr();
+  RebootCauseFinderImpl(configWithProvider(path), paths())
+      .determineRebootCause();
+  const auto logs = testing::internal::GetCapturedStderr();
+
+  EXPECT_TRUE(std::filesystem::exists(path + ".clear"));
+  EXPECT_THAT(logs, testing::Not(testing::HasSubstr("still reports")));
+  EXPECT_THAT(logs, testing::Not(testing::HasSubstr("Could not read")));
+}
+
+// A provider that cannot be read back after clearing says so, rather than
+// reporting a cause count it never read. The clear path is a symlink to the
+// read path, so the clear overwrites the JSON with "1".
+TEST_F(DetermineRebootCauseTest, UnreadableAfterClearIsReported) {
+  const auto path = (tmpDir_ / "causes").string();
+  ASSERT_TRUE(folly::writeFile(std::string(R"({"causes":[]})"), path.c_str()));
+  std::filesystem::create_symlink(path, path + ".clear");
+  testing::internal::CaptureStderr();
+  RebootCauseFinderImpl(configWithProvider(path), paths())
+      .determineRebootCause();
+  const auto logs = testing::internal::GetCapturedStderr();
+
+  EXPECT_THAT(
+      logs,
+      testing::HasSubstr("Could not read provider 'TEST_CPLD' after clearing"));
+  EXPECT_THAT(logs, testing::Not(testing::HasSubstr("still reports")));
 }
 
 // ------------------------------------------------------- hardware providers
