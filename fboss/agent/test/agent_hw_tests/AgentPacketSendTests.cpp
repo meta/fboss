@@ -42,9 +42,9 @@ class AgentPacketSendTest : public AgentHwTest {
       const auto& portStatsIter = newStats.find(port);
       if (portStatsIter != newStats.end()) {
         const auto& portStats = portStatsIter->second;
-        outPackets = portStats.get_outUnicastPkts_() -
+        outPackets = portStats.outUnicastPkts_().value() -
             folly::copy(before.outUnicastPkts_().value());
-        outDiscards = portStats.get_outDiscards_() -
+        outDiscards = portStats.outDiscards_().value() -
             folly::copy(before.outDiscards_().value());
       }
       // Check to see if outPackets + outDiscards add up to the expected!

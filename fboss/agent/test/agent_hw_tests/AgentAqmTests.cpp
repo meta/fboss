@@ -304,7 +304,7 @@ class AgentAqmTest : public AgentHwTest {
   uint64_t extractQueueWatermarkStats(
       const StatsT& stats,
       const uint8_t& queueId) {
-    return stats.get_queueWatermarkBytes_().find(queueId)->second;
+    return stats.queueWatermarkBytes_()->find(queueId)->second;
   }
 
   /*
@@ -930,7 +930,7 @@ class AgentAqmWredDropTest : public AgentAqmTest {
 
       auto getQueueWatermarkBytes = [&](const auto& portStats, int queueId) {
         auto queueWatermark =
-            portStats.get_queueWatermarkBytes_().find(queueId)->second;
+            portStats.queueWatermarkBytes_()->find(queueId)->second;
         XLOG(DBG0) << "Queue " << queueId << " watermark : " << queueWatermark;
         return queueWatermark;
       };

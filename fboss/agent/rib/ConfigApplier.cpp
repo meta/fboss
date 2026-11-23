@@ -186,7 +186,8 @@ void ConfigApplier::apply() {
         [&staticMplsRoutes](const auto& routeRange, const auto& nhopFn) {
           for (const auto& staticRoute : routeRange) {
             staticMplsRoutes.push_back(
-                {LabelID(staticRoute.get_ingressLabel()), nhopFn(staticRoute)});
+                {LabelID(folly::copy(staticRoute.ingressLabel().value())),
+                 nhopFn(staticRoute)});
           }
         };
     fillInStaticMplsRoutes(staticMplsCpuRouteRange_, [](const auto& /*route*/) {
