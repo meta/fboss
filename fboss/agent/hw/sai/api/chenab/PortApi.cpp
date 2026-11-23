@@ -238,6 +238,11 @@ SaiPortTraits::linkUpDebounceRetriggerStats() {
   return stats;
 }
 
+const std::vector<sai_stat_id_t>& SaiPortTraits::pcsErrorStats() {
+  static const std::vector<sai_stat_id_t> stats;
+  return stats;
+}
+
 std::optional<sai_attr_id_t>
 SaiPortSerdesTraits::Attributes::AttributeTxDiffEncoderEnWrapper::operator()() {
   return std::nullopt;
@@ -490,6 +495,11 @@ SaiPortTraits::Attributes::AttributeCsigTagActionWrapper::operator()() {
 
 std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeCsigLinkLocatorWrapper::operator()() {
+  return std::nullopt;
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCbfcReceiverCreditLimit::operator()() {
   return std::nullopt;
 }
 

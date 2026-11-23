@@ -221,6 +221,22 @@ class SwitchSettings
     }
   }
 
+  std::optional<int32_t> getMaxL2EntriesPerPort() const {
+    if (auto maxL2EntriesPerPort =
+            cref<switch_state_tags::maxL2EntriesPerPort>()) {
+      return maxL2EntriesPerPort->toThrift();
+    }
+    return std::nullopt;
+  }
+
+  void setMaxL2EntriesPerPort(std::optional<int32_t> maxL2EntriesPerPort) {
+    if (!maxL2EntriesPerPort) {
+      ref<switch_state_tags::maxL2EntriesPerPort>().reset();
+    } else {
+      set<switch_state_tags::maxL2EntriesPerPort>(*maxL2EntriesPerPort);
+    }
+  }
+
   /*
    * 0 or more l3 switch types {NPU, VOQ} are supported on
    * a CPU-NPUs complex
@@ -506,6 +522,21 @@ class SwitchSettings
 
   void setMyMacs(const std::vector<cfg::MacAndVlan>& myMacs) {
     set<switch_state_tags::myMacs>(myMacs);
+  }
+
+  std::optional<std::string> getVxlanRouterMac() const {
+    if (auto vxlanRouterMac = cref<switch_state_tags::vxlanRouterMac>()) {
+      return vxlanRouterMac->toThrift();
+    }
+    return std::nullopt;
+  }
+
+  void setVxlanRouterMac(const std::optional<std::string>& vxlanRouterMac) {
+    if (!vxlanRouterMac) {
+      ref<switch_state_tags::vxlanRouterMac>().reset();
+    } else {
+      set<switch_state_tags::vxlanRouterMac>(*vxlanRouterMac);
+    }
   }
 
   std::optional<bool> getCreditWatchdog() const {

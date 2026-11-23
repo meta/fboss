@@ -43,6 +43,8 @@ class BufferPoolConfig : public utils::BaseObjectArgType<std::string> {
 };
 
 struct CmdConfigQosBufferPoolTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigQos;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     cmd.add_option(

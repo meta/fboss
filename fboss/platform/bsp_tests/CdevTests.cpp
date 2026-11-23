@@ -7,7 +7,6 @@
 #include <thread>
 #include <vector>
 
-#include <folly/Format.h>
 #include <folly/logging/xlog.h>
 #include <gtest/gtest.h>
 

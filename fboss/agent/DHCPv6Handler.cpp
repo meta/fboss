@@ -354,7 +354,7 @@ void DHCPv6Handler::processDHCPv6RelayReply(
   if (switchIp.isZero()) {
     switchIp = ipHdr.dstAddr;
   }
-  auto intf = state->getInterfaces()->getInterface(RouterID(0), switchIp);
+  auto intf = state->getInterface(RouterID(0), switchIp);
   if (!intf) {
     sw->portStats(pkt->getSrcPort())->dhcpV6DropPkt();
     XLOG(DBG2) << "Could not look up interface for " << switchIp

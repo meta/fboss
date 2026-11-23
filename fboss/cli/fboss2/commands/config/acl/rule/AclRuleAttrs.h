@@ -116,4 +116,8 @@ AclRuleMutation parseAclRuleSpec(const std::vector<std::string>& tokens);
 std::string aclRuleAttrKeysCsv();
 std::string aclRuleActionKeysCsv();
 
+// The same keywords as vectors, for shell completion.
+std::vector<std::string> aclRuleAttrKeys();
+std::vector<std::string> aclRuleActionKeys();
+
 } // namespace facebook::fboss

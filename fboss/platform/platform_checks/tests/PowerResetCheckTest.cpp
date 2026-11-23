@@ -95,6 +95,7 @@ TEST_F(RecentKernelPanicCheckTest, RecentPanicsFound) {
   EXPECT_EQ(*result.status(), CheckStatus::PROBLEM);
   EXPECT_EQ(*result.checkType(), CheckType::RECENT_KERNEL_PANIC_CHECK);
   EXPECT_EQ(*result.remediation(), RemediationType::MANUAL_REMEDIATION);
+  EXPECT_THAT(*result.details(), HasSubstr(recentFilename));
 }
 
 TEST_F(RecentKernelPanicCheckTest, OldPanicsIgnored) {
@@ -164,6 +165,7 @@ TEST_F(WatchdogDidNotStopCheckTest, NoWatchdogLogs) {
 
   EXPECT_EQ(*result.status(), CheckStatus::OK);
   EXPECT_EQ(*result.checkType(), CheckType::WATCHDOG_DID_NOT_STOP_CHECK);
+  EXPECT_THAT(*result.details(), HasSubstr("$ dmesg -T\n" + dmesgOutput));
 }
 
 TEST_F(WatchdogDidNotStopCheckTest, FewWatchdogLogsWarning) {
@@ -290,9 +292,11 @@ TEST(RecentManualRebootCheckTest, RecentRebootIsReported) {
                   std::chrono::system_clock::now() - std::chrono::hours(1)) +
       " rsw1 systemd-logind[1]: System is rebooting.\n";
 
-  auto result = runManualRebootCheck(line);
+  auto result = runManualRebootCheck(line + "Unrelated login\n");
 
   EXPECT_EQ(*result.status(), CheckStatus::PROBLEM);
+  EXPECT_THAT(*result.details(), HasSubstr(line));
+  EXPECT_THAT(*result.details(), Not(HasSubstr("Unrelated login")));
 }
 
 TEST(RecentManualRebootCheckTest, OldRebootIsIgnored) {

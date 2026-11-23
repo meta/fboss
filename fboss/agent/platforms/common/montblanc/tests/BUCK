@@ -10,7 +10,7 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly:string",
         "//fboss/agent/platforms/common/montblanc:montblanc_platform_mapping",
-        "//folly:string",
     ],
 )

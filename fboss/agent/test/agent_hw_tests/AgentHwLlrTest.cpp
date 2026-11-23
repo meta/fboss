@@ -3,6 +3,7 @@
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/if/gen-cpp2/AgentHwTestCtrl.h"
 #include "fboss/agent/test/AgentHwTest.h"
+#include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 
 #include <folly/logging/xlog.h>
@@ -10,9 +11,9 @@
 
 namespace facebook::fboss {
 
-// AgentHwTest for UEC Link Layer Retry (UE Spec 1.0.2 section 5.1). LLR is a
-// Tomahawk Ultra feature today; getProductionFeaturesVerified() gates these
-// tests to LLR-capable ASICs through the test runner.
+// AgentHwTest for UEC Link Layer Retry (UE Spec 1.0.2 section 5.1).
+// getProductionFeaturesVerified() gates these tests to LLR-capable ASICs
+// through the test runner (Tomahawk Ultra, plus Tomahawk6 from 16.0_ea_odp).
 class AgentHwLlrTest : public AgentHwTest {
  public:
   std::vector<ProductionFeature> getProductionFeaturesVerified()
@@ -22,6 +23,15 @@ class AgentHwLlrTest : public AgentHwTest {
 
  protected:
   static constexpr auto kLlrConfigName = "llr_default";
+
+  // The Broadcom LLR extension counters are served on Tomahawk Ultra 1 only.
+  // On Tomahawk6 the extension read returns NOT_SUPPORTED for every id, so
+  // SaiPortManager skips it and the fields stay unset. Drop this once Broadcom
+  // implements them on TH6 (CS00012472055).
+  bool llrExtensionStatsSupported() const {
+    return checkSameAndGetAsicForTesting(getAgentEnsemble()->getL3Asics())
+               ->getAsicType() == cfg::AsicType::ASIC_TYPE_TOMAHAWKULTRA1;
+  }
 
   // The INIT frame action to build into the initial config. An LLR config
   // change on an administratively enabled port is rejected (Broadcom
@@ -137,14 +147,18 @@ void AgentHwLlrTest::verifyLlrProgrammed() {
       EXPECT_TRUE(stats.llrRxExpectedSeqBad_().has_value());
       // Broadcom LLR stat extensions, fetched in their own read. Present
       // together or not at all, so a partial set here means the extension read
-      // returned NOT_SUPPORTED on some but not all ids.
-      EXPECT_TRUE(stats.llrTxEligiblePkts_().has_value());
-      EXPECT_TRUE(stats.llrTxIneligiblePkts_().has_value());
-      EXPECT_TRUE(stats.llrRxEligiblePkts_().has_value());
-      EXPECT_TRUE(stats.llrRxIneligiblePkts_().has_value());
-      EXPECT_TRUE(stats.llrTxNackReplayEvent_().has_value());
-      EXPECT_TRUE(stats.llrTxTimerReplayEvent_().has_value());
-      EXPECT_TRUE(stats.llrTxError_().has_value());
+      // returned NOT_SUPPORTED on some but not all ids. Only Tomahawk Ultra 1
+      // serves them; SaiPortManager skips the read elsewhere, so the fields
+      // stay unset (CS00012472055).
+      if (llrExtensionStatsSupported()) {
+        EXPECT_TRUE(stats.llrTxEligiblePkts_().has_value());
+        EXPECT_TRUE(stats.llrTxIneligiblePkts_().has_value());
+        EXPECT_TRUE(stats.llrRxEligiblePkts_().has_value());
+        EXPECT_TRUE(stats.llrRxIneligiblePkts_().has_value());
+        EXPECT_TRUE(stats.llrTxNackReplayEvent_().has_value());
+        EXPECT_TRUE(stats.llrTxTimerReplayEvent_().has_value());
+        EXPECT_TRUE(stats.llrTxError_().has_value());
+      }
 
       // The LLR TX/RX state machine status (UE Spec 1.0.2 sections 5.1.5 and
       // 5.1.7), read from hardware for every LLR-bound port regardless of link

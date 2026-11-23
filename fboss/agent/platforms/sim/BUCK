@@ -11,6 +11,7 @@ cpp_binary(
         "sim_ctrl.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly:memory",
         "//fboss/agent:hw_switch",
         "//fboss/agent:load_agent_config",
         "//fboss/agent:main-bcm",  # @manual
@@ -19,7 +20,6 @@ cpp_binary(
         "//fboss/agent:setup_thrift_prod",  # @manual
         "//fboss/agent/hw/bcm:bcm",  # @manual
         "//fboss/agent/hw/sim:platform",
-        "//folly:memory",
     ],
     external_deps = ["gflags"],
 )

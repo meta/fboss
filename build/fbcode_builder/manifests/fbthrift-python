@@ -3,6 +3,7 @@ name = fbthrift-python
 fbsource_path = xplat/thrift
 shipit_project = fbthrift
 shipit_fbcode_builder = true
+shipit_fbcode_builder_layout = tool
 
 [git]
 repo_url = https://github.com/facebook/fbthrift.git
@@ -35,12 +36,10 @@ THRIFT_TESTS=OFF
 THRIFT_PYTHON=ON
 
 [dependencies]
-benchmark
 fizz-python
 fmt-python
 folly-python
 googletest
-libsodium
 wangle-python
 zstd-python
 mvfst-python

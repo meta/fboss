@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/l2/learning_mode/CmdConfigL2LearningMode.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -100,5 +101,11 @@ void CmdConfigL2LearningMode::printOutput(const RetType& logMsg) {
 // Explicit template instantiation
 template void
 CmdHandler<CmdConfigL2LearningMode, CmdConfigL2LearningModeTraits>::run();
+
+std::vector<std::string> CmdConfigL2LearningModeTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(
+      typed, {{"hardware", "software", "disabled"}});
+}
 
 } // namespace facebook::fboss

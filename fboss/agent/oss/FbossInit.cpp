@@ -14,6 +14,6 @@
 namespace facebook::fboss {
 
 void fbossInit(int argc, char** argv) {
-  folly::init(&argc, &argv, true);
+  folly::unsafe_unscoped_init(&argc, &argv, true);
 }
 } // namespace facebook::fboss

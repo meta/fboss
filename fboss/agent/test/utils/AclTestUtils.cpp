@@ -539,22 +539,22 @@ std::shared_ptr<AclEntry> getAclEntry(
     const std::string& name,
     bool enableAclTableGroup) {
   if (enableAclTableGroup) {
-    auto entry =
-        state
-            ->getAclsForTable(
-                cfg::AclStage::INGRESS,
-                cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE())
-            ->getNodeIf(name);
+    auto defaultAcls = state->getAclsForTable(
+        cfg::AclStage::INGRESS,
+        cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE());
+    auto entry = defaultAcls ? defaultAcls->getNodeIf(name) : nullptr;
     // acl entries are expected to have unique name across all groups
     if (!entry) {
-      for (const auto& groupMap : std::as_const(*state->getAclTableGroups())) {
-        for (const auto& [stage, group] : std::as_const(*groupMap.second)) {
-          for (const auto& [tableName, table] :
-               std::as_const(*group->getAclTableMap())) {
-            std::ignore = tableName;
-            entry = getAclEntryByName(state, stage, tableName, name);
-            if (entry) {
-              return entry;
+      if (auto aclTableGroups = state->getAclTableGroups()) {
+        for (const auto& groupMap : std::as_const(*aclTableGroups)) {
+          for (const auto& [stage, group] : std::as_const(*groupMap.second)) {
+            for (const auto& [tableName, table] :
+                 std::as_const(*group->getAclTableMap())) {
+              std::ignore = tableName;
+              entry = table->getAclMap()->getNodeIf(name);
+              if (entry) {
+                return entry;
+              }
             }
           }
         }
@@ -732,6 +732,14 @@ std::set<cfg::AclTableQualifier> getRequiredQualifers(
 
       case cfg::AclTableQualifier::DST_IPV6_WORD2:
         addQualifier(aclEntry.dstIpV6Word2().has_value(), qualifier);
+        break;
+
+      case cfg::AclTableQualifier::DST_IPV6_WORD1:
+        addQualifier(aclEntry.dstIpV6Word1WithMask().has_value(), qualifier);
+        break;
+
+      case cfg::AclTableQualifier::DST_IPV6_WORD0:
+        addQualifier(aclEntry.dstIpV6Word0WithMask().has_value(), qualifier);
         break;
 
       case cfg::AclTableQualifier::SRC_IPV4:

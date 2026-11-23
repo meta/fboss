@@ -237,7 +237,7 @@ void testSendArpRequest(
   auto state = sw->getState();
   auto vlan = state->getVlans()->getNodeIf(vlanID);
   EXPECT_NE(vlan, nullptr);
-  auto intf = state->getInterfaces()->getInterfaceIf(RouterID(0), senderIP);
+  auto intf = state->getInterfaceIf(RouterID(0), senderIP);
   EXPECT_NE(intf, nullptr);
   auto intfID = intf->getID();
 
@@ -255,8 +255,7 @@ void testSendArpRequest(
         "ARP request",
         checkArpRequest(senderIP, intf->getMac(), targetIP, vlanID));
   }
-  ArpHandler::sendArpRequest(
-      sw, vlan->getID(), intf->getMac(), senderIP, targetIP);
+  ArpHandler::sendArpRequest(sw, intf, senderIP, targetIP);
 
   // Notify the updater that we sent an arp request
   sw->getNeighborUpdater()->sentArpRequestForIntf(intfID, targetIP);
@@ -297,7 +296,7 @@ TEST_F(ArpTest, BasicSendRequest) {
   auto state = sw->getState();
   auto vlan = state->getVlans()->getNodeIf(vlanID);
   EXPECT_NE(vlan, nullptr);
-  auto intf = state->getInterfaces()->getInterfaceIf(RouterID(0), senderIP);
+  auto intf = state->getInterfaceIf(RouterID(0), senderIP);
   EXPECT_NE(intf, nullptr);
 
   // Pending entries on CPU port are not programmed to state for
@@ -307,8 +306,7 @@ TEST_F(ArpTest, BasicSendRequest) {
       "ARP request",
       checkArpRequest(senderIP, intf->getMac(), targetIP, vlanID));
 
-  ArpHandler::sendArpRequest(
-      sw, vlan->getID(), intf->getMac(), senderIP, targetIP);
+  ArpHandler::sendArpRequest(sw, intf, senderIP, targetIP);
 
   // Notify the updater that we sent an arp request
   sw->getNeighborUpdater()->sentArpRequestForIntf(intfID, targetIP);
@@ -669,6 +667,88 @@ TEST_F(ArpTest, TableUpdates) {
   EXPECT_EQ(InterfaceID(1), entry->getIntfID());
 }
 
+TEST_F(ArpTest, NoEntryOnMacLimitErrorDisabledPort) {
+  auto handle = setupTestHandle();
+  auto sw = handle->getSw();
+  VlanID vlanID(1);
+  InterfaceID intfID(1);
+  sw->updateStateBlocking("MAC limit error-disable", [](const auto& state) {
+    auto newState = state->clone();
+    newState->getPorts()->getNodeIf(PortID(1))->modify(&newState)->addError(
+        PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
+    return newState;
+  });
+
+  // ARP request for 10.0.0.1 from 10.0.0.15, which would normally add an entry
+  auto hex = PktUtil::parseHexData(
+      // dst mac, src mac
+      "ff ff ff ff ff ff  00 02 00 01 02 03"
+      // 802.1q, VLAN 1
+      "81 00  00 01"
+      // ARP, htype: ethernet, ptype: IPv4, hlen: 6, plen: 4
+      "08 06  00 01  08 00  06  04"
+      // ARP Request
+      "00 01"
+      // Sender MAC
+      "00 02 00 01 02 03"
+      // Sender IP: 10.0.0.15
+      "0a 00 00 0f"
+      // Target MAC
+      "00 00 00 00 00 00"
+      // Target IP: 10.0.0.1
+      "0a 00 00 01");
+
+  EXPECT_STATE_UPDATE_TIMES(sw, 0);
+  handle->rxPacket(make_unique<IOBuf>(hex), PortDescriptor(PortID(1)), vlanID);
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+  waitForStateUpdates(sw);
+
+  EXPECT_EQ(0, this->getArpTable(sw, vlanID, intfID)->size());
+}
+
+TEST_F(ArpTest, NeighborOverMacLimitErrorDisablesPort) {
+  auto handle = setupTestHandle();
+  auto sw = handle->getSw();
+  VlanID vlanID(1);
+  InterfaceID intfID(1);
+  sw->updateStateBlocking("MAC limit of 1", [](const auto& state) {
+    auto newState = state->clone();
+    utility::getFirstNodeIf(newState->getSwitchSettings())
+        ->modify(&newState)
+        ->setMaxL2EntriesPerPort(1);
+    return newState;
+  });
+  // ARP request for 10.0.0.1 from 10.0.0.<ipByte>, MAC 00:02:00:01:02:<macByte>
+  auto arpRequest = [&](const std::string& ipByte, const std::string& macByte) {
+    return make_unique<IOBuf>(PktUtil::parseHexData(
+        "ff ff ff ff ff ff  00 02 00 01 02 " + macByte +
+        " 81 00  00 01  08 06  00 01  08 00  06  04  00 01"
+        "  00 02 00 01 02 " +
+        macByte + "  0a 00 00 " + ipByte + "  00 00 00 00 00 00  0a 00 00 01"));
+  };
+  auto macTable = [&]() {
+    return sw->getState()->getVlans()->getNode(vlanID)->getMacTable();
+  };
+
+  handle->rxPacket(arpRequest("0f", "03"), PortDescriptor(PortID(1)), vlanID);
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+  waitForStateUpdates(sw);
+  ASSERT_NE(nullptr, macTable()->getMacIf(MacAddress("00:02:00:01:02:03")));
+
+  // A second neighbor MAC would take port 1 over its limit
+  handle->rxPacket(arpRequest("10", "04"), PortDescriptor(PortID(1)), vlanID);
+  sw->getNeighborUpdater()->waitForPendingUpdates();
+  waitForStateUpdates(sw);
+
+  auto port = sw->getState()->getPorts()->getNodeIf(PortID(1));
+  EXPECT_EQ(cfg::PortState::DISABLED, port->getAdminState());
+  EXPECT_TRUE(port->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED));
+  EXPECT_EQ(nullptr, macTable()->getMacIf(MacAddress("00:02:00:01:02:03")));
+  EXPECT_EQ(nullptr, macTable()->getMacIf(MacAddress("00:02:00:01:02:04")));
+  auto arpTable = this->getArpTable(sw, vlanID, intfID);
+  EXPECT_EQ(nullptr, arpTable->getEntryIf(IPAddressV4("10.0.0.16")));
+}
+
 TEST_F(ArpTest, NotMine) {
   auto handle = setupTestHandle();
   auto sw = handle->getSw();
@@ -928,20 +1008,6 @@ TEST_F(ArpTest, PendingArp) {
   counters.checkDelta(SwitchStats::kCounterPrefix + "ipv4.nexthop.sum", 1);
   counters.checkDelta(SwitchStats::kCounterPrefix + "ipv4.no_arp.sum", 0);
 
-  // Receiving this duplicate packet triggers another ARP request because
-  // the pending entry is not in SwitchState for the interface path (CPU port).
-  // The packet handler checks SwitchState (not the internal neighbor cache),
-  // so it follows the same code path as the first packet.
-  EXPECT_SWITCHED_PKT(
-      sw,
-      "ARP request (dup)",
-      checkArpRequest(
-          senderIP,
-          MacAddress("00:02:00:00:00:01"),
-          IPAddressV4("10.0.0.10"),
-          vlanID))
-      .RetiresOnSaturation();
-
   handle->rxPacket(make_unique<IOBuf>(hex), PortDescriptor(PortID(1)), vlanID);
   sw->getNeighborUpdater()->waitForPendingUpdates();
   waitForStateUpdates(sw);
@@ -949,7 +1015,7 @@ TEST_F(ArpTest, PendingArp) {
   counters.update();
   counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.pkts.sum", 1);
   counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.arp.sum", 0);
-  counters.checkDelta(SwitchStats::kCounterPrefix + "arp.request.tx.sum", 1);
+  counters.checkDelta(SwitchStats::kCounterPrefix + "arp.request.tx.sum", 0);
   counters.checkDelta(SwitchStats::kCounterPrefix + "arp.request.rx.sum", 0);
   counters.checkDelta(SwitchStats::kCounterPrefix + "arp.reply.tx.sum", 0);
   counters.checkDelta(SwitchStats::kCounterPrefix + "arp.reply.rx.sum", 0);
@@ -1023,8 +1089,7 @@ TEST_F(ArpTest, ArpTableSerialization) {
   MacAddress targetMAC = MacAddress("02:10:20:30:40:22");
 
   // Verify initial state - ARP table should be empty
-  auto intf =
-      sw->getState()->getInterfaces()->getInterfaceIf(RouterID(0), senderIP);
+  auto intf = sw->getState()->getInterfaceIf(RouterID(0), senderIP);
   ASSERT_NE(intf, nullptr);
   auto arpTable = intf->getArpTable();
   ASSERT_NE(arpTable, nullptr);
@@ -1039,7 +1104,7 @@ TEST_F(ArpTest, ArpTableSerialization) {
   EXPECT_TRUE(arpReachable->wait());
 
   // Verify ARP table now has the resolved entry
-  intf = sw->getState()->getInterfaces()->getInterfaceIf(RouterID(0), senderIP);
+  intf = sw->getState()->getInterfaceIf(RouterID(0), senderIP);
   ASSERT_NE(intf, nullptr);
   arpTable = intf->getArpTable();
   ASSERT_NE(arpTable, nullptr);
@@ -1086,8 +1151,7 @@ TEST_F(ArpTest, ArpExpiration) {
   EXPECT_TRUE(arpReachable->wait());
 
   // Expect one more probe to be sent out before targetIP[1] is expired
-  auto intfs = sw->getState()->getInterfaces();
-  auto intf = intfs->getInterfaceIf(RouterID(0), senderIP);
+  auto intf = sw->getState()->getInterfaceIf(RouterID(0), senderIP);
   EXPECT_SWITCHED_PKT(
       sw,
       "ARP request",
@@ -1451,12 +1515,13 @@ TEST(ArpHandlerTest, SendArpRequestSwExiting) {
   auto sw = handle->getSw();
 
   IPAddressV4 targetIP = IPAddressV4("10.0.0.2");
+  auto intf = sw->getState()->getInterfaces()->getNode(InterfaceID(1));
   CounterCache counters(sw);
 
   // Verify that ARP requests are sent when switch is initialized
   EXPECT_TRUE(sw->isFullyInitialized());
   EXPECT_HW_CALL(sw, sendPacketSwitchedAsync_(_)).Times(1);
-  ArpHandler::sendArpRequest(sw, targetIP);
+  ArpHandler::sendArpRequest(sw, intf, targetIP);
 
   counters.update();
   counters.checkDelta(SwitchStats::kCounterPrefix + "arp.request.tx.sum", 1);
@@ -1467,7 +1532,7 @@ TEST(ArpHandlerTest, SendArpRequestSwExiting) {
   EXPECT_TRUE(sw->isExiting());
 
   EXPECT_HW_CALL(sw, sendPacketSwitchedAsync_(_)).Times(0);
-  ArpHandler::sendArpRequest(sw, targetIP);
+  ArpHandler::sendArpRequest(sw, intf, targetIP);
 
   counters.update();
   counters.checkDelta(SwitchStats::kCounterPrefix + "arp.request.tx.sum", 0);

@@ -11,7 +11,7 @@ PlatformManager exposes a Thrift service on port 5975 (default) that allows
 querying platform state and exploration status.
 
 The Thrift interface is defined in
-[platform_manager_service.thrift](https://github.com/facebook/fboss/blob/main/fboss/platform/platform_manager/platform_manager_service.thrift).
+[platform_manager_service.thrift](https://github.com/meta/fboss/blob/main/fboss/platform/platform_manager/platform_manager_service.thrift).
 
 The PlatformManager service is consumed programmatically by other FBOSS services.
 For example, `sensor_service` uses `PmClientFactory` to connect.

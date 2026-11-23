@@ -9,6 +9,7 @@
  */
 #pragma once
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -66,6 +67,11 @@ InterfaceID firstInterfaceIDWithPorts(
     const std::shared_ptr<SwitchState>& state,
     const SwitchID& switchId,
     std::optional<cfg::Scope> scope = std::nullopt);
+// Same, but returns nullopt instead of throwing.
+std::optional<InterfaceID> firstInterfaceIDWithPortsIf(
+    const std::shared_ptr<SwitchState>& state,
+    const SwitchID& switchId,
+    std::optional<cfg::Scope> scope = std::nullopt);
 std::shared_ptr<Interface> firstInterfaceWithPorts(
     const std::shared_ptr<SwitchState>& state,
     const SwitchID& switchId);
@@ -99,6 +105,9 @@ std::vector<StateDelta> computeReversedDeltas(
     const std::vector<fsdb::OperDelta>& operDeltas,
     const std::shared_ptr<SwitchState>& currentState,
     const std::shared_ptr<SwitchState>& intermediateState);
+
+std::map<int64_t, int64_t> getVrfVnis(
+    const std::shared_ptr<SwitchState>& state);
 
 } // namespace utility
 } // namespace facebook::fboss

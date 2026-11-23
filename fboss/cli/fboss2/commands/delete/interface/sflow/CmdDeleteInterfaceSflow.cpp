@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/delete/interface/sflow/CmdDeleteInterfaceSflow.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -110,5 +111,14 @@ void CmdDeleteInterfaceSflow::printOutput(const RetType& logMsg) {
 // Explicit template instantiation
 template void
 CmdHandler<CmdDeleteInterfaceSflow, CmdDeleteInterfaceSflowTraits>::run();
+
+std::vector<std::string> CmdDeleteInterfaceSflowTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completeAttrList(
+      typed,
+      {std::string(kAttrSampleDest),
+       std::string(kAttrIngressRate),
+       std::string(kAttrEgressRate)});
+}
 
 } // namespace facebook::fboss

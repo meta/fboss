@@ -1,12 +1,4 @@
-/*
- *  Copyright (c) 2004-present, Facebook, Inc.
- *  All rights reserved.
- *
- *  This source code is licensed under the BSD-style license found in the
- *  LICENSE file in the root directory of this source tree. An additional grant
- *  of patent rights can be found in the PATENTS file in the same directory.
- *
- */
+// Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include "fboss/cli/fboss2/CmdSubcommands.h"
 #include "fboss/cli/fboss2/CmdArgsLists.h"
@@ -18,10 +10,12 @@
 #include <CLI/App.hpp>
 #include <fmt/format.h>
 #include <folly/Singleton.h>
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace {
@@ -51,6 +45,75 @@ const std::map<std::string, std::string>& kSupportedVerbs() {
   return supportedVerbs;
 };
 
+bool isWriteCommand(const facebook::fboss::Command& cmd) {
+  return cmd.commandHandler &&
+      cmd.commandHandler->mode() ==
+      facebook::fboss::CliReadWriteMode::CLI_MODE_WRITE;
+}
+
+bool usesVerb(
+    const facebook::fboss::CommandTree& cmdTree,
+    const std::string& verb) {
+  return std::ranges::any_of(
+      cmdTree, [&](const auto& cmd) { return cmd.verb == verb; });
+}
+
+template <typename CmdT>
+void pruneWriteCommands(std::vector<CmdT>& cmds) {
+  std::erase_if(cmds, [](const CmdT& cmd) { return isWriteCommand(cmd); });
+  for (auto& cmd : cmds) {
+    pruneWriteCommands(cmd.subcommands);
+  }
+  std::erase_if(cmds, [](const CmdT& cmd) {
+    return !cmd.commandHandler && cmd.subcommands.empty();
+  });
+}
+
+template <typename CmdT>
+void mergeCommands(
+    std::vector<CmdT>& combined,
+    const std::vector<CmdT>& additional) {
+  for (const auto& cmd : additional) {
+    auto existing = std::find_if(
+        combined.begin(), combined.end(), [&](const auto& candidate) {
+          if (candidate.name != cmd.name) {
+            return false;
+          }
+          if constexpr (std::is_same_v<CmdT, facebook::fboss::RootCommand>) {
+            return candidate.verb == cmd.verb;
+          }
+          return true;
+        });
+    if (existing == combined.end()) {
+      combined.push_back(cmd);
+      continue;
+    }
+    if (existing->subcommands.empty() && cmd.subcommands.empty()) {
+      throw std::runtime_error(
+          fmt::format(
+              "Command `{}` already exists, command tree must be invalid",
+              cmd.name));
+    }
+    if constexpr (std::is_same_v<CmdT, facebook::fboss::RootCommand>) {
+      // A handler-less duplicate of an executable root is kept separate so
+      // addCommandBranch registers its children at depth 0, letting them own
+      // CmdArgsLists data_[0] (e.g. "config vlan default <id>").
+      if (existing->commandHandler && !cmd.commandHandler) {
+        combined.push_back(cmd);
+        continue;
+      }
+    }
+    mergeCommands(existing->subcommands, cmd.subcommands);
+  }
+}
+
+void sortSubcommands(facebook::fboss::Command& cmd) {
+  std::stable_sort(cmd.subcommands.begin(), cmd.subcommands.end());
+  for (auto& child : cmd.subcommands) {
+    sortSubcommands(child);
+  }
+}
+
 } // namespace
 
 using facebook::fboss::CmdSubcommands;
@@ -60,6 +123,17 @@ std::shared_ptr<CmdSubcommands> CmdSubcommands::getInstance() {
 }
 
 namespace facebook::fboss {
+
+CommandTree mergeCommandTrees(const std::vector<CommandTree>& cmdTrees) {
+  CommandTree combined;
+  for (const auto& cmdTree : cmdTrees) {
+    mergeCommands(combined, cmdTree);
+  }
+  for (auto& cmd : combined) {
+    sortSubcommands(cmd);
+  }
+  return combined;
+}
 
 CLI::App* CmdSubcommands::addCommand(
     CLI::App& app,
@@ -108,6 +182,9 @@ CLI::App* CmdSubcommands::addCommand(
       // Config commands: direct dispatch via addCliArg
       auto& args = CmdArgsLists::getInstance()->refAt(depth);
       (*argRegistrar)(*subCmd, args);
+      if (argRegistrar->completeArgs) {
+        argCompleters_[subCmd] = argRegistrar->completeArgs;
+      }
     } else if (auto& argTypeHandler = cmd.argTypeHandler) {
       // Non-config commands: enum-based dispatch via switch
       auto& args = CmdArgsLists::getInstance()->refAt(depth);
@@ -201,17 +278,29 @@ CLI::App* CmdSubcommands::addCommand(
         }
         case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_LINK_DIRECTION: {
           subCmd->add_option(
-              "direction", args, "Link direction - system|line\n");
+              "direction", args, "Link direction (required): system|line\n");
           break;
         }
         case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_FSDB_PATH: {
-          subCmd->add_option(
-              "fsdb_path",
-              args,
-              "Path in fsdb model, delimited and prefixed by slashes (/). Slashes inside keys like port name \n"
-              "need to be escaped (eth2/1/1 -> eth2\\/1\\/1). Ex:\n"
-              "\tstats path - \"/agent/hwPortStats/eth2\\/1\\/1\" -- Note the quotes, otherwise the shell will drop the escape (can double escape without quotes)\n"
-              "\tstate path - /agent/switchState\n");
+          subCmd
+              ->add_option(
+                  "fsdb_path",
+                  args,
+                  "Path in fsdb model, delimited and prefixed by slashes (/). Slashes inside keys like port name \n"
+                  "need to be escaped (eth2/1/1 -> eth2\\/1\\/1). Ex:\n"
+                  "\tstats path - \"/agent/hwPortStats/eth2\\/1\\/1\" -- Note the quotes, otherwise the shell will drop the escape (can double escape without quotes)\n"
+                  "\tstate path - /agent/switchState\n")
+              ->required()
+              ->expected(1)
+              ->check(
+                  CLI::Validator(
+                      [](std::string& path) {
+                        return path.empty() || path.front() != '/' ||
+                                path.find_first_not_of('/') == std::string::npos
+                            ? "FSDB path must start with / and include a publisher root, such as /agent"
+                            : "";
+                      },
+                      "FSDB path"));
           break;
         }
         case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_VIP_INJECTOR_ID: {
@@ -246,9 +335,6 @@ CLI::App* CmdSubcommands::addCommand(
         case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_SWITCH_NAME_LIST:
           subCmd->add_option("switch_name_list", args, "Switch Name(s)");
           break;
-        case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_FAN_PWM:
-          subCmd->add_option("pwm", args, "Fan PWM (0..100) or 'disable'");
-          break;
         case utils::ObjectArgTypeId::OBJECT_ARG_TYPE_MTU:
           subCmd->add_option(
               "mtu",
@@ -269,6 +355,12 @@ CLI::App* CmdSubcommands::addCommand(
     subCmd->require_subcommand();
   }
   return subCmd;
+}
+
+const ArgCompleterFn* FOLLY_NULLABLE
+CmdSubcommands::getArgCompleter(const CLI::App* cmd) const {
+  auto it = argCompleters_.find(cmd);
+  return it == argCompleters_.end() ? nullptr : &it->second;
 }
 
 void CmdSubcommands::addCommandBranch(
@@ -329,17 +421,31 @@ void CmdSubcommands::init(
     CLI::App& app,
     const CommandTree& cmdTree,
     const CommandTree& additionalCmdTree,
-    const std::vector<Command>& specialCmds) {
+    const std::vector<Command>& specialCmds,
+    VerbRegistration verbRegistration) {
   for (const auto& [verb, helpMsg] : kSupportedVerbs()) {
+    if (verbRegistration == VerbRegistration::kOnlyUsed &&
+        !usesVerb(cmdTree, verb) && !usesVerb(additionalCmdTree, verb)) {
+      continue;
+    }
     app.add_subcommand(verb, helpMsg);
   }
 
-  initCommandTree(app, cmdTree);
-  initCommandTree(app, additionalCmdTree);
+  initCommandTree(app, mergeCommandTrees({cmdTree, additionalCmdTree}));
   for (const auto& cmd : specialCmds) {
     std::string fullCmd;
     addCommand(app, cmd, fullCmd, 0);
   }
+}
+
+CommandTree filterReadCommands(CommandTree cmdTree) {
+  pruneWriteCommands(cmdTree);
+  return cmdTree;
+}
+
+std::vector<Command> filterReadCommands(std::vector<Command> cmds) {
+  pruneWriteCommands(cmds);
+  return cmds;
 }
 
 } // namespace facebook::fboss

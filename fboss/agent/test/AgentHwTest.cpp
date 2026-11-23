@@ -16,6 +16,7 @@
 #include "fboss/agent/test/AgentEnsemble.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/ResourceLibUtil.h"
+#include "fboss/agent/test/TestLifecycleNotification.h"
 #include "fboss/agent/test/utils/StatsTestUtils.h"
 #include "fboss/lib/CommonUtils.h"
 
@@ -92,6 +93,8 @@ void AgentHwTest::SetUp() {
        HwSwitch::FeaturesDesired::LINKSCAN_DESIRED |
        HwSwitch::FeaturesDesired::TAM_EVENT_NOTIFY_DESIRED),
       initInfo);
+  notifyHwAgentsOfTestLifecycleEvent(
+      agentEnsemble_.get(), utility::TestLifecycleEvent::AGENT_SETUP_COMPLETE);
 }
 
 void AgentHwTest::setCmdLineFlagOverrides() const {
@@ -149,6 +152,9 @@ void AgentHwTest::tearDownAgentEnsemble(bool doWarmboot) {
   if (!agentEnsemble_) {
     return;
   }
+
+  notifyHwAgentsOfTestLifecycleEvent(
+      agentEnsemble_.get(), utility::TestLifecycleEvent::AGENT_TEARDOWN_START);
 
   if (::testing::Test::HasFailure()) {
     // TODO: Collect Info and dump counters
@@ -642,7 +648,7 @@ void AgentHwTest::applyNewStateImpl(
     StateUpdateFn fn,
     const std::string& name,
     bool transaction) {
-  agentEnsemble_->applyNewState(fn, name, transaction);
+  agentEnsemble_->applyNewState(std::move(fn), name, transaction);
 }
 
 cfg::SwitchConfig AgentHwTest::addCoppConfig(

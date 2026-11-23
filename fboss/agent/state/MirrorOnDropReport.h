@@ -25,7 +25,7 @@ class MirrorOnDropReport : public ThriftStructNode<
 
   MirrorOnDropReport(
       const std::string& name,
-      PortID mirrorPortId,
+      std::optional<PortID> mirrorPortId,
       folly::IPAddress localSrcIp,
       int16_t localSrcPort,
       folly::IPAddress collectorIp,
@@ -43,7 +43,7 @@ class MirrorOnDropReport : public ThriftStructNode<
       std::optional<int32_t> aggregateDropPacketRateThreshold = std::nullopt);
 
   std::string getID() const;
-  PortID getMirrorPortId() const;
+  std::optional<PortID> getMirrorPortId() const;
   void setMirrorPortId(PortID portId);
   folly::IPAddress getLocalSrcIp() const;
   int16_t getLocalSrcPort() const;

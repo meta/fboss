@@ -518,6 +518,30 @@ class SwitchStats : public boost::noncopyable, public ThriftCallDurationLogger {
     return getCumulativeValue(macTableUpdateFailure_);
   }
 
+  void l2LearnPortLimitDrop() {
+    l2LearnPortLimitDrops_.addValue(1);
+  }
+
+  int64_t getL2LearnPortLimitDrops() const {
+    return getCumulativeValue(l2LearnPortLimitDrops_);
+  }
+
+  void l2LearnPortLimitErrorDisable() {
+    l2LearnPortLimitErrorDisables_.addValue(1);
+  }
+
+  int64_t getL2LearnPortLimitErrorDisables() const {
+    return getCumulativeValue(l2LearnPortLimitErrorDisables_);
+  }
+
+  void neighborStaticMacReaddRejected() {
+    neighborStaticMacReaddRejected_.addValue(1);
+  }
+
+  int64_t getNeighborStaticMacReaddRejected() const {
+    return getCumulativeValue(neighborStaticMacReaddRejected_);
+  }
+
   void fwDrainedWithHighNumActiveFabricLinks() {
     fwDrainedWithHighNumActiveFabricLinks_.addValue(1);
   }
@@ -682,6 +706,11 @@ class SwitchStats : public boost::noncopyable, public ThriftCallDurationLogger {
 
   void hwAgentRxBadPktReceived(int switchIndex) {
     thriftStreamConnectionStatus_[switchIndex].rxBadPktReceived();
+  }
+
+  void hwAgentSwitchReachabilityChangeEventReceived(int switchIndex) {
+    thriftStreamConnectionStatus_[switchIndex]
+        .switchReachabilityChangeEventReceived();
   }
 
   void dsfSessionGrExpired() {
@@ -1232,6 +1261,13 @@ class SwitchStats : public boost::noncopyable, public ThriftCallDurationLogger {
   TLTimeseries neighborTableUpdateFailure_;
 
   TLTimeseries macTableUpdateFailure_;
+
+  // Learn events dropped for ports at their MAC limit or error-disabled.
+  TLTimeseries l2LearnPortLimitDrops_;
+  // Alerting key for ports error-disabled for exceeding their MAC limit.
+  TLTimeseries l2LearnPortLimitErrorDisables_;
+  // Neighbor static MACs not re-added because they didn't fit.
+  TLTimeseries neighborStaticMacReaddRejected_;
 
   TLTimeseries fwDrainedWithHighNumActiveFabricLinks_;
 

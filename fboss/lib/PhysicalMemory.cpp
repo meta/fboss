@@ -12,8 +12,8 @@
 #include <cstdint>
 
 #include <fmt/format.h>
+#include <folly/Exception.h>
 #include <folly/File.h>
-#include <folly/Format.h>
 #include <folly/logging/xlog.h>
 
 #include <sys/mman.h>
@@ -48,7 +48,7 @@ PhysicalMemory::PhysicalMemory(uint64_t phyAddr, uint32_t size, bool mustLock)
   // across exec.
   lockFile_ = folly::File(lockFN, O_CREAT | O_WRONLY | O_NOFOLLOW | O_CLOEXEC);
   auto locked = lockFile_.try_lock();
-  XLOG(DBG1) << folly::format(
+  XLOG(DBG1) << fmt::format(
       "{} to acquire lock, {}({})",
       (locked) ? "Success" : "Fail",
       lockFN,
@@ -81,10 +81,10 @@ void PhysicalMemory::mmap() {
     auto errnoCopy = errno;
     folly::throwSystemErrorExplicit(
         errnoCopy,
-        folly::sformat("Cannot mmap {:#x} with size {:#x}", phyAddr_, size_));
+        fmt::format("Cannot mmap {:#x} with size {:#x}", phyAddr_, size_));
   }
 
-  XLOG(DBG1) << folly::format(
+  XLOG(DBG1) << fmt::format(
       "Mapped physical memory {:#x} with size {:#x} into {:#x}",
       phyAddr_,
       size_,
@@ -93,7 +93,7 @@ void PhysicalMemory::mmap() {
 
 void PhysicalMemory::munmap() noexcept {
   if (virtAddr_) {
-    XLOG(DBG1) << folly::format(
+    XLOG(DBG1) << fmt::format(
         "unmapping @ {:#x} with size {:#x}",
         reinterpret_cast<uint64_t>(virtAddr_),
         size_);

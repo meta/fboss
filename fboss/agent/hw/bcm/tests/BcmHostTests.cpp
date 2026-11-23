@@ -231,8 +231,7 @@ class BcmHostTest : public BcmTest {
   BcmHostIf* getExistingBcmHost(
       InterfaceID intfID,
       folly::IPAddress ipAddress) {
-    const BcmIntf* intf = getHwSwitch()->getIntfTable()->getBcmIntf(intfID);
-    bcm_vrf_t vrf = BcmSwitch::getBcmVrfId(intf->getInterface()->getRouterID());
+    bcm_vrf_t vrf = BcmSwitch::getBcmVrfId(RouterID(0));
     if (getHwSwitch()->getPlatform()->getAsic()->isSupported(
             HwAsic::Feature::HOSTTABLE)) {
       return getHwSwitch()->getHostTable()->getBcmHostIf(
@@ -307,10 +306,7 @@ TEST_F(BcmHostTest, DeleteV4AndV6L3Host) {
 
 TEST_F(BcmHostTest, HostRouteLookupClassNotSet) {
   if (!getPlatform()->canUseHostTableForHostRoutes()) {
-#if defined(GTEST_SKIP)
     GTEST_SKIP();
-#endif
-    return;
   }
   std::array<std::pair<CIDRNetwork, IPAddress>, 2> networkAndNexthops = {
       std::make_pair(

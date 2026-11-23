@@ -23,6 +23,51 @@ class CmdHelpTestFixture : public CmdHandlerTestBase {
   }
 };
 
+TEST_F(CmdHelpTestFixture, OrdersSubcommandsAcrossCommandTrees) {
+  const CommandTree base = {
+      {"show", "object", "Show object", {{"zulu", "Zulu command", {}}}}};
+  const CommandTree additional = {
+      {"show", "object", "Show object", {{"alpha", "Alpha command", {}}}}};
+  std::stringstream ss;
+
+  CmdHelp({base, additional}).printHelpInfo("object", ss);
+
+  const auto help = ss.str();
+  ASSERT_NE(help.find("|---alpha:"), std::string::npos);
+  ASSERT_NE(help.find("|---zulu:"), std::string::npos);
+  EXPECT_LT(help.find("|---alpha:"), help.find("|---zulu:"));
+}
+
+TEST_F(CmdHelpTestFixture, MergesNestedHelpBranches) {
+  const CommandTree base = {
+      {"show",
+       "object",
+       "Show object",
+       {{"parent",
+         "Parent help",
+         [] {},
+         [] { return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE; },
+         [] { return std::vector<utils::LocalOption>{{"--mode", "Mode"}}; },
+         {{"zulu", "Zulu command", {}}}}}}};
+  const CommandTree additional = {
+      {"show",
+       "object",
+       "Show object",
+       {{"parent", "Parent help", {{"alpha", "Alpha command", {}}}}}}};
+  std::stringstream ss;
+
+  CmdHelp({base, additional}).printHelpInfo("object", ss);
+
+  const auto help = ss.str();
+  const auto parent = help.find("|---parent:");
+  ASSERT_NE(parent, std::string::npos);
+  EXPECT_EQ(help.find("|---parent:", parent + 1), std::string::npos);
+  EXPECT_THAT(help, HasSubstr("--mode"));
+  ASSERT_NE(help.find("|---alpha:"), std::string::npos);
+  ASSERT_NE(help.find("|---zulu:"), std::string::npos);
+  EXPECT_LT(help.find("|---alpha:"), help.find("|---zulu:"));
+}
+
 // Performs test for all commands and all cases.
 TEST_F(CmdHelpTestFixture, CmdHelpTest) {
   std::stringstream ss;

@@ -162,8 +162,14 @@ TEST_F(PlatformManagerHwTest, PmExplorationStatusTransitions) {
 }
 
 TEST_F(PlatformManagerHwTest, Symlinks) {
-  fs::remove_all("/run/devmap");
-  EXPECT_FALSE(fs::exists("/run/devmap"));
+  // /run/devmap is a bind mount in platform_manager's NetOS environment, so it
+  // can only be emptied, not removed.
+  if (fs::exists("/run/devmap")) {
+    for (const auto& entry : fs::directory_iterator("/run/devmap")) {
+      fs::remove_all(entry.path());
+    }
+    EXPECT_TRUE(fs::is_empty("/run/devmap"));
+  }
   explorationOk();
   for (const auto& [symlink, devicePath] :
        *platformConfig_.symbolicLinkToDevicePath()) {

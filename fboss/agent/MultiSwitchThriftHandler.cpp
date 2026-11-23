@@ -234,6 +234,8 @@ MultiSwitchThriftHandler::co_notifySwitchReachabilityChangeEvent(
                      gen.next())) {
             XLOG(DBG2) << "Got switch reachability change event from switch "
                        << switchId;
+            sw_->stats()->hwAgentSwitchReachabilityChangeEventReceived(
+                switchIndex);
             processSwitchReachabilityChangeEvent(SwitchID(switchId), *item);
           }
         } catch (const std::exception& e) {

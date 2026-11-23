@@ -60,6 +60,8 @@ class BgpAsPathListConfig : public utils::BaseObjectArgType<std::string> {
 // one-entry change. Mirrors CmdConfigProtocolBgpPolicyRoutingPolicy, whose
 // nested level (term / entry) is likewise its own subcommand.
 struct CmdConfigProtocolBgpPolicyAsPathListTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigProtocolBgpPolicy;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     // Stops CLI11 from classifying attribute tokens as subcommands once the

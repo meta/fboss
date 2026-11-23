@@ -100,6 +100,17 @@ void validateSpec(const ConfigGenerationSpec& spec) {
       if (asicConfigVariant && asicConfigVariant->empty()) {
         throw FbossError("Config option asicConfigVariant must not be empty");
       }
+      const auto linkTopologyVariant =
+          option.linkTopologyVariant().to_optional();
+      if (linkTopologyVariant && linkTopologyVariant->empty()) {
+        throw FbossError("Config option linkTopologyVariant must not be empty");
+      }
+      const auto platformMappingVariant =
+          option.platformMappingVariant().to_optional();
+      if (platformMappingVariant && platformMappingVariant->empty()) {
+        throw FbossError(
+            "Config option platformMappingVariant must not be empty");
+      }
       if (!uniqueOptions.emplace(profile, variant).second) {
         throw FbossError(
             "Duplicate config option for ",

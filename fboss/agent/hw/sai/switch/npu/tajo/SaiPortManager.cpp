@@ -19,6 +19,13 @@ bool SaiPortManager::checkPortSerdesAttributes(
         (std::get<std::optional<std::decay_t<decltype(type)>>>(attrs1)) ==
         (std::get<std::optional<std::decay_t<decltype(type)>>>(attrs2)));
   };
+  auto checkSerdesAttributeIfSet =
+      [&checkSerdesAttribute](
+          const auto& type, auto& desired, auto& current) -> bool {
+    return !std::get<std::optional<std::decay_t<decltype(type)>>>(desired)
+                .has_value() ||
+        checkSerdesAttribute(type, desired, current);
+  };
   return (
       (std::get<SaiPortSerdesTraits::Attributes::PortId>(fromStore) ==
        std::get<SaiPortSerdesTraits::Attributes::PortId>(fromSwPort)) &&
@@ -34,19 +41,19 @@ bool SaiPortManager::checkPortSerdesAttributes(
           SaiPortSerdesTraits::Attributes::TxFirPost1{},
           fromSwPort,
           fromStore)) &&
-      (checkSerdesAttribute(
+      (checkSerdesAttributeIfSet(
           SaiPortSerdesTraits::Attributes::RxCtleCode{},
           fromSwPort,
           fromStore)) &&
-      (checkSerdesAttribute(
+      (checkSerdesAttributeIfSet(
           SaiPortSerdesTraits::Attributes::RxDspMode{},
           fromSwPort,
           fromStore)) &&
-      (checkSerdesAttribute(
+      (checkSerdesAttributeIfSet(
           SaiPortSerdesTraits::Attributes::RxAfeTrim{},
           fromSwPort,
           fromStore)) &&
-      (checkSerdesAttribute(
+      (checkSerdesAttributeIfSet(
           SaiPortSerdesTraits::Attributes::RxAcCouplingByPass{},
           fromSwPort,
           fromStore)));

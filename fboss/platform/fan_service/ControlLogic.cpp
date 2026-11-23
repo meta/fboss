@@ -206,7 +206,7 @@ std::tuple<bool, int, uint64_t, bool> ControlLogic::readFanRpm(const Fan& fan) {
 }
 
 void ControlLogic::updateTargetPwm(const Sensor& sensor, int numFanFailed) {
-  int16_t targetPwm{0};
+  float targetPwm{0};
   TempToPwmMap tableToUse;
   auto& readCache = sensorReadCaches_[*sensor.sensorName()];
   const auto& pwmCalcType = *sensor.pwmCalcType();
@@ -319,7 +319,7 @@ int ControlLogic::updateOpticsPwms(SensorData& sensorData) {
     }
     readAnyOpticData = true;
 
-    int aggOpticPwm = 0;
+    float aggOpticPwm = 0;
     const auto& aggregationType = *optic.aggregationType();
 
     if (aggregationType != constants::OPTIC_AGGREGATION_TYPE_MAX() &&
@@ -340,7 +340,7 @@ int ControlLogic::updateOpticsPwms(SensorData& sensorData) {
         }
       }
 
-      int pwmForThis = 0;
+      float pwmForThis = 0;
       bool profileFound = true;
 
       if (aggregationType == constants::OPTIC_AGGREGATION_TYPE_MAX()) {
@@ -485,10 +485,7 @@ bool ControlLogic::isFanPresentInDevice(const Fan& fan) {
   return fanPresent;
 }
 
-bool ControlLogic::programFan(
-    const Zone& zone,
-    const Fan& fan,
-    int16_t fanPwm) {
+bool ControlLogic::programFan(const Zone& zone, const Fan& fan, float fanPwm) {
   bool writeSuccess{false};
 
   int pwmRawValue = static_cast<int>(
@@ -549,12 +546,12 @@ void ControlLogic::programLed(const Fan& fan, bool fanFailed) {
       fmt::format(kLedWriteFailure, *fan.fanName()), !ret);
 }
 
-int16_t ControlLogic::calculateZonePwm(const Zone& zone, bool boostMode) {
+float ControlLogic::calculateZonePwm(const Zone& zone, bool boostMode) {
   auto zoneType = *zone.zoneType();
-  int16_t zonePwm{0};
+  float zonePwm{0};
   int totalPwmConsidered{0};
   for (const auto& sensorName : *zone.sensorNames()) {
-    int16_t pwmForThisSensor;
+    float pwmForThisSensor;
     if (sensorReadCaches_.find(sensorName) != sensorReadCaches_.end()) {
       pwmForThisSensor = sensorReadCaches_[sensorName].targetPwmCache;
     } else if (opticReadCaches_.find(sensorName) != opticReadCaches_.end()) {
@@ -577,7 +574,7 @@ int16_t ControlLogic::calculateZonePwm(const Zone& zone, bool boostMode) {
     zonePwm /= totalPwmConsidered;
   }
   if (boostMode) {
-    zonePwm = std::max(zonePwm, *config_.pwmBoostValue());
+    zonePwm = std::max(zonePwm, static_cast<float>(*config_.pwmBoostValue()));
   }
 
   XLOG(INFO) << fmt::format(
@@ -599,7 +596,7 @@ void ControlLogic::setTransitionValue() {
         if (!zoneFans.contains(*fan.fanName())) {
           continue;
         }
-        int16_t fanPwm = *config_.pwmTransitionValue();
+        float fanPwm = *config_.pwmTransitionValue();
         bool fanFailed = programFan(zone, fan, fanPwm);
 
         for (auto& [key, pidLogic] : pidLogics_) {
@@ -757,7 +754,7 @@ void ControlLogic::updateControl(std::shared_ptr<SensorData> pS) {
   bool hasAnyPwmFailure{false};
   fanStatuses_.withWLock([&](auto& fanStatuses) {
     for (const auto& zone : *config_.zones()) {
-      int16_t zonePwm = calculateZonePwm(zone, boostMode_);
+      float zonePwm = calculateZonePwm(zone, boostMode_);
       std::unordered_set<std::string> zoneFans(
           zone.fanNames()->begin(), zone.fanNames()->end());
       for (const auto& fan : *config_.fans()) {
@@ -765,7 +762,7 @@ void ControlLogic::updateControl(std::shared_ptr<SensorData> pS) {
           continue;
         }
 
-        int16_t fanPwm = calculateFanPwm(
+        float fanPwm = calculateFanPwm(
             *zone.slope(),
             *fanStatuses[*fan.fanName()].pwmToProgram(),
             zonePwm);
@@ -791,29 +788,25 @@ void ControlLogic::updateControl(std::shared_ptr<SensorData> pS) {
   });
 }
 
-int16_t ControlLogic::calculateFanPwm(
+float ControlLogic::calculateFanPwm(
     uint16_t slope,
-    int16_t currentFanPwm,
-    int16_t zonePwm) {
-  int16_t newFanPwm = zonePwm;
+    float currentFanPwm,
+    float zonePwm) {
+  float newFanPwm = zonePwm;
   if ((slope == 0) || (currentFanPwm == 0)) {
     newFanPwm = zonePwm;
   } else if (std::abs(currentFanPwm - zonePwm) > slope) {
     newFanPwm = currentFanPwm + ((zonePwm > currentFanPwm) ? slope : -slope);
   }
 
-  newFanPwm = std::min(newFanPwm, *config_.pwmUpperThreshold());
-  newFanPwm = std::max(newFanPwm, *config_.pwmLowerThreshold());
-
-  std::optional<int> fanHoldPwm = fanHoldPwm_.load();
-  if (fanHoldPwm.has_value()) {
-    newFanPwm = fanHoldPwm.value();
-    XLOG(INFO) << "Using hold PWM " << newFanPwm;
-  }
+  newFanPwm =
+      std::min(newFanPwm, static_cast<float>(*config_.pwmUpperThreshold()));
+  newFanPwm =
+      std::max(newFanPwm, static_cast<float>(*config_.pwmLowerThreshold()));
   return newFanPwm;
 }
 
-void ControlLogic::updatePwmState(const Zone& zone, int16_t fanPwm) {
+void ControlLogic::updatePwmState(const Zone& zone, float fanPwm) {
   for (const auto& sensorName : *zone.sensorNames()) {
     if (pidLogics_.find(sensorName) != pidLogics_.end()) {
       pidLogics_.at(sensorName)->updateLastPwm(fanPwm);
@@ -830,14 +823,6 @@ void ControlLogic::updatePwmState(const Zone& zone, int16_t fanPwm) {
       }
     }
   }
-}
-
-void ControlLogic::setFanHold(std::optional<int> pwm) {
-  fanHoldPwm_.store(pwm);
-}
-
-std::optional<int> ControlLogic::getFanHold() {
-  return fanHoldPwm_.load();
 }
 
 } // namespace facebook::fboss::platform::fan_service

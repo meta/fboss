@@ -34,12 +34,12 @@ class UtilsTest : public ::testing::Test {
 };
 
 TEST_F(UtilsTest, getIP) {
-  EXPECT_NO_THROW(getAnyIntfIP(sw->getState()));
+  EXPECT_NO_THROW(getAnyIntfIP(sw->getState(), RouterID(0)));
   EXPECT_NO_THROW(getSwitchIntfIP(sw->getState(), InterfaceID(1)));
 }
 
 TEST_F(UtilsTest, getIPv6) {
-  EXPECT_NO_THROW(getAnyIntfIPv6(sw->getState()));
+  EXPECT_NO_THROW(getAnyIntfIPv6(sw->getState(), RouterID(0)));
   EXPECT_NO_THROW(getSwitchIntfIPv6(sw->getState(), InterfaceID(1)));
 }
 
@@ -92,17 +92,15 @@ TEST_F(UtilsAggregatePortInterfaceTest, getPortsForInterface) {
   }
 }
 
-TEST_F(UtilsAggregatePortInterfaceTest, getInterfacePortToReach) {
-  // An address on the aggregate's subnet is reached over one of its members,
-  // rather than over a port the interface is not bound to.
-  for (const auto& addr :
-       {folly::IPAddress("2601:db00:2110:3100::2"),
-        folly::IPAddress("100.0.100.2")}) {
-    auto port = getInterfacePortToReach(sw->getState(), addr);
-    ASSERT_TRUE(port.has_value()) << "no port to reach " << addr;
-    EXPECT_TRUE(isMember(*port))
-        << addr << " reached over non member port " << *port;
-  }
+TEST_F(UtilsAggregatePortInterfaceTest, getInterfacePort) {
+  // The aggregate's interface is reached over one of its members, rather than
+  // over a port the interface is not bound to.
+  auto state = sw->getState();
+  auto intf =
+      state->getInterfaces()->getNode(InterfaceID(kAggregatePortInterfaceID));
+  auto port = getInterfacePort(state, intf);
+  ASSERT_TRUE(port.has_value());
+  EXPECT_TRUE(isMember(*port)) << "reached over non member port " << *port;
 }
 
 TEST_F(UtilsAggregatePortInterfaceTest, getInterfaceIDForPort) {

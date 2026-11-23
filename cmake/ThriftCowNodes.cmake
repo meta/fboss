@@ -14,7 +14,7 @@ set_target_properties(thrift_cow_serializer PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(thrift_cow_serializer
   fsdb_oper_cpp2
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(
@@ -39,5 +39,5 @@ target_link_libraries(thrift_cow_nodes
   thrift_cow_visitors
   fsdb_oper_cpp2
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )

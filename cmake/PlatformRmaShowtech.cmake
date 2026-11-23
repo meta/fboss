@@ -3,13 +3,19 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
-add_fbthrift_cpp_library(
+add_library(showtech_config_cpp2)
+thrift_generate(
   showtech_config_cpp2
   fboss/platform/rma-showtech/showtech_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(showtech_config_cpp2 PUBLIC ${PROJECT_BINARY_DIR})
 
 add_executable(rma-showtech
   fboss/platform/rma-showtech/FanImpl.cpp

@@ -17,6 +17,8 @@
 namespace facebook::fboss {
 
 struct CmdConfigDhcpReplySourceOverrideTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigDhcp;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     // `expected(2)` prevents CLI11 from treating the second token as a

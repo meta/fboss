@@ -211,8 +211,8 @@ thrift_library(
 thrift_library(
     name = "agent_stats",
     cpp2_deps = [
-        "//folly/container:f14_hash",
-        "//folly:fbstring",
+        "fbsource//xplat/folly/container:f14_hash",
+        "fbsource//xplat/folly:fbstring",
     ],
     go_thrift_namespaces = {
         "agent_stats.thrift": "neteng.fboss.agent_stats",
@@ -256,7 +256,7 @@ cpp_library(
         "Constants.h",
     ],
     exported_deps = [
-        "//folly:range",
+        "fbsource//xplat/folly:range",
     ],
 )
 
@@ -271,6 +271,7 @@ cpp_library(
         "facebook/SetupThrift.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":load_agent_config",
         "//common/services/cpp:thrift_acl_checker_module_config",
         "//common/services/cpp:thrift_aclchecker_handler_factory",
@@ -281,13 +282,12 @@ cpp_library(
         "//fboss/lib/thrift_service_client:thrift-service-client",
         "//fboss/platform/helpers:platform_thrift_acceptor",
         "//fboss/platform/helpers:platform_thrift_acceptor_util",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/async:multiplex_async_processor",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/io/async:async_base",
         "//common/thrift/cpp/server:profiling_connection_handler",
-        "//folly:network_address",
-        "//folly/io/async:async_base",
         "//thrift/lib/cpp2:server",
         "//thrift/lib/cpp2/async:pooled_request_channel",
         "//thrift/lib/cpp2/async:rocket_client_channel",
@@ -313,12 +313,12 @@ cpp_library(
         "facebook/FbossInit.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":fboss_init_h",
         "//common/fbwhoami:fb_who_am_i",
         "//common/init:init",
         "//common/services/cpp:build_values",
         "//fb303:logging",
-        "//folly/logging:logging",
     ],
     exported_deps = [],
     external_deps = [("openssl", None, "crypto")],
@@ -338,7 +338,7 @@ cpp_library(
         "CommonInit.h",
     ],
     exported_deps = [
-        "//folly/io/async:async_signal_handler",
+        "fbsource//xplat/folly/io/async:async_signal_handler",
     ],
 )
 
@@ -352,19 +352,19 @@ cpp_library(
         "CommonInit.h",
     ],
     deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly/logging:logging",
         ":fboss_init_h",
         ":load_agent_config",
         "//common/base:build_info",
         "//common/config:config",
         "//fb303:service_data",
         "//fboss/facebook/bitsflow:bitsflow_helper",
-        "//folly:conv",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io/async:async_signal_handler",
         ":agent_features",
         ":fboss_init",  # @manual
-        "//folly/io/async:async_signal_handler",
     ],
     external_deps = ["gflags"],
     exported_external_deps = [
@@ -382,7 +382,7 @@ cpp_library(
         "Main.h",
     ],
     undefined_symbols = True,
-    deps = ["//folly/logging:init"],
+    deps = ["fbsource//xplat/folly/logging:init"],
     exported_deps = [
         ":agent_initializer_h",
     ],
@@ -401,40 +401,11 @@ cpp_library(
         "Main.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/logging:init",
         ":agent_initializer_h",
         ":fboss_common_init",
         "//fboss/agent/facebook:bcm_version",  # @manual
         "//fboss/agent/facebook:version_h",
-        "//folly/logging:init",
-    ],
-)
-
-cpp_library(
-    name = "fake_main",
-    srcs = [
-        "CommonInit.cpp",
-        "Main.cpp",
-    ],
-    headers = [
-        "CommonInit.h",
-        "Main.h",
-    ],
-    deps = [
-        ":fboss_init_h",
-        ":load_agent_config",
-        "//fb303:service_data",
-        "//folly/logging:init",
-        "//folly/logging:logging",
-    ],
-    exported_deps = [
-        ":agent_features",
-        ":agent_initializer_h",
-        "//folly/io/async:async_signal_handler",
-        "//neteng/fboss/emulation:main",  # @manual
-    ],
-    external_deps = ["gflags"],
-    exported_external_deps = [
-        "gflags",
     ],
 )
 
@@ -482,8 +453,8 @@ cpp_library(
         ":voq_constants",
     ],
     exported_deps = [
-        ":agent_config-cpp2-types",
-        ":switch_config-cpp2-types",
+        ":agent_config-cpp2-serialization",
+        ":switch_config-cpp2-serialization",
         "//fboss/agent/hw/switch_asics:switch_asics",
     ],
 )
@@ -499,15 +470,15 @@ cpp_library(
     deps = [
         ":fboss-error",
         ":load_agent_config",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/logging:logging",
         ":fboss-types",
-        ":platform_config-cpp2-types",
-        ":switch_state-cpp2-types",
-        "//fboss/agent/if:ctrl-cpp2-types",
-        "//folly:range",
-        "//folly/logging:logging",
+        ":platform_config-cpp2-serialization",
+        ":switch_state-cpp2-serialization",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
     ],
 )
 
@@ -527,15 +498,15 @@ cpp_library(
         "VoqUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent/state:state",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         ":agent_features",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         ":voq_constants",
         "//fboss/agent/hw/switch_asics:switch_asics",
-        "//folly:network_address",
     ],
     exported_external_deps = [
         ("boost", None, "boost_container"),
@@ -551,13 +522,13 @@ cpp_library(
         "RemoteIntfRouteAuditor.h",
     ],
     deps = [
+        "fbsource//xplat/folly/container:f14_hash",
+        "fbsource//xplat/folly/logging:logging",
         ":fib_helpers",
         "//fboss/agent:stats",
         "//fboss/agent/rib:fib_updater",
         "//fboss/agent/rib:standalone_rib",
         "//fboss/agent/state:state",
-        "//folly/container:f14_hash",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":voq_utils",
@@ -573,8 +544,8 @@ cpp_library(
         "AddressUtil.h",
     ],
     exported_deps = [
-        "//common/network/if:if-cpp2-types",
-        "//folly:network_address",
+        "fbsource//xplat/folly:network_address",
+        "//common/network/if:if-cpp2-serialization",
     ],
 )
 
@@ -587,12 +558,12 @@ cpp_library(
         "PacketObserver.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":fboss-error",
-        "//folly/logging:logging",
     ],
     exported_deps = [
-        "//folly:spin_lock",
-        "//folly:synchronized",
+        "fbsource//xplat/folly:spin_lock",
+        "fbsource//xplat/folly:synchronized",
     ],
     exported_external_deps = [
         "boost",
@@ -608,12 +579,12 @@ cpp_library(
         "L2LearnEventObserver.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":fboss-error",
-        "//folly/logging:logging",
     ],
     exported_deps = [
-        "//folly:spin_lock",
-        "//folly:synchronized",
+        "fbsource//xplat/folly:spin_lock",
+        "fbsource//xplat/folly:synchronized",
     ],
     exported_external_deps = [
         "boost",
@@ -624,7 +595,7 @@ cpp_library(
     name = "enum_utils",
     headers = ["EnumUtils.h"],
     exported_deps = [
-        "//folly/logging:logging",
+        "fbsource//xplat/folly/logging:logging",
         "//thrift/lib/cpp/util:enum_utils",
     ],
 )
@@ -652,8 +623,8 @@ cpp_library(
     ],
     deps = ["//thrift/lib/cpp2/protocol:protocol"],
     exported_deps = [
-        "//fboss/agent/hw:hardware_stats-cpp2-types",
-        "//fboss/lib/phy:phy-cpp2-types",
+        "//fboss/agent/hw:hardware_stats-cpp2-serialization",
+        "//fboss/lib/phy:phy-cpp2-serialization",
     ],
 )
 
@@ -672,9 +643,13 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:subprocess",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/system:thread_name",
         ":asic_utils",
         ":fboss-error",
         ":fsdb_helper",
+        ":switch_config-cpp2-serialization",
         ":switch_config-cpp2-types",
         ":switchid_scope_resolver",
         "//common/network:util",
@@ -682,25 +657,25 @@ cpp_library(
         "//fboss/agent/platforms/common/janga800bic:janga800bic_platform_mapping",
         "//fboss/agent/platforms/common/meru800bfa:meru800bfa_platform_mapping",
         "//fboss/agent/platforms/common/meru800bia:meru800bia_platform_mapping",
-        "//folly:subprocess",
-        "//folly/json:dynamic",
-        "//folly/system:thread_name",
         "//thrift/lib/cpp/util:enum_utils",
         "//thrift/lib/cpp2:field_ref",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/lang:bits",
+        "fbsource//xplat/folly/logging:logging",
         ":agent_features",
         ":fboss-types",
         ":hwswitch_matcher",
+        ":switch_state-cpp2-serialization",
         ":switch_state-cpp2-types",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/if:ctrl-cpp2-types",
         "//fboss/agent/state:state",
+        "//fboss/fsdb/if:fsdb_oper-cpp2-serialization",
         "//fboss/fsdb/if:fsdb_oper-cpp2-types",
-        "//folly:file_util",
-        "//folly:network_address",
-        "//folly:range",
-        "//folly/lang:bits",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_external_deps = [
@@ -720,16 +695,16 @@ cpp_library(
         "LacpTypes-defs.h",
     ],
     deps = [
-        "//fboss/agent/if:ctrl-cpp2-types",
-        "//folly:conv",
+        "fbsource//xplat/folly:conv",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/json:dynamic",
         ":fboss-error",
-        ":switch_state-cpp2-types",
-        "//folly:network_address",
-        "//folly:range",
-        "//folly/io:iobuf",
-        "//folly/json:dynamic",
+        ":switch_state-cpp2-serialization",
     ],
 )
 
@@ -755,17 +730,17 @@ cpp_library(
         "PacketStreamHandler.h",
     ],
     deps = [
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/logging:logging",
         ":core",
         ":fboss-types",
         "//fboss/agent/state:state",
-        "//folly/io:iobuf",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:synchronized",
         ":packet",
         "//fb303:thread_cached_service_data",
         "//fboss/agent/thrift_packet_stream:packet_stream_server",
-        "//folly:synchronized",
     ],
 )
 
@@ -786,22 +761,22 @@ cpp_library(
         "SwitchStats.h",
     ],
     deps = [
+        "fbsource//xplat/folly:memory",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:utility",
+        "fbsource//xplat/folly/logging:logging",
         "//fb303:service_data",
         "//fboss/agent/state:state",
-        "//folly:memory",
-        "//folly:range",
-        "//folly:utility",
-        "//folly/logging:logging",
     ],
     exported_deps = [
-        ":agent_stats-cpp2-types",
+        "fbsource//xplat/folly/concurrency:concurrent_hash_map",
+        ":agent_stats-cpp2-serialization",
         ":fboss-types",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         "//fb303:thread_cached_service_data",
         "//fb303/detail:quantile_stat_wrappers",
         "//fboss/lib:common_utils",
         "//fboss/lib:thrift_call_duration_logger",
-        "//folly/concurrency:concurrent_hash_map",
     ],
     exported_external_deps = [
         "boost",
@@ -816,19 +791,22 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/gen:base",
         ":asic_utils",
         ":buffer_utils",
+        ":constants",
         ":core",
         ":fboss-error",
         ":loadbalancer_utils",
         ":pfc_utils",
         ":route_update_wrapper",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         ":switchid_scope_resolver",
         ":switchinfo_utils",
         ":voq_utils",
         "//fboss/agent/hw/switch_asics:switch_asics",
-        "//fboss/agent/if:mpls-cpp2-types",
+        "//fboss/agent/if:mpls-cpp2-serialization",
         "//fboss/agent/platforms/common:platform_mapping",
         "//fboss/agent/rib:fib_updater",
         "//fboss/agent/rib:network_to_route_map",
@@ -836,14 +814,12 @@ cpp_library(
         "//fboss/agent/rib:standalone_rib",
         "//fboss/lib/config:fboss_config_utils",
         "//fboss/thrift_cow/nodes:nodes",
-        "//folly:file_util",
-        "//folly/gen:base",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
         ":agent_features",
         ":utils",
         "//fboss/agent/state:state",
-        "//folly:range",
     ],
     external_deps = [("boost", None, "boost_container")],
     exported_external_deps = [
@@ -861,7 +837,7 @@ cpp_library(
         "//fboss/agent/state:state",
         "//fboss/lib/link_snapshots:async_filewriter_factory",
         "//fboss/lib/link_snapshots:snapshot_manager",
-        "//fboss/lib/phy:phy-cpp2-types",
+        "//fboss/lib/phy:phy-cpp2-serialization",
     ],
 )
 
@@ -869,6 +845,7 @@ cpp_library(
     name = "fsdb_adapted_sub_manager",
     srcs = [
         "FsdbAdaptedCowStorage.cpp",
+        "FsdbAdaptedCowStoragePatch.cpp",
         "FsdbAdaptedSubManager.cpp",
         "FsdbAdaptedTemplateInstantiations.cpp",
     ],
@@ -879,13 +856,13 @@ cpp_library(
         "FsdbAdaptedTemplateInstantiations.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:fbstring",
         "//fboss/agent/state:state",
         "//fboss/fsdb/client:fsdb_sub_manager",
-        "//fboss/fsdb/if:fsdb_common-cpp2-types",
+        "//fboss/fsdb/if:fsdb_common-cpp2-serialization",
         "//fboss/fsdb/if:fsdb_model",
         "//fboss/thrift_cow/nodes:serializer",
         "//fboss/thrift_cow/storage:cow_storage",
-        "//folly:fbstring",
     ],
 )
 
@@ -918,10 +895,10 @@ cpp_library(
     ],
     deps = ["//fboss/agent/rib:standalone_rib"],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         ":agent_features",
         ":fboss-types",
         "//fboss/agent/state:state",
-        "//folly:network_address",
     ],
 )
 
@@ -968,9 +945,28 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:synchronized",
         ":fboss-types",
         "//fboss/agent/state:state",
-        "//folly:synchronized",
+    ],
+)
+
+cpp_library(
+    # @autodeps-skip HwAsicTable.h is compiled by both a dedicated target
+    # (:hw_asic_table) and :core; autodeps2 resolves the include to :core,
+    # which cycles back through :core. Keep the acyclic dedicated target.
+    name = "acl_resource_accountant",
+    srcs = [
+        "AclResourceAccountant.cpp",
+    ],
+    headers = [
+        "AclResourceAccountant.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly/logging:logging",
+        ":agent_features",
+        ":hw_asic_table",
+        "//fboss/agent/state:state",
     ],
 )
 
@@ -983,12 +979,17 @@ cpp_library(
         "PbrAclManager.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
+        ":agent_features",
         ":fboss-error",
+        ":fib_helpers",
         ":hwswitch_matcher",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         "//fboss/agent/state:nodebase",
+    ],
+    exported_deps = [
+        ":fboss-types",
         "//fboss/agent/state:state",
-        "//folly/logging:logging",
     ],
 )
 
@@ -1001,13 +1002,13 @@ cpp_library(
         "StateDeltaLogger.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/agent/state:state",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":agent_features",
         ":async_logger_base",
-        "//fboss/fsdb/if:fsdb_oper-cpp2-types",
+        "//fboss/fsdb/if:fsdb_oper-cpp2-serialization",
     ],
 )
 
@@ -1020,21 +1021,21 @@ cpp_library(
         "SwitchStateDeltaLogger.h",
     ],
     deps = [
-        ":state_delta_log-cpp2-types",
+        "fbsource//xplat/folly:fbstring",
+        "fbsource//xplat/folly/hash:checksum",
+        "fbsource//xplat/folly/lang:bits",
+        "fbsource//xplat/folly/logging:logging",
+        ":state_delta_log-cpp2-serialization",
         "//fb303:service_data",
         "//fboss/agent/state:state",
         "//fboss/thrift_cow/nodes:serializer",
-        "//folly:fbstring",
-        "//folly/hash:checksum",
-        "//folly/lang:bits",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:range",
         ":agent_features",
         ":async_logger_base",
-        "//fboss/fsdb/if:fsdb_oper-cpp2-types",
-        "//folly:range",
+        "//fboss/fsdb/if:fsdb_oper-cpp2-serialization",
     ],
 )
 
@@ -1047,18 +1048,18 @@ cpp_library(
         "HwSwitchThriftClientTable.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":fboss-error",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/async:pooled_request_channel",
         "//thrift/lib/cpp2/async:reconnecting_request_channel",
         "//thrift/lib/cpp2/async:retrying_request_channel",
         "//thrift/lib/cpp2/async:rocket_client_channel",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/io/async:scoped_event_base_thread",
         ":fboss-types",
         "//fboss/agent/if:hw_ctrl-cpp2-services",
-        "//folly/io/async:async_base",
-        "//folly/io/async:scoped_event_base_thread",
     ],
 )
 
@@ -1069,11 +1070,11 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/googletest:gtest_prod_headers",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/io/async:async_base",
         ":fboss-types",
-        "//fboss/agent/if:ctrl-cpp2-types",
-        "//folly:network_address",
-        "//folly:synchronized",
-        "//folly/io/async:async_base",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
     ],
     exported_external_deps = [
         "gflags",
@@ -1090,7 +1091,7 @@ cpp_library(
     ],
     deps = [
         ":asic_utils",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         ":utils",
         "//fboss/agent/hw/switch_asics:switch_asics",
         "//fboss/agent/platforms/common/janga800bic:janga800bic_platform_mapping",
@@ -1267,6 +1268,12 @@ cpp_library(
         "facebook/ScubaRouteLogger.h",
         "ndp/IPv6RouteAdvertiser.h",
     ],
+    deps = [
+        "//fboss/agent/if:mpls-cpp2-serialization",
+        "//fboss/agent/lldp:lldp_structs-cpp2-serialization",
+        "//fboss/fsdb/if:fsdb_oper-cpp2-serialization",
+        "//fboss/lib/phy:prbs-cpp2-serialization",
+    ],
     exported_deps = [
         "fbsource//third-party/boost:boost_container",
         "fbsource//third-party/fmt:fmt",
@@ -1275,11 +1282,44 @@ cpp_library(
         "fbsource//third-party/googletest:gtest_headers",
         "fbsource//third-party/googletest:gtest_prod_headers",
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:demangle",
+        "fbsource//xplat/folly:exception_string",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:intrusive_list",
+        "fbsource//xplat/folly:map_util",
+        "fbsource//xplat/folly:memory",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:random",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:shared_mutex",
+        "fbsource//xplat/folly:spin_lock",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly:thread_local",
+        "fbsource//xplat/folly:utility",
+        "fbsource//xplat/folly/concurrency:concurrent_hash_map",
+        "fbsource//xplat/folly/container:f14_hash",
+        "fbsource//xplat/folly/coro:bounded_queue",
+        "fbsource//xplat/folly/executors:io_thread_pool_executor",
+        "fbsource//xplat/folly/executors/thread_factory:named_thread_factory",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/gen:base",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/io/async:scoped_event_base_thread",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/lang:bits",
+        "fbsource//xplat/folly/lang:c_string",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/system:thread_name",
         ":address_utils",
         ":agent_dir_util",
         ":agent_features",
         ":agent_fsdb_sync_manager",
+        ":agent_info-cpp2-serialization",
         ":agent_info-cpp2-types",
+        ":agent_stats-cpp2-serialization",
         ":agent_stats-cpp2-types",
         ":asic_utils",
         ":buffer_utils",
@@ -1297,6 +1337,7 @@ cpp_library(
         ":fsdb_adapted_sub_manager",
         ":hw_switch_handler",
         ":hw_switch_thrift_client_table",
+        ":hwswitch_matcher",
         ":hwswitchcallback",
         ":l2learn_event_observer",
         ":load_agent_config",
@@ -1316,8 +1357,11 @@ cpp_library(
         ":state_observer",
         ":stats",
         ":sw_switch_warmboot_helper",
+        ":switch_config-cpp2-serialization",
         ":switch_config-cpp2-types",
+        ":switch_reachability-cpp2-serialization",
         ":switch_reachability-cpp2-types",
+        ":switch_state-cpp2-serialization",
         ":switch_state-cpp2-types",
         ":switchid_scope_resolver",
         ":switchinfo_utils",
@@ -1338,7 +1382,9 @@ cpp_library(
         "//fboss/agent/hw:hw_cpu_fb303_stats",
         "//fboss/agent/hw:hw_switch_fb303_stats",
         "//fboss/agent/hw/switch_asics:switch_asics",
+        "//fboss/agent/if:common-cpp2-serialization",
         "//fboss/agent/if:common-cpp2-types",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/if:ctrl-cpp2-types",
         "//fboss/agent/if:mpls-cpp2-types",
         "//fboss/agent/if:multiswitch_ctrl-cpp2-services",
@@ -1366,6 +1412,7 @@ cpp_library(
         "//fboss/fsdb/client:fsdb_stream_client",
         "//fboss/fsdb/client:fsdb_sub_manager",
         "//fboss/fsdb/common:flags",
+        "//fboss/fsdb/if:fsdb_common-cpp2-serialization",
         "//fboss/fsdb/if:fsdb_common-cpp2-types",
         "//fboss/fsdb/if:fsdb_model",
         "//fboss/fsdb/if:fsdb_oper-cpp2-types",
@@ -1380,6 +1427,7 @@ cpp_library(
         "//fboss/lib:thrift_service_utils",
         "//fboss/lib/config:fboss_config_utils",
         "//fboss/lib/link_snapshots:async_filewriter_factory",
+        "//fboss/lib/phy:phy-cpp2-serialization",
         "//fboss/lib/phy:phy-cpp2-types",
         "//fboss/lib/phy:prbs-cpp2-types",
         "//fboss/lib/platforms:product-info",
@@ -1389,37 +1437,6 @@ cpp_library(
         "//fboss/thrift_cow/nodes:serializer",
         "//fboss/thrift_cow/storage:cow_storage",
         "//fboss/util:logging",
-        "//folly:conv",
-        "//folly:demangle",
-        "//folly:exception_string",
-        "//folly:file_util",
-        "//folly:intrusive_list",
-        "//folly:map_util",
-        "//folly:memory",
-        "//folly:network_address",
-        "//folly:random",
-        "//folly:range",
-        "//folly:shared_mutex",
-        "//folly:spin_lock",
-        "//folly:string",
-        "//folly:synchronized",
-        "//folly:thread_local",
-        "//folly:utility",
-        "//folly/concurrency:concurrent_hash_map",
-        "//folly/container:f14_hash",
-        "//folly/coro:bounded_queue",
-        "//folly/executors:io_thread_pool_executor",
-        "//folly/executors/thread_factory:named_thread_factory",
-        "//folly/futures:core",
-        "//folly/gen:base",
-        "//folly/io:iobuf",
-        "//folly/io/async:async_base",
-        "//folly/io/async:scoped_event_base_thread",
-        "//folly/json:dynamic",
-        "//folly/lang:bits",
-        "//folly/lang:c_string",
-        "//folly/logging:logging",
-        "//folly/system:thread_name",
         "//scribe/client:scribe_client",
         "//scribe/client:scribe_client_no_sr",
         "//servicerouter/client/cpp2:cpp2",
@@ -1446,6 +1463,13 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly/container:f14_hash",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/logging:logging",
         ":address_utils",
         ":core",
         ":fib_helpers",
@@ -1457,8 +1481,10 @@ cpp_library(
         "//common/logging:logging",
         "//fb303:service_data",
         "//fboss/agent/capture:capture",
+        "//fboss/agent/hw:hardware_stats-cpp2-serialization",
         "//fboss/agent/hw:hardware_stats-cpp2-types",
         "//fboss/agent/hw/mock:pkt",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/if:ctrl-cpp2-types",
         "//fboss/agent/platforms/common:platform_mapping",
         "//fboss/agent/rib:fib_updater",
@@ -1466,26 +1492,24 @@ cpp_library(
         "//fboss/agent/state:nodebase",
         "//fboss/lib:log_thrift_call",
         "//fboss/lib/config:fboss_config_utils",
-        "//folly:network_address",
-        "//folly:range",
-        "//folly/container:f14_hash",
-        "//folly/io:iobuf",
-        "//folly/logging:logging",
         "//thrift/lib/cpp/util:enum_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly:synchronized",
         ":agent_features",
         ":fboss-error",
         ":fboss-types",
         ":fboss_event_base",
+        ":switch_config-cpp2-serialization",
         ":switch_config-cpp2-types",
         "//common/fb303/cpp:fb303",
         "//fboss/agent/if:ctrl-cpp2-services",
         "//fboss/agent/state:state",
+        "//fboss/lib/phy:phy-cpp2-serialization",
         "//fboss/lib/phy:phy-cpp2-types",
+        "//fboss/lib/phy:prbs-cpp2-serialization",
         "//fboss/lib/phy:prbs-cpp2-types",
-        "//folly:string",
-        "//folly:synchronized",
         "//thrift/lib/cpp/server:server_event_handler",
         "//thrift/lib/cpp2:server",
         "//thrift/lib/cpp2/async:duplex_channel",
@@ -1530,7 +1554,7 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//third-party/fmt:fmt",
-        "//folly:conv",
+        "fbsource//xplat/folly:conv",
     ],
     exported_external_deps = [
         ("boost", None, "boost_serialization"),
@@ -1549,12 +1573,12 @@ cpp_library(
         "types.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly/json:dynamic",
+        "fbsource//xplat/folly/logging:logging",
         ":fboss-error",
         ":strong-types",
-        ":switch_config-cpp2-types",
-        "//folly:conv",
-        "//folly/json:dynamic",
-        "//folly/logging:logging",
+        ":switch_config-cpp2-serialization",
     ],
     external_deps = ["boost"],
     exported_external_deps = [
@@ -1570,9 +1594,9 @@ cpp_library(
         "FbossEventBase.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/logging:logging",
         ":agent_features",
-        "//folly/io/async:async_base",
-        "//folly/logging:logging",
     ],
 )
 
@@ -1584,9 +1608,9 @@ cpp_library(
         "SysError.h",
     ],
     exported_deps = [
-        "//fboss/agent/if:fboss-cpp2-types",
-        "//folly:conv",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly/logging:logging",
+        "//fboss/agent/if:fboss-cpp2-serialization",
     ],
 )
 
@@ -1599,13 +1623,13 @@ cpp_library(
         "AgentConfig.h",
     ],
     deps = [
+        "fbsource//xplat/folly:file_util",
         ":fboss-error",
-        "//folly:file_util",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
-        ":agent_config-cpp2-types",
-        ":switch_config-cpp2-types",
+        ":agent_config-cpp2-serialization",
+        ":switch_config-cpp2-serialization",
     ],
 )
 
@@ -1621,6 +1645,7 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly/logging:logging",
         ":fboss-error",
         ":fboss_event_base",
         ":load_agent_config",
@@ -1628,26 +1653,30 @@ cpp_library(
         ":utils",
         "//fboss/lib/config:fboss_config_utils",
         "//fboss/lib/platforms:product-info",
-        "//folly/logging:logging",
         "//thrift/lib/cpp/util:enum_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/futures:core",
+        "fbsource//xplat/folly/io/async:async_base",
         ":agent_dir_util",
         ":agent_features",
         ":fboss-types",
+        ":platform_config-cpp2-serialization",
         ":platform_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         ":switch_config-cpp2-types",
         ":switchid_scope_resolver",
         "//fboss/agent/hw/switch_asics:switch_asics",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/if:ctrl-cpp2-types",
         "//fboss/agent/platforms/common:platform_mapping",
         "//fboss/agent/state:state",
+        "//fboss/lib/phy:phy-cpp2-serialization",
         "//fboss/lib/phy:phy-cpp2-types",
+        "//fboss/qsfp_service/if:transceiver-cpp2-serialization",
         "//fboss/qsfp_service/if:transceiver-cpp2-types",
-        "//folly:conv",
-        "//folly:network_address",
-        "//folly/futures:core",
-        "//folly/io/async:async_base",
         "//thrift/lib/cpp2:server",
     ],
 )
@@ -1664,6 +1693,9 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/re2:re2",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/testing:test_util",
         ":agent_features",
         ":fboss-error",
         ":load_agent_config",
@@ -1676,28 +1708,25 @@ cpp_library(
         "//fboss/agent/rib:fib_updater",
         "//fboss/agent/rib:nexthop_id_manager",
         "//fboss/lib:common_file_utils",
-        "//folly:file_util",
-        "//folly/logging:logging",
-        "//folly/testing:test_util",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:thread_local",
         ":fboss-types",
         ":hwswitchcallback",
         ":platform_base",
         ":route_update_wrapper",
-        ":switch_config-cpp2-types",
-        ":switch_state-cpp2-types",
-        "//fboss/agent/hw:hardware_stats-cpp2-types",
-        "//fboss/agent/if:common-cpp2-types",
+        ":switch_config-cpp2-serialization",
+        ":switch_state-cpp2-serialization",
+        "//fboss/agent/hw:hardware_stats-cpp2-serialization",
+        "//fboss/agent/if:common-cpp2-serialization",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/if:ctrl-cpp2-services",
-        "//fboss/agent/if:ctrl-cpp2-types",
         "//fboss/agent/if:multiswitch_ctrl-cpp2-services",
         "//fboss/agent/rib:standalone_rib",
         "//fboss/agent/state:nodebase",
         "//fboss/agent/state:state",
         "//fboss/lib:hw_write_behavior",
-        "//folly:network_address",
-        "//folly:thread_local",
     ],
 )
 
@@ -1723,13 +1752,13 @@ cpp_library(
         "AsyncLoggerBase.h",
     ],
     deps = [
+        "fbsource//xplat/folly:file_util",
         ":fboss-error",
         "//fb303:service_data",
-        "//folly:file_util",
     ],
     exported_deps = [
-        "//folly:file",
-        "//folly:synchronized",
+        "fbsource//xplat/folly:file",
+        "fbsource//xplat/folly:synchronized",
     ],
     external_deps = ["gflags"],
     exported_external_deps = [
@@ -1743,9 +1772,9 @@ cpp_library(
         "AsyncPacketTransport.h",
     ],
     exported_deps = [
-        "//folly/io:iobuf",
-        "//folly/io/async:async_socket_base",
-        "//folly/io/async:async_socket_exception",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/io/async:async_socket_base",
+        "fbsource//xplat/folly/io/async:async_socket_exception",
     ],
 )
 
@@ -1758,7 +1787,7 @@ cpp_library(
         "SflowShimUtils.h",
     ],
     exported_deps = [
-        "//folly/io:iobuf",
+        "fbsource//xplat/folly/io:iobuf",
     ],
 )
 
@@ -1776,9 +1805,9 @@ cpp_library(
         "TxPacketObserver.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/io:iobuf",
         ":fboss-types",
-        "//folly:network_address",
-        "//folly/io:iobuf",
     ],
     exported_external_deps = [
         "gflags",
@@ -1799,11 +1828,11 @@ cpp_library(
         "FsdbHelper.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fboss/fsdb/if:fsdb_model",
-        "//folly/logging:logging",
     ],
     exported_deps = [
-        "//fboss/fsdb/if:fsdb_oper-cpp2-types",
+        "//fboss/fsdb/if:fsdb_oper-cpp2-serialization",
     ],
 )
 
@@ -1816,8 +1845,8 @@ cpp_library(
         "HwSwitchMatcher.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":fboss-error",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":fboss-types",
@@ -1833,11 +1862,11 @@ cpp_library(
         "SwitchIdScopeResolver.h",
     ],
     deps = [
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/logging:logging",
         ":fboss-error",
         ":switchinfo_utils",
         "//fboss/agent/state:state",
-        "//folly:string",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":fboss-types",
@@ -1858,13 +1887,13 @@ cpp_library(
         "L2Entry.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         ":fboss-types",
         ":packet",
-        "//fboss/agent/if:ctrl-cpp2-types",
-        "//fboss/agent/if:multiswitch_ctrl-cpp2-types",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
+        "//fboss/agent/if:multiswitch_ctrl-cpp2-serialization",
         "//fboss/agent/rib:standalone_rib",
         "//fboss/agent/state:state",
-        "//folly:network_address",
     ],
 )
 
@@ -1877,17 +1906,17 @@ cpp_library(
         "HwSwitchHandler.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/futures:core",
         ":fboss-types",
         ":fboss_event_base",
         ":hwswitchcallback",
         ":load_agent_config",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         ":utils",
-        "//fboss/agent/if:common-cpp2-types",
+        "//fboss/agent/if:common-cpp2-serialization",
         "//fboss/agent/if:multiswitch_ctrl-cpp2-services",
         "//fboss/agent/state:state",
         "//fboss/lib:hw_write_behavior",
-        "//folly/futures:core",
     ],
 )
 
@@ -1937,7 +1966,7 @@ cpp_library(
         "AgentDirectoryUtil.cpp",
     ],
     headers = ["AgentDirectoryUtil.h"],
-    deps = ["//folly/logging:logging"],
+    deps = ["fbsource//xplat/folly/logging:logging"],
     exported_deps = [],
     exported_external_deps = [
         "gflags",
@@ -1991,7 +2020,10 @@ cpp_library(
     ],
     undefined_symbols = True,
     deps = [
+        "fbsource//xplat/folly/logging:init",
+        "fbsource//xplat/folly/logging:logging",
         ":hw_switch",
+        ":instrumentation_hooks",
         ":load_agent_config",
         ":split_agent_thrift_syncer",
         ":test_utils",
@@ -2008,8 +2040,6 @@ cpp_library(
         "//fboss/agent/state:state",
         "//fboss/lib:common_file_utils",
         "//fboss/lib/restart_tracker:restart_time_tracker",
-        "//folly/logging:init",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":agent_features",
@@ -2047,18 +2077,18 @@ cpp_library(
         "RouteUpdateWrapper.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":address_utils",
         "//fboss/agent/rib:fib_updater",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
         ":fboss-types",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         ":switchid_scope_resolver",
-        "//fboss/agent/if:ctrl-cpp2-types",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/rib:standalone_rib",
         "//fboss/agent/state:state",
-        "//folly:network_address",
     ],
 )
 
@@ -2089,18 +2119,27 @@ cpp_library(
         "mnpu/TxPktEventSyncer.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":hw_switch",
         ":packet",
+        ":tracing_stack_checkpoint",
         ":utils",
         "//fb303:service_data",
         "//fboss/agent/state:state",
-        "//folly/logging:logging",
         "//thrift/lib/cpp2/async:pooled_request_channel",
         "//thrift/lib/cpp2/async:reconnecting_request_channel",
         "//thrift/lib/cpp2/async:retrying_request_channel",
         "//thrift/lib/cpp2/async:rocket_client_channel",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:cancellation_token",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/coro:async_scope",
+        "fbsource//xplat/folly/coro:blocking_wait",
+        "fbsource//xplat/folly/coro:bounded_queue",
+        "fbsource//xplat/folly/coro:unbounded_queue",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/io/async:scoped_event_base_thread",
         ":agent_features",
         ":fboss-types",
         ":hwswitchcallback",
@@ -2109,14 +2148,6 @@ cpp_library(
         "//fboss/lib:common_thrift_utils",
         "//fboss/lib:thread_heartbeat",
         "//fboss/lib/thrift_service_client:thrift-service-client",
-        "//folly:cancellation_token",
-        "//folly:synchronized",
-        "//folly/coro:async_scope",
-        "//folly/coro:blocking_wait",
-        "//folly/coro:bounded_queue",
-        "//folly/coro:unbounded_queue",
-        "//folly/io/async:async_base",
-        "//folly/io/async:scoped_event_base_thread",
     ],
     exported_external_deps = [
         "gflags",
@@ -2132,13 +2163,13 @@ cpp_library(
         "ThriftHandlerUtils.h",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:string",
         ":fboss-error",
         ":fboss-types",
-        ":switch_config-cpp2-types",
+        ":switch_config-cpp2-serialization",
         "//fb303:service_data",
         "//fboss/agent/state:state",
         "//fboss/thrift_cow/visitors:visitors",
-        "//folly:string",
     ],
 )
 
@@ -2160,29 +2191,30 @@ cpp_library(
         "single/MonolithicAgentInitializer.h",
     ],
     deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/io/async:async_signal_handler",
+        "fbsource//xplat/folly/logging:init",
+        "fbsource//xplat/folly/logging:logging",
         ":fboss_init_h",
         ":handler",
         ":hw_switch",
+        ":instrumentation_hooks",
         ":monolithic_hw_switch_handler",
         ":packet_stream_handler",
         ":platform_base",
         ":setup_thrift",
         "//fboss/lib:common_file_utils",
         "//fboss/lib/restart_tracker:restart_time_tracker",
-        "//folly:network_address",
-        "//folly:scope_guard",
-        "//folly/io/async:async_base",
-        "//folly/io/async:async_signal_handler",
-        "//folly/logging:init",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/executors:function_scheduler",
         ":core",
         ":fboss_common_init",
         ":hwagent",
         ":load_agent_config",
         ":sw_agent_initializer",
-        "//folly/executors:function_scheduler",
         "//thrift/lib/cpp2:server",
     ],
     exported_external_deps = [
@@ -2200,14 +2232,15 @@ cpp_library(
     ],
     deps = [
         ":core",
+        ":instrumentation_hooks",
         ":multi_switch_hw_switch_handler",
         ":multiswitch_service",
         "//fboss/lib:common_file_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly/io/async:async_base",
         ":agent_dir_util",
         ":sw_agent_initializer",
-        "//folly/io/async:async_base",
     ],
 )
 
@@ -2279,17 +2312,17 @@ cpp_library(
         "FileBasedWarmbootUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/logging:logging",
         ":agent_dir_util",
         ":hw_asic_table",
         "//fboss/agent/rib:standalone_rib",
         "//fboss/agent/state:state",
         "//fboss/lib:common_file_utils",
-        "//folly:file_util",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:file",
         ":switch_state-cpp2-types",
-        "//folly:file",
     ],
 )
 
@@ -2325,6 +2358,8 @@ cpp_library(
         "SwSwitchWarmBootHelper.h",
     ],
     deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/logging:logging",
         ":agent_dir_util",
         ":async_logger",
         ":file_based_warmboot_utils",
@@ -2334,8 +2369,6 @@ cpp_library(
         "//fboss/agent/rib:standalone_rib",
         "//fboss/agent/state:state",
         "//fboss/lib:warm_boot_file_utils",
-        "//folly:file_util",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":agent_features",
@@ -2343,11 +2376,8 @@ cpp_library(
     ],
 )
 
-# fake_wedge_agent, links with fake_main and monolithic_agent_initializer.
-# fake_main also links with emulation's main.  monolithic_agent_initializer
-# links with  sw_agent_initializer. emulation's main redefine methods provided
-# by fboss_common_init. so sw_agent_initializer can not link with
-# fboss_common_init so linking with only header
+# sw_agent_initializer links only the CommonInit header; the CommonInit
+# definition comes from the final binary.
 cpp_library(
     # @autodeps-skip autodeps2 adds :fake_main here (pulling emulation:main ->
     # duplicate initializeBitsflow with :fboss_common_init) and drops :hw_asic_table.
@@ -2359,6 +2389,7 @@ cpp_library(
     headers = ["SwAgentInitializer.h"],
     undefined_symbols = True,
     exported_deps = [
+        "fbsource//xplat/folly/executors:function_scheduler",
         ":agent_dir_util",
         ":agent_features",
         ":agent_initializer_h",
@@ -2368,7 +2399,6 @@ cpp_library(
         ":hw_asic_table",
         ":setup_thrift",
         "//fboss/lib:common_file_utils",
-        "//folly/executors:function_scheduler",
         "//thrift/lib/cpp2:server",
     ],
     exported_external_deps = [
@@ -2389,6 +2419,7 @@ cpp_library(
         "facebook/AgentPreStartConfig.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":agent_command_executor",
         ":agent_netwhoami",
         ":fboss-error",
@@ -2396,7 +2427,6 @@ cpp_library(
         ":load_agent_config",
         "//fboss/agent/facebook:agent_pre_exec_drainer",
         "//fboss/lib:common_file_utils",
-        "//folly/logging:logging",
     ],
     exported_deps = [
         ":agent_dir_util",
@@ -2412,11 +2442,11 @@ cpp_binary(
         "AgentPreStartExecRunner.cpp",
     ],
     deps = [
+        "fbsource//xplat/folly/init:init",
+        "fbsource//xplat/folly/logging:init",
+        "fbsource//xplat/folly/logging:logging",
         ":agent_pre_start_exec",
         ":fboss-error",
-        "//folly/init:init",
-        "//folly/logging:init",
-        "//folly/logging:logging",
     ],
     external_deps = [
         "gflags",
@@ -2448,18 +2478,17 @@ cpp_library(
         "AgentFsdbSyncManager.h",
     ],
     deps = [
-        ":switch_state-cpp2-types",
+        ":switch_state-cpp2-serialization",
         "//fboss/fsdb/common:utils",
         "//fboss/lib:tuple_utils",
     ],
     exported_deps = [
-        ":agent_info-cpp2-types",
-        ":switch_reachability-cpp2-types",
-        "//configerator/structs/neteng/fboss/bitsflow:bitsflow-cpp2-types",
+        ":agent_info-cpp2-serialization",
+        ":switch_reachability-cpp2-serialization",
         "//fboss/agent/state:state",
         "//fboss/fsdb/client:fsdb_syncer",
         "//fboss/fsdb/if:fsdb_model",
-        "//fboss/lib/phy:phy-cpp2-types",
+        "//fboss/lib/phy:phy-cpp2-serialization",
     ],
 )
 
@@ -2491,6 +2520,39 @@ cpp_library(
 )
 
 cpp_library(
+    name = "instrumentation_hooks",
+    srcs = [
+        "InstrumentationHooks.cpp",
+    ],
+    headers = [
+        "InstrumentationHooks.h",
+    ],
+    deps = [
+        ":instrumentation_hook_entry_points",
+    ],
+)
+
+cpp_library(
+    name = "instrumentation_hook_entry_points",
+    headers = [
+        "InstrumentationHookEntryPoints.h",
+    ],
+)
+
+cpp_library(
+    name = "tracing_stack_checkpoint",
+    srcs = [
+        "TracingStackCheckpoint.cpp",
+    ],
+    headers = [
+        "TracingStackCheckpoint.h",
+    ],
+    deps = [
+        ":instrumentation_hook_entry_points",
+    ],
+)
+
+cpp_library(
     name = "loadbalancer_utils",
     srcs = [
         "LoadBalancerUtils.cpp",
@@ -2498,10 +2560,10 @@ cpp_library(
     headers = [
         "LoadBalancerUtils.h",
     ],
-    deps = ["//folly/hash:hash"],
+    deps = ["fbsource//xplat/folly/hash:hash"],
     exported_deps = [
-        ":switch_config-cpp2-types",
-        "//folly:network_address",
+        "fbsource//xplat/folly:network_address",
+        ":switch_config-cpp2-serialization",
     ],
 )
 
@@ -2533,10 +2595,10 @@ cpp_library(
         "TestUtils.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         ":agent_dir_util",
         ":load_agent_config",
         "//fboss/lib:common_file_utils",
-        "//folly/logging:logging",
     ],
     exported_deps = [],
 )
@@ -2567,10 +2629,10 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly/io/async:async_base",
+        "fbsource//xplat/folly/logging:logging",
         ":ipc_health_monitor",
         "//fb303:service_data",
-        "//folly/io/async:async_base",
-        "//folly/logging:logging",
     ],
 )
 
@@ -2588,14 +2650,14 @@ cpp_library(
         "mnpu/IpcHealthMonitor.h",
     ],
     deps = [
+        "fbsource//xplat/folly/logging:logging",
         "//fb303:service_data",
-        "//folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:cancellation_token",
+        "fbsource//xplat/folly:synchronized",
+        "fbsource//xplat/folly/io/async:async_base",
         "//fb303:thread_cached_service_data",
-        "//folly:cancellation_token",
-        "//folly:synchronized",
-        "//folly/io/async:async_base",
     ],
 )
 
@@ -2615,15 +2677,17 @@ cpp_library(
         "ValidateStateUpdate.h",
     ],
     deps = [
+        "fbsource//xplat/folly:scope_guard",
         ":fboss-error",
         ":fib_helpers",
         ":hw_switch_handler",
         "//fboss/agent/hw/switch_asics:switch_asics",
         "//fboss/agent/state:nodebase",
-        "//folly:scope_guard",
     ],
     exported_deps = [
         "fbsource//third-party/googletest:gtest",
+        "fbsource//xplat/folly:network_address",
+        ":acl_resource_accountant",
         ":agent_config-cpp2-types",
         ":agent_features",
         ":fboss-types",
@@ -2632,10 +2696,17 @@ cpp_library(
         ":switchid_scope_resolver",
         "//fboss/agent/state:state",
         "//fboss/lib:unique_ref_map",
-        "//folly:network_address",
     ],
 )
 
+export_file(name = "ApplyThriftConfig.cpp")
+
 export_file(name = "Main.cpp")
+
+export_file(name = "agent_stats.thrift")
+
+export_file(name = "switch_config.thrift")
+
+export_file(name = "switch_state.thrift")
 
 sai_main_all()

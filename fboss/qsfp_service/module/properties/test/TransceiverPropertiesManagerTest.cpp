@@ -5,6 +5,7 @@
 #include <folly/FileUtil.h>
 #include <folly/testing/TestUtil.h>
 #include <gtest/gtest.h>
+#include <set>
 #include "fboss/agent/FbossError.h"
 
 using namespace facebook::fboss;
@@ -71,6 +72,10 @@ TEST_F(TransceiverPropertiesManagerTest, DefaultConfigAllCodesKnown) {
   EXPECT_TRUE(
       TransceiverPropertiesManager::isKnown(
           MediaInterfaceCode::FR4_LPO_2x400G));
+  EXPECT_TRUE(
+      TransceiverPropertiesManager::isKnown(MediaInterfaceCode::DR8_1600G));
+  EXPECT_TRUE(
+      TransceiverPropertiesManager::isKnown(MediaInterfaceCode::FR4_2x400G_IB));
 }
 
 TEST_F(TransceiverPropertiesManagerTest, DR4_2x800G_Properties) {
@@ -112,6 +117,33 @@ TEST_F(TransceiverPropertiesManagerTest, DR8_800G_4x200GCombination) {
         SMFMediaInterfaceCode::DR2_200G);
     EXPECT_EQ(*port.mediaInterfaceCode(), MediaInterfaceCode::DR2_200G);
   }
+}
+
+TEST_F(TransceiverPropertiesManagerTest, DR8_1600G_Properties) {
+  initDefault();
+
+  auto code = MediaInterfaceCode::DR8_1600G;
+  EXPECT_EQ(TransceiverPropertiesManager::getNumHostLanes(code), 8);
+  EXPECT_EQ(TransceiverPropertiesManager::getNumMediaLanes(code), 8);
+  EXPECT_EQ(
+      TransceiverPropertiesManager::deriveSmfCode(
+          0x73, {0, 1, 2, 3, 4, 5, 6, 7}, 0x80, 500),
+      code);
+
+  const auto& props = TransceiverPropertiesManager::getProperties(code);
+  ASSERT_EQ(props.supportedSpeedCombinations()->size(), 4);
+  EXPECT_EQ(
+      props.supportedSpeedCombinations()[0].combinationName(), "1x1600G-DR8");
+  ASSERT_EQ(props.supportedSpeedCombinations()[0].ports()->size(), 1);
+  EXPECT_EQ(
+      *props.supportedSpeedCombinations()[0].ports()[0].speed(),
+      cfg::PortSpeed::ONEPOINTSIXT);
+  EXPECT_EQ(
+      props.supportedSpeedCombinations()[1].combinationName(), "2x800G-DR4");
+  EXPECT_EQ(
+      props.supportedSpeedCombinations()[2].combinationName(), "4x400G-DR2");
+  EXPECT_EQ(
+      props.supportedSpeedCombinations()[3].combinationName(), "8x200G-DR1");
 }
 
 TEST_F(TransceiverPropertiesManagerTest, TwoPort400G_Properties) {
@@ -164,6 +196,18 @@ TEST_F(TransceiverPropertiesManagerTest, DeriveSmfCodeFR4_2x400G) {
   EXPECT_EQ(
       TransceiverPropertiesManager::deriveSmfCode(0x1D, {0, 4}, 0x50, 3000),
       MediaInterfaceCode::FR4_2x400G);
+}
+
+// First application is IB NDR (0x32); the SMF length isn't used to match
+TEST_F(TransceiverPropertiesManagerTest, DeriveSmfCodeFR4_2x400G_IB) {
+  initDefault();
+
+  EXPECT_EQ(
+      TransceiverPropertiesManager::deriveSmfCode(0x1D, {0, 4}, 0x32, 2000),
+      MediaInterfaceCode::FR4_2x400G_IB);
+  EXPECT_EQ(
+      TransceiverPropertiesManager::deriveSmfCode(0x1D, {0, 4}, 0x32, 3000),
+      MediaInterfaceCode::FR4_2x400G_IB);
 }
 
 TEST_F(TransceiverPropertiesManagerTest, DeriveSmfCodeFR4_LITE_2x400G) {
@@ -274,6 +318,43 @@ TEST_F(TransceiverPropertiesManagerTest, SpeedCombinations) {
       TransceiverPropertiesManager::getSpeedCombinations<SMFMediaInterfaceCode>(
           MediaInterfaceCode::CR4_100G),
       FbossError);
+}
+
+TEST_F(TransceiverPropertiesManagerTest, FR4_2x800G_400GModes) {
+  initDefault();
+
+  auto code = MediaInterfaceCode::FR4_2x800G;
+  const auto& combo =
+      TransceiverPropertiesManager::findSpeedCombination(code, "2x400G-FR4");
+  ASSERT_EQ(combo.ports()->size(), 2);
+  for (int i = 0; i < 2; ++i) {
+    const auto& port = combo.ports()[i];
+    EXPECT_EQ(*port.speed(), cfg::PortSpeed::FOURHUNDREDG);
+    EXPECT_EQ(*port.hostLanes()->start(), i * 4);
+    EXPECT_EQ(*port.hostLanes()->count(), 4);
+    EXPECT_EQ(*port.mediaLanes()->start(), i * 4);
+    EXPECT_EQ(*port.mediaLanes()->count(), 4);
+    EXPECT_EQ(
+        port.mediaLaneCode()->smfCode().value(),
+        SMFMediaInterfaceCode::FR4_400G);
+    EXPECT_EQ(*port.mediaInterfaceCode(), MediaInterfaceCode::FR4_400G);
+  }
+
+  auto codes = TransceiverPropertiesManager::getMediaCodesForSpeed<
+      SMFMediaInterfaceCode>(code, cfg::PortSpeed::FOURHUNDREDG);
+  EXPECT_EQ(
+      std::set<SMFMediaInterfaceCode>(codes.begin(), codes.end()),
+      (std::set<SMFMediaInterfaceCode>{
+          SMFMediaInterfaceCode::FR4_400G, SMFMediaInterfaceCode::FR2_400G}));
+
+  EXPECT_EQ(
+      TransceiverPropertiesManager::getExpectedMediaLanes(
+          code, {4, 5, 6, 7}, cfg::PortSpeed::FOURHUNDREDG),
+      (std::vector<int>{4, 5, 6, 7}));
+  EXPECT_EQ(
+      TransceiverPropertiesManager::getExpectedMediaLanes(
+          code, {2, 3}, cfg::PortSpeed::FOURHUNDREDG),
+      (std::vector<int>{2, 3}));
 }
 
 TEST_F(TransceiverPropertiesManagerTest, DiagsCapsDefaultSupported) {
@@ -455,6 +536,9 @@ TEST_F(TransceiverPropertiesManagerTest, MediaLaneCodeToMediaInterfaceCode) {
   EXPECT_EQ(
       TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(0x6A),
       MediaInterfaceCode::ZR_800G);
+  EXPECT_EQ(
+      TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(0x7F),
+      MediaInterfaceCode::DR8_1600G);
 
   // Unknown code throws
   EXPECT_THROW(

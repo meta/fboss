@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/TrafficPolicyUtils.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include <fmt/format.h>
 #include <folly/Conv.h>
@@ -490,6 +491,24 @@ void assertNotInOtherPolicy(
                                         : PolicyKind::Cpu),
             policyName(kind)));
   }
+}
+
+std::vector<std::string> actionKeys() {
+  std::vector<std::string> keys;
+  for (const auto& row : actionRows()) {
+    keys.emplace_back(row.key);
+  }
+  return keys;
+}
+
+std::vector<std::string> completeConfigArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(
+      typed,
+      {{std::string(kSubCmdMatch)},
+       {},
+       {std::string(kSubCmdAction)},
+       actionKeys()});
 }
 
 std::string actionKeysCsv() {

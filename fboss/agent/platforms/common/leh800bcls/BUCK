@@ -8,11 +8,12 @@ cpp_library(
         "Leh800bclsPlatformMapping.cpp",
     ],
     headers = [
+        "Leh800bclsOsfpTrayPlatformMapping.h",
         "Leh800bclsPlatformMapping.h",
         "Leh800bclsProdPlatformMapping.h",
         "Leh800bclsTestPlatformMapping.h",
     ],
-    deps = ["//folly/logging:logging"],
+    deps = ["fbsource//xplat/folly/logging:logging"],
     exported_deps = [
         "//fboss/agent:agent_features",
         "//fboss/agent/platforms/common:platform_mapping",

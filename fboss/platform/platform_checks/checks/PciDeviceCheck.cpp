@@ -17,6 +17,7 @@
 #include <folly/String.h>
 
 #include <folly/logging/xlog.h>
+#include "fboss/platform/platform_checks/CommandLog.h"
 
 namespace facebook::fboss::platform::platform_checks {
 
@@ -25,10 +26,15 @@ std::vector<std::filesystem::path> PciDeviceCheck::getPciDevicePaths() const {
 }
 
 CheckResult PciDeviceCheck::run() {
+  CommandLog log;
   try {
     auto platformConfig = getPlatformConfig();
     const auto presentDevices = readPresentDevices();
     std::vector<PciDevice> missingDevices;
+    log.note(
+        "Present PCI devices (vendor:device:subsystem_vendor:"
+        "subsystem_device): " +
+        folly::join(" ", presentDevices));
 
     // Get expected devices from config
     for (const auto& [_, pmUnitConfig] : *platformConfig.pmUnitConfigs()) {
@@ -39,7 +45,11 @@ CheckResult PciDeviceCheck::run() {
         expectedDevice.subsystemVendor = *pciDeviceConfig.subSystemVendorId();
         expectedDevice.subsystemDevice = *pciDeviceConfig.subSystemDeviceId();
 
-        if (!presentDevices.contains(expectedDevice.toString())) {
+        const bool present = presentDevices.contains(expectedDevice.toString());
+        log.note(
+            "Expected " + expectedDevice.toString() + ": " +
+            (present ? "present" : "missing"));
+        if (!present) {
           missingDevices.push_back(expectedDevice);
           XLOG(WARNING) << "Expected PCI device " << expectedDevice.toString()
                         << " not found";
@@ -48,7 +58,7 @@ CheckResult PciDeviceCheck::run() {
     }
 
     if (missingDevices.empty()) {
-      return makeOK();
+      return log.attachTo(makeOK());
     }
     std::stringstream errorMsg;
     errorMsg << "Missing " << missingDevices.size() << " PCI device(s):";
@@ -58,11 +68,11 @@ CheckResult PciDeviceCheck::run() {
     std::string remediationMessage =
         "Reboot may recover the missing PCI device(s)";
 
-    return makeProblem(
-        errorMsg.str(), RemediationType::REBOOT_REQUIRED, remediationMessage);
+    return log.attachTo(makeProblem(
+        errorMsg.str(), RemediationType::REBOOT_REQUIRED, remediationMessage));
   } catch (const std::exception& ex) {
-    return makeError(
-        "Failed to validate PCI devices: " + std::string(ex.what()));
+    return log.attachTo(
+        makeError("Failed to validate PCI devices: " + std::string(ex.what())));
   }
 }
 

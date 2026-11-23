@@ -358,7 +358,8 @@ class NeighborCacheEntry : private folly::AsyncTimeout {
       if (!hasProbesLeft()) {
         // Check if NDP static neighbor is enabled
         if (FLAGS_ndp_static_neighbor &&
-            cache_->sw_->hasQualifiedConfiguredDesiredPeer(getIntfID())) {
+            cache_->sw_->hasQualifiedConfiguredDesiredPeer(
+                getIntfID(), getIP())) {
           slowRetries_ = true;
           XLOG(DBG2) << "Slow Retries enabling for " << getIP();
           probesLeft_ = 1;

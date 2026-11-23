@@ -10,6 +10,7 @@
 #include <folly/logging/xlog.h>
 
 #include "fboss/qsfp_service/if/gen-cpp2/transceiver_types.h"
+#include "fboss/qsfp_service/module/cmis/CmisModule.h"
 #include "fboss/qsfp_service/module/properties/TransceiverPropertiesManager.h"
 #include "fboss/qsfp_service/test/hal_test/HalTest.h"
 #include "fboss/qsfp_service/test/hal_test/HalTestUtils.h"
@@ -123,14 +124,22 @@ VdmFreezeResult timeVdmFreeze(QsfpModule* module) {
   }
   return res;
 }
+
+// Freeze only applies to statistics (min/max/average) reporting registers, so
+// a module without any statistics observable need not raise FreezeDone
+bool moduleHasVdmStatistics(QsfpModule* module) {
+  auto* cmis = dynamic_cast<CmisModule*>(module);
+  return cmis != nullptr && cmis->hasVdmStatisticsObservables();
+}
 } // namespace
 
 // Verify the VDM freeze latch on every VDM-capable module, across all
 // application modes the module supports. VDM freeze time scales with the number
 // of programmed datapaths, so we program each supported speed combination and,
-// in that mode, freeze the reporting registers and check the module raises
-// FreezeDone (2Fh:145 bit7) within a 2s budget. Modules that do not advertise
-// VDM (or whose media interface is unknown) are skipped.
+// in that mode, freeze the reporting registers and, if the module has VDM
+// statistics observables, check it raises FreezeDone (2Fh:145 bit7) within a 2s
+// budget. Modules that do not advertise VDM (or whose media interface is
+// unknown) are skipped.
 TEST_F(T2HalTest, vdmLatchFreeze) {
   forEachTransceiverParallel(
       [this](hal_test::TransceiverTestResult& result, int tcvrId) {
@@ -160,6 +169,13 @@ TEST_F(T2HalTest, vdmLatchFreeze) {
                      << " has unknown media interface; skipping VDM latch test";
           result.skipped = true;
           return;
+        }
+
+        const bool freezeDoneRequired = moduleHasVdmStatistics(module);
+        if (!freezeDoneRequired) {
+          XLOG(INFO) << "Transceiver " << tcvrId
+                     << " has no VDM statistics observables; not requiring "
+                     << "FreezeDone";
         }
 
         // Cycle through every application mode the module supports; the VDM
@@ -202,7 +218,7 @@ TEST_F(T2HalTest, vdmLatchFreeze) {
                   tcvrId,
                   comboName,
                   freeze.error));
-          if (!freeze.ioError) {
+          if (!freeze.ioError && freezeDoneRequired) {
             HAL_CHECK(
                 result,
                 freeze.freezeDone,

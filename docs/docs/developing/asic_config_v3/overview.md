@@ -113,7 +113,11 @@ Run the helper script from the root of the repository:
 
 Output files are written beside each platform input under
 `fboss/configs/platforms/<system_vendor>/<platform>/asic_config/generated/`,
-one per platform variant.
+one or more per platform variant. A common-only variant produces
+`<variant>.<extension>`. A variant with distinct per-NPU payloads produces
+`<variant>_0.<extension>`, `<variant>_1.<extension>`, and so on. If a variant
+has both shared and per-NPU payloads, the shared payload is named
+`<variant>_common.<extension>`. NPU indices are contiguous and start at zero.
 The file extension is determined by the family, `.yml` for XGS and `.json`
 for DNX, matching the output formats in the family table at the top of this
 [page](#overview). To generate a single platform, pass the `--platform <name>`
@@ -279,10 +283,10 @@ Each platform file declares the platform identity (`platform_name`, `vendor`,
 and `asic`), which selects both the per-ASIC data file and the generator to
 use. It then declares a `defaults` block together with one or more named
 `variants`. A variant represents one deliverable configuration for the
-platform, and the generator produces one output file per variant, named
-`generated/<variant>.<extension>` beside the platform input. The enclosing
-platform directory provides the platform identity, so every variant name must
-be non-empty.
+platform. The generator produces one common file when all NPUs use identical
+contents, or indexed files when their contents differ. The enclosing platform
+directory provides the platform identity, so every variant name must be
+non-empty.
 
 The effective configuration for a variant is formed by merging the variant's
 settings on top of the `defaults` block. The merge is recursive for nested

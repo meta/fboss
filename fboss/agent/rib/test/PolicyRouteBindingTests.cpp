@@ -88,7 +88,6 @@ class PolicyRouteBindingTest : public ::testing::Test {
     auto switchState = std::make_shared<SwitchState>();
     auto intf = std::make_shared<Interface>(
         InterfaceID(1),
-        kRid,
         std::optional<VlanID>(VlanID(1)),
         folly::StringPiece("intf1"),
         folly::MacAddress("00:00:00:00:00:01"),
@@ -215,9 +214,7 @@ TEST_F(PolicyRouteBindingTest, redirectNhgMemberChangeRepublishesPolicy) {
   ClassBasedPolicy policy;
   policy.name() = kSharedName;
   policy.defaultNexthopGroup() = kPolicyDefaultNhg;
-  NextHopGroup redirect;
-  redirect.name() = kRedirectNhg;
-  policy.class2NextHopGroup()[ForwardingClass::CLASS_1] = redirect;
+  policy.class2NamedNextHopGroup()[ForwardingClass::CLASS_1] = kRedirectNhg;
   rib_.addOrUpdatePolicies({policy}, nextHopIdStateUpdate(&switchState_));
 
   const auto idBefore = publishedRedirectId(ForwardingClass::CLASS_1);
@@ -255,7 +252,7 @@ TEST_F(PolicyRouteBindingTest, addPoliciesRejectsBatchBeforeStoringAny) {
   ClassBasedPolicy bad;
   bad.name() = "badPolicy";
   bad.defaultNexthopGroup() = kPolicyDefaultNhg;
-  bad.class2NextHopGroup()[ForwardingClass::CLASS_1] = NextHopGroup{};
+  bad.class2NamedNextHopGroup()[ForwardingClass::CLASS_1] = "";
 
   EXPECT_THROW(
       rib_.addOrUpdatePolicies(
@@ -265,6 +262,33 @@ TEST_F(PolicyRouteBindingTest, addPoliciesRejectsBatchBeforeStoringAny) {
   auto manager = rib_.getNextHopIDManagerCopy();
   EXPECT_EQ(manager->getPolicy("goodPolicy"), nullptr);
   EXPECT_EQ(manager->getPolicy("badPolicy"), nullptr);
+}
+
+TEST_F(PolicyRouteBindingTest, addPoliciesRejectsNonExistentRedirectNhg) {
+  ClassBasedPolicy policy;
+  policy.name() = "newPolicy";
+  policy.defaultNexthopGroup() = kPolicyDefaultNhg;
+  policy.class2NamedNextHopGroup()[ForwardingClass::CLASS_1] = "noSuchNhg";
+
+  auto stateBefore = switchState_;
+  EXPECT_THROW(
+      rib_.addOrUpdatePolicies({policy}, nextHopIdStateUpdate(&switchState_)),
+      FbossError);
+  EXPECT_EQ(rib_.getNextHopIDManagerCopy()->getPolicy("newPolicy"), nullptr);
+  EXPECT_EQ(switchState_, stateBefore);
+}
+
+TEST_F(PolicyRouteBindingTest, addPoliciesRejectsNonExistentDefaultNhg) {
+  ClassBasedPolicy policy;
+  policy.name() = "newPolicy";
+  policy.defaultNexthopGroup() = "noSuchNhg";
+
+  auto stateBefore = switchState_;
+  EXPECT_THROW(
+      rib_.addOrUpdatePolicies({policy}, nextHopIdStateUpdate(&switchState_)),
+      FbossError);
+  EXPECT_EQ(rib_.getNextHopIDManagerCopy()->getPolicy("newPolicy"), nullptr);
+  EXPECT_EQ(switchState_, stateBefore);
 }
 
 } // namespace facebook::fboss

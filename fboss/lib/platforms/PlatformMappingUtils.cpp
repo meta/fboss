@@ -7,6 +7,7 @@
 #include <folly/FileUtil.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 
+#include <filesystem>
 #include <string_view>
 #include <unordered_map>
 #include <utility>
@@ -93,6 +94,39 @@ void translatePortConfigOverrides(
 }
 
 } // namespace
+
+std::string resolveRawPlatformMappingPath(const std::string& path) {
+  namespace fs = std::filesystem;
+  const fs::path variantRawPath(path);
+  if (fs::exists(variantRawPath)) {
+    return variantRawPath.string();
+  }
+
+  // Variants can share the base platform's raw mapping when they have no
+  // variant-specific raw mapping file. Walk upward to find the variant root.
+  auto variantDir = variantRawPath.parent_path();
+  while (!variantDir.empty()) {
+    if (variantDir.parent_path().filename() == "variants") {
+      const auto baseDir = variantDir.parent_path().parent_path();
+      // Preserve the path below the variant directory under the base platform.
+      const auto baseRawPath =
+          baseDir / variantRawPath.lexically_relative(variantDir);
+      if (fs::exists(baseRawPath)) {
+        return baseRawPath.string();
+      }
+      break;
+    }
+
+    const auto parent = variantDir.parent_path();
+    if (parent == variantDir) {
+      break;
+    }
+    variantDir = parent;
+  }
+
+  // Keep the original path so callers retain the usual missing-file behavior.
+  return variantRawPath.string();
+}
 
 cfg::PlatformMapping readRawPlatformMapping(const std::string& path) {
   auto mapping = readThriftJson<cfg::PlatformMapping>(path);

@@ -12,7 +12,7 @@ target_link_libraries(thrift_cow_visitor_test_utils
   thrift_cow_test_cpp2
   thrift_cow_visitors
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_executable(thrift_cow_visitor_tests
@@ -31,7 +31,7 @@ target_link_libraries(thrift_cow_visitor_tests
     thrift_cow_visitors
     thrift_cow_visitor_test_utils
     Folly::folly
-    FBThrift::thriftcpp2
+    thrift::rpc
     state
     ${GTEST}
     ${LIBGMOCK_LIBRARIES}

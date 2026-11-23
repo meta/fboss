@@ -55,11 +55,34 @@ The three `--phy-*` detail flags are **silently ignored** (warning only) if
 | `--skip-install` | Sets `SKIP_ALL_INSTALL=1`; build without running install rules. |
 | `--preserve-env` | Leave already-set environment variables alone. Default is the opposite: flags win over pre-existing environment. |
 | `--use-gcc` | Stay on GCC. Default is to force Clang. |
+| `--asan` | AddressSanitizer build of FBOSS and every dependency; see [ASAN builds](#asan-builds). |
 | `--getdeps-help` | Short-circuits everything and prints getdeps' help. |
 
-The wrapper's `--asan` flag is disabled in source pending ASAN support. CMake
-still honours a `WITH_ASAN` environment variable, but nothing exercises that
-path, so treat an ASAN build as unsupported until you have verified it.
+### <a id="asan-builds"></a>ASAN builds
+
+`--asan` builds FBOSS and every dependency with AddressSanitizer, and FBOSS
+with UBSan as well. Instrumenting the dependencies matters: if only folly and
+FBOSS are instrumented, the linker can keep an uninstrumented copy of inline
+folly code from another library, which takes code paths folly disables under
+ASAN, and ASAN reports them as overflows. Setting `WITH_ASAN=1` yourself
+instead of passing `--asan` produces exactly that half-instrumented build.
+
+- **Use a separate `--scratch-path`.** Turning `--asan` on or off rebuilds
+  every dependency, and switching back rebuilds them again.
+- **Memory.** getdeps' per-process address-space cap is turned off, because
+  ASAN binaries reserve terabytes of address space at startup and the build
+  runs some (gtest discovery, config generators). The RAM-based job count
+  still applies, and peak build memory runs under 10% above a non-ASAN build's.
+- **`ASAN_OPTIONS` during the build** is `detect_leaks=0:detect_odr_violation=1`.
+  Leak reports would fail instrumented tools such as the thrift compiler at
+  exit. Boost is linked into both `libfolly.so` and each binary, a same-size
+  duplicate that the default ODR check aborts on; level 1 still reports
+  duplicates whose sizes differ.
+- **Size.** ASAN binaries are 3.5 to 4x their usual size and carry line tables
+  only: file:line in sanitizer reports, but no variables in a debugger. A full
+  fake-SAI scratch directory is about 70 GB, against about 30 GB without ASAN.
+- **Tests.** Run them with `docker-unittest.py --asan`; see
+  [testing.md](testing.md#asan).
 
 ## Commonly used getdeps flags (passed through)
 

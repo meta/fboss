@@ -14,6 +14,7 @@
 #include "fboss/cli/fboss2/options/OutputFormat.h"
 #include "fboss/cli/fboss2/options/SSLPolicy.h"
 #include "fboss/cli/fboss2/utils/AggregateOp.h"
+#include "fboss/cli/fboss2/utils/CommandExit.h"
 #include "fboss/cli/fboss2/utils/FilterOp.h"
 #include "folly/String.h"
 
@@ -37,8 +38,14 @@ class CmdGlobalOptions {
   using IntersectionList = std::vector<FilterTerm>;
   using UnionList = std::vector<IntersectionList>;
 
-  // Static function for getting the CmdGlobalOptions folly::Singleton
+  // Returns the installed invocation override or the ordinary folly::Singleton.
   static std::shared_ptr<CmdGlobalOptions> getInstance();
+
+  // Exchanges the process-wide embedding override; nullptr selects the
+  // singleton. Returns the previous override. Serialize invocations and keep
+  // the override installed until their workers finish.
+  static std::shared_ptr<CmdGlobalOptions> exchangeInvocationOverride(
+      std::shared_ptr<CmdGlobalOptions> instance);
 
   void init(CLI::App& app);
 
@@ -125,7 +132,7 @@ class CmdGlobalOptions {
       if (convertedNewVal.hasError()) {
         std::cerr << "Fatal: error in converting value to the correct type!"
                   << std::endl;
-        exit(1);
+        utils::commandExit(1);
       }
 
       double newAccVal;
@@ -263,7 +270,7 @@ class CmdGlobalOptions {
 
       if (convertedResult.hasError() || convertedPrediate.hasError()) {
         std::cerr << "Fatal: this shouldn't happen!" << std::endl;
-        exit(1);
+        utils::commandExit(1);
       }
       return filterOp->compare(
           convertedResult.value(), convertedPrediate.value());

@@ -215,21 +215,23 @@ namespace utility {
 
 void HwTestThriftHandler::getRouteInfo(
     RouteInfo& routeInfo,
-    std::unique_ptr<IpPrefix> prefix) {
+    std::unique_ptr<IpPrefix> prefix,
+    int32_t routerID) {
   auto routePrefix = folly::CIDRNetwork(
       network::toIPAddress(*prefix->ip()), *prefix->prefixLength());
-  routeInfo.exists() = isRoutePresent(0, RouterID(0), routePrefix);
+  routeInfo.exists() = isRoutePresent(0, RouterID(routerID), routePrefix);
   if (*routeInfo.exists()) {
-    auto classID = getHwRouteClassID(hwSwitch_, RouterID(0), routePrefix);
+    auto classID =
+        getHwRouteClassID(hwSwitch_, RouterID(routerID), routePrefix);
     if (classID.has_value()) {
       routeInfo.classId() = classID.value();
     }
     routeInfo.isProgrammedToCpu() =
-        isHwRouteToCpu(hwSwitch_, RouterID(0), routePrefix);
+        isHwRouteToCpu(hwSwitch_, RouterID(routerID), routePrefix);
     routeInfo.isMultiPath() =
-        isHwRouteMultiPath(hwSwitch_, RouterID(0), routePrefix);
-    routeInfo.isRouteUnresolvedToClassId() =
-        isRouteUnresolvedToCpuClassId(hwSwitch_, RouterID(0), routePrefix);
+        isHwRouteMultiPath(hwSwitch_, RouterID(routerID), routePrefix);
+    routeInfo.isRouteUnresolvedToClassId() = isRouteUnresolvedToCpuClassId(
+        hwSwitch_, RouterID(routerID), routePrefix);
   }
 }
 
@@ -247,12 +249,13 @@ void HwTestThriftHandler::clearRouteHit(std::unique_ptr<IpPrefix> prefix) {
 
 bool HwTestThriftHandler::isRouteToNexthop(
     std::unique_ptr<IpPrefix> prefix,
-    std::unique_ptr<network::thrift::BinaryAddress> nexthop) {
+    std::unique_ptr<network::thrift::BinaryAddress> nexthop,
+    int32_t routerID) {
   auto routePrefix = folly::CIDRNetwork(
       network::toIPAddress(*prefix->ip()), *prefix->prefixLength());
   return isHwRouteToNextHop(
       hwSwitch_,
-      RouterID(0),
+      RouterID(routerID),
       routePrefix,
       network::toIPAddress(*nexthop),
       std::nullopt);

@@ -131,8 +131,6 @@ std::unique_ptr<MirrorOnDropImpl> createMirrorOnDropImpl(cfg::AsicType type);
 // recirculation ports).
 class AgentMirrorOnDropStatelessTest : public AgentMirrorOnDropTestBase {
  public:
-  static constexpr auto kDefaultGlobalSharedBytes{2'000'000};
-
   std::vector<ProductionFeature> getProductionFeaturesVerified() const override;
 
  protected:
@@ -162,12 +160,6 @@ class AgentMirrorOnDropStatelessTest : public AgentMirrorOnDropTestBase {
   MirrorOnDropDropReasonCodes getSrv6BindingSidNonLastSidDropReasons();
   MirrorOnDropDropReasonCodes getSrv6MidpointUnresolvedDropReasons();
   MirrorOnDropDropReasonCodes getSrv6EncapMtuExceededDropReasons();
-
-  // Configure buffers to trigger MMU drops via setupPfcBuffers.
-  void configureMmuDropBuffers(
-      cfg::SwitchConfig& config,
-      const PortID& injectionPortId,
-      int priority);
 
   void configureErspanMirror(
       cfg::SwitchConfig& config,
@@ -206,6 +198,8 @@ class AgentMirrorOnDropStatelessTest : public AgentMirrorOnDropTestBase {
   void waitForStatsToStabilize(const std::vector<PortID>& ports);
 
  private:
+  uint32_t getExpectedModPacketIngressPortId(PortID port) const;
+
   // Shared body of the two warmboot toggle tests above. enablePostWarmboot
   // selects the direction: true = coldboot empty → warmboot adds the report;
   // false = coldboot has the report → warmboot removes it.

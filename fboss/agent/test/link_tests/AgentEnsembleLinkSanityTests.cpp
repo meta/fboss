@@ -101,19 +101,28 @@ class AgentEnsembleLinkSanityTestDataPlaneFlood : public AgentEnsembleLinkTest {
     const std::string testName =
         testing::UnitTest::GetInstance()->current_test_info()->name();
 
+    std::vector<link_test_production_features::LinkTestProductionFeature>
+        features;
     if (std::find(l1LinkTestNames.begin(), l1LinkTestNames.end(), testName) !=
         l1LinkTestNames.end()) {
-      return {link_test_production_features::LinkTestProductionFeature::
-                  L1_LINK_TEST};
+      features.push_back(
+          link_test_production_features::LinkTestProductionFeature::
+              L1_LINK_TEST);
     } else if (
         std::find(l2LinkTestNames.begin(), l2LinkTestNames.end(), testName) !=
         l2LinkTestNames.end()) {
-      return {link_test_production_features::LinkTestProductionFeature::
-                  L2_LINK_TEST};
+      features.push_back(
+          link_test_production_features::LinkTestProductionFeature::
+              L2_LINK_TEST);
     } else {
       throw std::runtime_error(
           "Test type (L1/L2) not specified for this test case");
     }
+    if (testName == "ptpEnableIsHitless") {
+      features.push_back(
+          link_test_production_features::LinkTestProductionFeature::PTP);
+    }
+    return features;
   }
 };
 
@@ -364,6 +373,56 @@ TEST_F(AgentEnsembleLinkTest, opticsTxDisableRandomPorts) {
 
       // Add the peer port to expectedDownPorts list
       expectedDownPorts.push_back(peerPort);
+    }
+  }
+
+  // Ports sharing media lanes with a disabled port (e.g. ZR 3x200G) lose TX
+  // too, so they and their peers are also expected Down
+  std::vector<int32_t> transceiverIds;
+  for (const auto& port : opticalPorts) {
+    transceiverIds.push_back(
+        getSw()->getPlatformMapping()->getTransceiverIdFromSwPort(port));
+  }
+  auto transceiverInfos = utility::waitForTransceiverInfo(transceiverIds);
+  auto getMediaLanes = [&](PortID port) -> std::set<int32_t> {
+    auto tcvrId =
+        getSw()->getPlatformMapping()->getTransceiverIdFromSwPort(port);
+    auto tcvrInfo = transceiverInfos.find(tcvrId);
+    if (tcvrInfo == transceiverInfos.end()) {
+      return {};
+    }
+    const auto& portNameToMediaLanes =
+        *tcvrInfo->second.tcvrState()->portNameToMediaLanes();
+    auto lanes = portNameToMediaLanes.find(getPortName(port));
+    if (lanes == portNameToMediaLanes.end()) {
+      return {};
+    }
+    return {lanes->second.begin(), lanes->second.end()};
+  };
+  for (const auto& disabledPort : disabledPorts) {
+    auto disabledTcvrId =
+        getSw()->getPlatformMapping()->getTransceiverIdFromSwPort(disabledPort);
+    auto disabledLanes = getMediaLanes(disabledPort);
+    for (const auto& port : opticalPorts) {
+      if (port == disabledPort ||
+          getSw()->getPlatformMapping()->getTransceiverIdFromSwPort(port) !=
+              disabledTcvrId) {
+        continue;
+      }
+      auto lanes = getMediaLanes(port);
+      if (std::none_of(lanes.begin(), lanes.end(), [&](int32_t lane) {
+            return disabledLanes.contains(lane);
+          })) {
+        continue;
+      }
+      XLOG(DBG2) << fmt::format(
+          "opticsTxDisableRandomPorts: {:s} shares media lanes with disabled port {:s}",
+          getPortName(port),
+          getPortName(disabledPort));
+      expectedDownPorts.push_back(port);
+      if (auto peerPort = getPeerPortID(port, connectedPairPortIds)) {
+        expectedDownPorts.push_back(*peerPort);
+      }
     }
   }
 

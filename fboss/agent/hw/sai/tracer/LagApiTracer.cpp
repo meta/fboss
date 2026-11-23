@@ -44,6 +44,7 @@ WRAP_SET_ATTR_FUNC(lag_member, SAI_OBJECT_TYPE_LAG_MEMBER, lag);
 WRAP_GET_ATTR_FUNC(lag_member, SAI_OBJECT_TYPE_LAG_MEMBER, lag);
 
 sai_lag_api_t* wrappedLagApi() {
+  SAI_EXT_ATTR_MAP(Lag, DisableTtlDecrement)
   static sai_lag_api_t lagWrappers;
 
   lagWrappers.create_lag = &wrap_create_lag;

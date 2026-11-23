@@ -241,6 +241,51 @@ class RouteTest : public ::testing::Test {
   std::unique_ptr<HwTestHandle> handle_;
 };
 
+TEST_F(RouteTest, routeDetailsOfNextHopResolvedInNextLevel) {
+  RoutePrefixV6 pfx6{folly::IPAddressV6("2001::"), 64};
+  RouteV6 route(
+      RouteV6::makeThrift(
+          pfx6,
+          kClientA,
+          RouteNextHopEntry(makeNextHops({"2::10"}), DISTANCE)));
+  RouteNextHopSet nhops{
+      ResolvedNextHop(
+          folly::IPAddress("2::10"), InterfaceID(1), UCMP_DEFAULT_WEIGHT),
+      ResolvedNextHop(
+          folly::IPAddress("2001:db8:500::1"),
+          std::nullopt,
+          UCMP_DEFAULT_WEIGHT,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          {},
+          TunnelType::VXLAN,
+          "vx0",
+          std::nullopt,
+          NextHopRole::PRIMARY,
+          RouterID(0),
+          true /* resolvedInNextLevel */)};
+  ClientNextHopsResolver readInline = [](const RouteNextHopEntry& entry) {
+    return entry.getNextHopSet();
+  };
+
+  auto fwdInfo =
+      *route.toRouteDetails(nhops, std::nullopt, readInline).fwdInfo();
+
+  IfAndIP viaInterface;
+  viaInterface.interfaceID() = 1;
+  viaInterface.ip() = toBinaryAddress(folly::IPAddress("2::10"));
+  IfAndIP inNextLevel;
+  inNextLevel.ip() = toBinaryAddress(folly::IPAddress("2001:db8:500::1"));
+  inNextLevel.vrf() = 0;
+  inNextLevel.resolvedInNextLevel() = true;
+  std::vector<IfAndIP> expected{viaInterface, inNextLevel};
+  std::sort(fwdInfo.begin(), fwdInfo.end());
+  std::sort(expected.begin(), expected.end());
+  EXPECT_EQ(fwdInfo, expected);
+}
+
 TEST_F(RouteTest, routeApi) {
   RoutePrefixV6 pfx6{folly::IPAddressV6("2001::"), 64};
   RouteNextHopSet nhops = makeNextHops({"2::10"});
@@ -1125,13 +1170,18 @@ TEST_F(RouteTest, applyNewConfig) {
   config.interfaces()[4].ipAddresses()[3] = "::1/48";
   config.interfaces()[5].intfID() = 6;
   config.interfaces()[5].vlanID() = 6;
-  config.interfaces()[5].routerID() = 1;
   config.interfaces()[5].mac() = "00:00:00:00:00:66";
+
+  auto stateV0 = this->sw_->getState();
+  // interface 6 is created, moved to VRF 1, and then gets its addresses
+  VrfEntry vrf1;
+  vrf1.vrfId() = 1;
+  this->sw_->addVrfs({vrf1});
+  this->sw_->applyConfig("Create interface 6", config);
+  this->sw_->updateInterfaceVrfs({{InterfaceID(6), RouterID(1)}});
   config.interfaces()[5].ipAddresses()->resize(2);
   config.interfaces()[5].ipAddresses()[0] = "5.1.1.1/24";
   config.interfaces()[5].ipAddresses()[1] = "::1/48";
-
-  auto stateV0 = this->sw_->getState();
   this->sw_->applyConfig("Apply config1", config);
   auto stateV1 = this->sw_->getState();
   ASSERT_NE(nullptr, stateV1);
@@ -1163,8 +1213,9 @@ TEST_F(RouteTest, applyNewConfig) {
       {TEMP::Route{0, IPAddress("::0"), 48}});
 
   // move one interface to cause same route prefix conflict
-  config.interfaces()[5].routerID() = 0;
-  EXPECT_THROW(this->sw_->applyConfig("Bogus config", config), FbossError);
+  EXPECT_THROW(
+      this->sw_->updateInterfaceVrfs({{InterfaceID(6), RouterID(0)}}),
+      FbossError);
 
   // add a new interface in a new VRF
   config.vlans()->resize(7);
@@ -1172,18 +1223,23 @@ TEST_F(RouteTest, applyNewConfig) {
   config.interfaces()->resize(7);
   config.interfaces()[6].intfID() = 7;
   config.interfaces()[6].vlanID() = 7;
-  config.interfaces()[6].routerID() = 2;
   config.interfaces()[6].mac() = "00:00:00:00:00:77";
+  // interface 7 is created and moved to VRF 2
+  VrfEntry vrf2;
+  vrf2.vrfId() = 2;
+  this->sw_->addVrfs({vrf2});
+  this->sw_->applyConfig("Create interface 7", config);
+  this->sw_->updateInterfaceVrfs({{InterfaceID(7), RouterID(2)}});
   config.interfaces()[6].ipAddresses()->resize(2);
   config.interfaces()[6].ipAddresses()[0] = "1.1.1.1/24";
   config.interfaces()[6].ipAddresses()[1] = "::1/48";
-  // and move one interface to another vrf and fix the address conflict
-  config.interfaces()[5].routerID() = 0;
+  // and fix the address conflict of interface 6, still in VRF 1
   config.interfaces()[5].ipAddresses()->resize(2);
   config.interfaces()[5].ipAddresses()[0] = "5.2.2.1/24";
   config.interfaces()[5].ipAddresses()[1] = "5::6/48";
-
   this->sw_->applyConfig("Apply config", config);
+  // then move interface 6 to the default VRF
+  this->sw_->updateInterfaceVrfs({{InterfaceID(6), RouterID(0)}});
   auto stateV3 = this->sw_->getState();
   ASSERT_NE(nullptr, stateV3);
   checkChangedRoute(
@@ -3214,6 +3270,74 @@ TEST_F(RouteTest, rejectRouteWithMixedSrv6AndPlainNextHopsAndRollback) {
       this->findRoute6(this->sw_->getState(), rid, "2800:3::/64"), nullptr);
   EXPECT_EQ(
       this->findRoute6(this->sw_->getState(), rid, "2700:3::/64"), nullptr);
+}
+
+TEST_F(RouteTest, allowMixedSrv6AndPlainNextHopsWhenFlagEnabled) {
+  folly::FlagSaver flagSaver;
+  FLAGS_srv6 = true;
+  FLAGS_allow_mixed_ip_srv6_nhop_groups = true;
+
+  auto rid = RouterID(0);
+  const std::vector<folly::IPAddressV6> sidList1{
+      folly::IPAddressV6("3001:db8:1::"), folly::IPAddressV6("3001:db8:2::")};
+  const std::vector<folly::IPAddressV6> sidList2{
+      folly::IPAddressV6("3001:db8:3::"), folly::IPAddressV6("3001:db8:4::")};
+
+  RouteNextHopSet nhops;
+  nhops.emplace(UnresolvedNextHop(
+      folly::IPAddress("1::10"),
+      ECMP_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      sidList1,
+      TunnelType::SRV6_ENCAP,
+      kSrv6Tunnel0));
+  nhops.emplace(UnresolvedNextHop(
+      folly::IPAddress("2::10"),
+      ECMP_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      sidList2,
+      TunnelType::SRV6_ENCAP,
+      kSrv6Tunnel0));
+  nhops.emplace(UnresolvedNextHop(folly::IPAddress("3::10"), ECMP_WEIGHT));
+  nhops.emplace(UnresolvedNextHop(folly::IPAddress("4::10"), ECMP_WEIGHT));
+
+  auto updater = this->sw_->getRouteUpdater();
+  updater.addRoute(
+      rid,
+      IPAddress("2700:3::"),
+      64,
+      kClientA,
+      RouteNextHopEntry(
+          RouteNextHopSet{
+              UnresolvedNextHop(folly::IPAddress("1::20"), ECMP_WEIGHT)},
+          EBGP_DISTANCE));
+  updater.addRoute(
+      rid,
+      IPAddress("2800:3::"),
+      64,
+      kClientA,
+      RouteNextHopEntry(nhops, EBGP_DISTANCE));
+  updater.program();
+
+  auto route = this->findRoute6(this->sw_->getState(), rid, "2800:3::/64");
+  ASSERT_NE(nullptr, route);
+  ASSERT_TRUE(route->isResolved());
+  const auto fwdNhops =
+      getClientNextHops(this->sw_->getState(), *route->getBestEntry().second);
+  ASSERT_EQ(4, fwdNhops.size());
+  size_t srv6Count = 0;
+  for (const auto& nh : fwdNhops) {
+    srv6Count += !nh.srv6SegmentList().empty();
+  }
+  EXPECT_EQ(2, srv6Count);
+  EXPECT_NE(
+      nullptr, this->findRoute6(this->sw_->getState(), rid, "2700:3::/64"));
 }
 
 TEST_F(RouteTest, rejectRouteThatBecomesMixedAfterRecursiveResolution) {

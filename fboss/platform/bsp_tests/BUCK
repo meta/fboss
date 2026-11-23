@@ -77,10 +77,11 @@ cpp_library(
         "fbsource//third-party/googletest:gtest",
         "fbsource//third-party/re2:re2",
         "fbsource//xplat/folly:file_util",
-        "fbsource//xplat/folly:format",
         "fbsource//xplat/folly:scope_guard",
+        "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/logging:logging",
         ":fbiob_device_config-cpp2-types",
+        "//fboss/lib:gpiod_line",
         "//fboss/platform/helpers:platform_utils",
         "//fboss/platform/platform_manager:fan_cpld_manager",
         "//fboss/platform/platform_manager:fbiob_ioctl_h",
@@ -95,6 +96,9 @@ cpp_library(
         ":bsp_test_environment",
         ":bsp_tests_runtime_config-cpp2-types",
         "//fboss/platform/platform_manager:platform_manager_config-cpp2-types",
+    ],
+    external_deps = [
+        ("libgpiod", None, "gpiod"),
     ],
 )
 
@@ -119,7 +123,7 @@ cpp_binary(
         "fbsource//third-party/fmt:fmt",
         "fbsource//third-party/googletest:gtest",
         "fbsource//third-party/re2:re2",
-        "fbsource//xplat/folly:format",
+        "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/logging:logging",
         ":bsp_test_environment",
         ":bsp_tests_config-cpp2-types",
@@ -179,9 +183,13 @@ cpp_library(
 
 fbpkg.builder(
     name = "fboss_bsp_tests",
-    architectures = ["x86_64"],
+    architectures = [
+        "x86_64",
+        "aarch64",
+    ],
     path_actions = {
         "bsp_tests": ":bsp_tests",
     },
     split_debuginfo = True,
+    variant_distribution = "combined",
 )

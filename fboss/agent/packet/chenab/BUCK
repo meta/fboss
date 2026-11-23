@@ -1,0 +1,29 @@
+load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+
+oncall("fboss_agent_push")
+
+cpp_library(
+    name = "chenab_mod_header",
+    srcs = ["facebook/ChenabModHeader.cpp"],
+    headers = ["ChenabModHeader.h"],
+    deps = [
+        "//fboss/agent/packet:hdr_parse_error",
+        "//fboss/agent/packet:ipproto",
+        "//fboss/agent/packet:packet",
+    ],
+    exported_deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/io:iobuf",
+    ],
+)
+
+cpp_library(
+    name = "chenab_mod_header_oss",
+    srcs = ["oss/ChenabModHeader.cpp"],
+    headers = ["ChenabModHeader.h"],
+    deps = ["//fboss/agent/packet:hdr_parse_error"],
+    exported_deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/io:iobuf",
+    ],
+)

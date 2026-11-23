@@ -10,6 +10,7 @@
 #include "fboss/lib/bsp/leh800bcls/Leh800bclsBspPlatformMapping.h"
 #include "fboss/lib/bsp/m4052actm/M4052ACTMBspPlatformMapping.h"
 #include "fboss/lib/bsp/m4061clsc/M4061clscBspPlatformMapping.h"
+#include "fboss/lib/bsp/m4061nhp/M4061nhpBspPlatformMapping.h"
 #include "fboss/lib/bsp/m4062nhp/M4062nhpBspPlatformMapping.h"
 #include "fboss/lib/bsp/m5120csc/M5120cscBspPlatformMapping.h"
 #include "fboss/lib/bsp/meru800bfa/Meru800bfaBspPlatformMapping.h"
@@ -18,7 +19,6 @@
 #include "fboss/lib/bsp/minipack3n/Minipack3NBspPlatformMapping.h"
 #include "fboss/lib/bsp/montblanc/MontblancBspPlatformMapping.h"
 #include "fboss/lib/bsp/morgan800cc/Morgan800ccBspPlatformMapping.h"
-#include "fboss/lib/bsp/saintpaul/SaintpaulBspPlatformMapping.h"
 #include "fboss/lib/bsp/tahan800bc/Tahan800bcBspPlatformMapping.h"
 #include "fboss/lib/bsp/tahansb800bc/Tahansb800bcBspPlatformMapping.h"
 #include "fboss/lib/bsp/wedge800bact/Wedge800BACTBspPlatformMapping.h"
@@ -198,15 +198,6 @@ M4061clscSystemContainer::getInstance() {
   return _m4061clscSystemContainer.try_get();
 }
 
-using SaintpaulSystemContainer =
-    BspGenericSystemContainer<SaintpaulBspPlatformMapping>;
-const folly::Singleton<SaintpaulSystemContainer> _saintpaulSystemContainer;
-template <>
-std::shared_ptr<SaintpaulSystemContainer>
-SaintpaulSystemContainer::getInstance() {
-  return _saintpaulSystemContainer.try_get();
-}
-
 using M4052ACTMSystemContainer =
     BspGenericSystemContainer<M4052ACTMBspPlatformMapping>;
 folly::Singleton<M4052ACTMSystemContainer> _m4052actmSystemContainer;
@@ -214,6 +205,15 @@ template <>
 std::shared_ptr<M4052ACTMSystemContainer>
 M4052ACTMSystemContainer::getInstance() {
   return _m4052actmSystemContainer.try_get();
+}
+
+using M4061nhpSystemContainer =
+    BspGenericSystemContainer<M4061nhpBspPlatformMapping>;
+folly::Singleton<M4061nhpSystemContainer> _m4061nhpSystemContainer;
+template <>
+std::shared_ptr<M4061nhpSystemContainer>
+M4061nhpSystemContainer::getInstance() {
+  return _m4061nhpSystemContainer.try_get();
 }
 
 using M4062nhpSystemContainer =

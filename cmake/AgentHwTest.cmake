@@ -23,6 +23,15 @@ target_link_libraries(config_factory
   multiswitch_test_server
 )
 
+add_library(hw_test_lifecycle_event
+  fboss/agent/hw/test/HwTestLifecycleEvent.cpp
+)
+
+target_link_libraries(hw_test_lifecycle_event
+  agent_hw_test_ctrl_cpp2
+  Folly::folly
+)
+
 add_library(hw_test_main
   fboss/agent/hw/test/Main.cpp
 )
@@ -195,12 +204,20 @@ target_link_libraries(prod_config_utils
   hw_copp_utils
 )
 
-add_fbthrift_cpp_library(
+add_library(validated_shell_commands_cpp2)
+thrift_generate(
   validated_shell_commands_cpp2
   fboss/agent/validated_shell_commands.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     visitation
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(validated_shell_commands_cpp2
+  PUBLIC ${PROJECT_BINARY_DIR}
 )
 
 set(hw_switch_test_srcs

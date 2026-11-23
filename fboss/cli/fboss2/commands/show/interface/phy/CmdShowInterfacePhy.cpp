@@ -143,6 +143,19 @@ void CmdShowInterfacePhy::printSideStateAndStat(
       }
     }
     if (sideStats.pcs().has_value()) {
+      auto erroredBlocks = sideStats.pcs()->erroredBlocks();
+      auto berCount = sideStats.pcs()->berCount();
+      if ((erroredBlocks || berCount) && !hasPcsData) {
+        pcsTable.setHeader({prefix + "PCS", ""});
+        hasPcsData = true;
+      }
+      if (erroredBlocks) {
+        pcsTable.addRow(
+            {prefix + "PCS Errored Blocks", std::to_string(*erroredBlocks)});
+      }
+      if (berCount) {
+        pcsTable.addRow({prefix + "PCS BER Count", std::to_string(*berCount)});
+      }
       if (auto rsFec = sideStats.pcs()->rsFec()) {
         rsFecTable.setHeader({prefix + "RS FEC", ""});
         rsFecTable.addRow(

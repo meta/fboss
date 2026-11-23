@@ -125,7 +125,9 @@ bool TomahawkUltra1Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::HOSTTABLE:
     case HwAsic::Feature::PORT_TX_DISABLE:
     case HwAsic::Feature::ZERO_SDK_WRITE_WARMBOOT:
+    case HwAsic::Feature::PORT_MAC_FLUSH:
     case HwAsic::Feature::PENDING_L2_ENTRY:
+    case HwAsic::Feature::STATIC_FDB_EVICT_DYNAMIC:
     case HwAsic::Feature::COUNTER_REFRESH_INTERVAL:
     case HwAsic::Feature::WIDE_ECMP:
     case HwAsic::Feature::REMOVE_PORTS_FOR_COLDBOOT:
@@ -229,6 +231,8 @@ bool TomahawkUltra1Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::CUT_THROUGH_FORWARDING:
     case HwAsic::Feature::SRV6_MYSID_DISCARD_COUNTER:
     case HwAsic::Feature::SRV6_MYSID_RESOURCE_COUNTER:
+    case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
+    case HwAsic::Feature::SRV6_DECAP_TUNNEL:
     case HwAsic::Feature::PBR_ACL:
     case HwAsic::Feature::DEVICE_WATERMARK_SUPPORT:
     case HwAsic::Feature::SWITCH_CUSTOM_DROP_BITMAP_SUPPORT:
@@ -249,10 +253,13 @@ bool TomahawkUltra1Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::SAI_USER_DEFINED_TRAP:
     case HwAsic::Feature::SAI_SET_TC_WITH_USER_DEFINED_TRAP_CPU_ACTION:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
+    case HwAsic::Feature::HIERARCHICAL_ECMP:
     case HwAsic::Feature::UDF_HASH_FIELD_QUERY:
     case HwAsic::Feature::PORT_DEBOUNCE:
     case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
+    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
+    case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:
     case HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS:
     case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
     case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:
@@ -263,6 +270,11 @@ bool TomahawkUltra1Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::CSIG:
     case HwAsic::Feature::ACL_ENTRY_OUT_PORT_QUALIFIER:
     case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
+    case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
+    case HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED:
+    case HwAsic::Feature::PORT_LATCH_STATUS:
+    case HwAsic::Feature::PCS_ERROR_COUNTERS:
+    case HwAsic::Feature::MIRROR_SESSION_POLICER:
       return false;
   }
   return false;

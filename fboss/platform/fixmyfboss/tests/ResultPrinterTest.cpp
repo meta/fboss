@@ -41,6 +41,20 @@ CheckResult makeResult(
 
 } // namespace
 
+TEST(ResultPrinterTest, SummaryShowsLabels) {
+  std::ostringstream out;
+  const std::vector<CheckResult> results{
+      makeResult("A", CheckStatus::OK),
+      makeResult("B", CheckStatus::OK),
+  };
+
+  fixmyfboss::ResultPrinter(out).printSummary(results, {"P1", ""});
+
+  EXPECT_THAT(out.str(), HasSubstr("A: P1\n"));
+  EXPECT_THAT(out.str(), HasSubstr("  B\n"));
+  EXPECT_THAT(out.str(), Not(HasSubstr("B:")));
+}
+
 TEST(ResultPrinterTest, SummaryListsSkipReasons) {
   std::ostringstream out;
   const std::vector<CheckResult> results{
@@ -68,4 +82,18 @@ TEST(ResultPrinterTest, DetailsOnlyWhenRequested) {
   EXPECT_THAT(terse.str(), HasSubstr("broken"));
   EXPECT_THAT(terse.str(), Not(HasSubstr("command output")));
   EXPECT_THAT(verbose.str(), HasSubstr("command output"));
+}
+
+TEST(ResultPrinterTest, NoColorPrintsPlainText) {
+  const std::vector<CheckResult> results{
+      makeResult("A", CheckStatus::PROBLEM, "broken"),
+  };
+  std::ostringstream out;
+
+  fixmyfboss::ResultPrinter printer(out, false, /*color=*/false);
+  printer.printSummary(results);
+  printer.printDetails(results);
+
+  EXPECT_THAT(out.str(), HasSubstr("[  PROBLEM  ] A"));
+  EXPECT_THAT(out.str(), Not(HasSubstr("\033")));
 }

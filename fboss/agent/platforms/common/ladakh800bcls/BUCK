@@ -15,7 +15,7 @@ cpp_library(
         "Ladakh800bclsTestPlatformMapping.h",
         "Ladakh800bclsTestPostEvtPlatformMapping.h",
     ],
-    deps = ["//folly/logging:logging"],
+    deps = ["fbsource//xplat/folly/logging:logging"],
     exported_deps = [
         "//fboss/agent:agent_features",
         "//fboss/agent/platforms/common:platform_mapping",

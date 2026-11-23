@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/delete/interface/ipv6/ndp/CmdDeleteInterfaceIpv6Ndp.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -149,5 +150,11 @@ void CmdDeleteInterfaceIpv6Ndp::printOutput(const RetType& logMsg) {
 // Explicit template instantiation
 template void
 CmdHandler<CmdDeleteInterfaceIpv6Ndp, CmdDeleteInterfaceIpv6NdpTraits>::run();
+
+std::vector<std::string> CmdDeleteInterfaceIpv6NdpTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completeAttrList(
+      typed, utils::completion::toWords(ndpAttrNames()));
+}
 
 } // namespace facebook::fboss

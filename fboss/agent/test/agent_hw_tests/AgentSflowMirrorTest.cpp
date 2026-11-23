@@ -930,6 +930,9 @@ device:
                                      CS00012130950 */
     auto udpPayload = isV4 ? capturedPkt.v4PayLoad()->udpPayload()
                            : capturedPkt.v6PayLoad()->udpPayload();
+    if (checkSameAndGetAsic()->getAsicType() == cfg::AsicType::ASIC_TYPE_EBRO) {
+      validateSflowPacketHeader(udpPayload->payload(), samplePort);
+    }
     verifySflowExporterIp(udpPayload->payload());
     verifySflowPacketUdpChecksum(
         capturedPktBuf->get(), capturedPkt, udpPayload, isV4);

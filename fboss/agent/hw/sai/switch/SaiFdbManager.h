@@ -121,12 +121,13 @@ class SaiFdbManager {
   void removeFdbEntry(InterfaceID, folly::MacAddress);
   // Process mac Table changes
   void addMac(const std::shared_ptr<MacEntry>& addedEntry);
-  void removeMac(const std::shared_ptr<MacEntry>& removedEntry);
+  void removeMac(const std::shared_ptr<MacEntry>& removedEntry, VlanID vlanId);
   void changeMac(
       const std::shared_ptr<MacEntry>& oldEntry,
       const std::shared_ptr<MacEntry>& newEntry);
   std::vector<L2EntryThrift> getL2Entries(bool sdk = false) const;
   void handleLinkDown(SaiPortDescriptor portId);
+  void flushDynamicEntries(PortID portId);
   std::shared_ptr<SaiFdbEntry> createSaiObject(
       const typename SaiFdbTraits::AdapterHostKey& key,
       const typename SaiFdbTraits::CreateAttributes& attributes,

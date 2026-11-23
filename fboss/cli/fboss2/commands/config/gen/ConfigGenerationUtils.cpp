@@ -10,6 +10,8 @@
 
 #include "fboss/cli/fboss2/commands/config/gen/ConfigGenerationUtils.h"
 
+#include <algorithm>
+#include <map>
 #include <set>
 #include <string_view>
 #include <utility>
@@ -25,6 +27,38 @@ namespace facebook::fboss::configgen {
 namespace fs = std::filesystem;
 namespace {
 
+const std::map<std::string_view, ConfigProfileType> kConfigProfiles{
+    {"default", ConfigProfileType::DEFAULT},
+    {"hw_test", ConfigProfileType::HW_TEST},
+    {"benchmark", ConfigProfileType::BENCHMARK},
+    {"link_test", ConfigProfileType::LINK_TEST},
+};
+
+} // namespace
+
+ConfigProfileType normalizeProfile(std::string_view profile) {
+  if (const auto profileIt = kConfigProfiles.find(profile);
+      profileIt != kConfigProfiles.end()) {
+    return profileIt->second;
+  }
+  throw FbossError("Unsupported config generation profile: ", profile);
+}
+
+std::string getProfileName(ConfigProfileType profile) {
+  const auto profileIt = std::find_if(
+      kConfigProfiles.begin(),
+      kConfigProfiles.end(),
+      [profile](const auto& entry) { return entry.second == profile; });
+  if (profileIt != kConfigProfiles.end()) {
+    return std::string(profileIt->first);
+  }
+  throw FbossError(
+      "Unsupported config generation profile: ",
+      apache::thrift::util::enumNameSafe(profile));
+}
+
+namespace {
+
 struct PendingConfig {
   fs::path outputPath;
   std::string contents;
@@ -37,20 +71,6 @@ struct ConfigGenerationPlan {
   std::vector<PendingConfig> configs;
   std::set<fs::path> outputPaths;
 };
-
-std::string getProfileName(ConfigProfileType profile) {
-  switch (profile) {
-    case ConfigProfileType::DEFAULT:
-      return "default";
-    case ConfigProfileType::HW_TEST:
-      return "hw_test";
-    case ConfigProfileType::BENCHMARK:
-      return "benchmark";
-  }
-  throw FbossError(
-      "Unsupported config generation profile: ",
-      apache::thrift::util::enumNameSafe(profile));
-}
 
 std::string getServiceName(ServiceType service) {
   switch (service) {
@@ -130,6 +150,16 @@ ConfigGenerationPlan createConfigGenerationPlan(
         asicConfigVariant = *option.asicConfigVariant();
       }
       validatePathComponent(asicConfigVariant, "asicConfigVariant");
+      std::optional<std::string> linkTopologyVariant;
+      if (option.linkTopologyVariant()) {
+        linkTopologyVariant = *option.linkTopologyVariant();
+      }
+      validatePathComponent(linkTopologyVariant, "linkTopologyVariant");
+      std::optional<std::string> platformMappingVariant;
+      if (option.platformMappingVariant()) {
+        platformMappingVariant = *option.platformMappingVariant();
+      }
+      validatePathComponent(platformMappingVariant, "platformMappingVariant");
 
       auto outputPath = platformDirectory / "forwarding_stack" / "generated" /
           plan.serviceName / getOutputFileName(profile, variant);
@@ -147,6 +177,8 @@ ConfigGenerationPlan createConfigGenerationPlan(
           .profile = profile,
           .variant = std::move(variant),
           .asicConfigVariant = std::move(asicConfigVariant),
+          .linkTopologyVariant = std::move(linkTopologyVariant),
+          .platformMappingVariant = std::move(platformMappingVariant),
           .service = service,
           .serviceName = plan.serviceName,
           .platformDirectory = platformDirectory,

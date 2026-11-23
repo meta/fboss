@@ -182,6 +182,10 @@ inline folly::StringPiece constexpr kLineRemoteFaultChanged() {
   return "line.remote_fault_changed";
 }
 
+inline folly::StringPiece constexpr kLinkDownDuringWarmBoot() {
+  return "link_down_during_warmboot";
+}
+
 inline folly::StringPiece constexpr kInLabelMissDiscards() {
   return "in_label_miss_discards";
 }

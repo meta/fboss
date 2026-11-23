@@ -5,9 +5,13 @@
 #include <memory>
 #include <vector>
 
+#include "fboss/agent/state/StateDelta.h"
+#include "fboss/agent/types.h"
+
 namespace facebook::fboss {
-class StateDelta;
 class SwitchState;
+template <typename AddrT>
+class Route;
 
 class PbrAclManager {
  public:
@@ -18,7 +22,32 @@ class PbrAclManager {
   void updateFailed(const std::shared_ptr<SwitchState>& curState);
 
  private:
-  std::shared_ptr<SwitchState> processDelta(const StateDelta& delta);
+  struct InputOutputState {
+    explicit InputOutputState(const StateDelta& in);
+
+    void publishLastDelta();
+
+    void appendDelta(const StateDelta& delta);
+
+    void replaceLastDelta(const StateDelta& delta);
+
+    StateDelta getCurrentStateDelta() const;
+
+    size_t numDeltas() const {
+      return out_.size();
+    }
+
+    std::vector<StateDelta> moveDeltas() {
+      return std::move(out_);
+    }
+
+    bool updated{false};
+
+   private:
+    std::vector<StateDelta> out_;
+  };
+
+  void processDelta(const StateDelta& delta, InputOutputState* inOutState);
   std::vector<StateDelta> modifyStateImpl(
       const std::vector<StateDelta>& deltas);
 };

@@ -64,6 +64,7 @@ void processRemoteInterfaceRoutes(
     return;
   }
 
+  const auto remoteVrf = remoteIntf->getRemoteIntfRouterID();
   for (const auto& [addr, mask] : std::as_const(*remoteIntf->getAddresses())) {
     const auto ipAddr = folly::IPAddress(addr);
     // Skip link-local addresses in directly-connected routes
@@ -80,7 +81,7 @@ void processRemoteInterfaceRoutes(
       // from removing the route after the add (RIB processes adds then
       // deletes). Always add to toAdd so addOrReplaceRouteImpl re-points
       // the route to the correct interface.
-      auto& toDel = remoteIntfRoutesToDel[remoteIntf->getRouterID()];
+      auto& toDel = remoteIntfRoutesToDel[remoteVrf];
       auto iter = std::find_if(
           toDel.begin(), toDel.end(), [&prefix](const auto& entry) {
             return entry.first == prefix;
@@ -96,11 +97,10 @@ void processRemoteInterfaceRoutes(
                    << " for intf " << remoteIntf->getID() << " ("
                    << remoteIntf->getName() << ")";
       }
-      remoteIntfRoutesToAdd[remoteIntf->getRouterID()].emplace(
-          prefix, intfAddr);
+      remoteIntfRoutesToAdd[remoteVrf].emplace(prefix, intfAddr);
     } else {
       // Check if route already in remoteIntfRoutesToAdd
-      auto& toAdd = remoteIntfRoutesToAdd[remoteIntf->getRouterID()];
+      auto& toAdd = remoteIntfRoutesToAdd[remoteVrf];
       auto iter = toAdd.find(prefix);
       if (iter != toAdd.end() && iter->second.first == remoteIntf->getID()) {
         // Same interface: cancel the add (route stays unchanged)
@@ -114,7 +114,7 @@ void processRemoteInterfaceRoutes(
         XLOG(DBG3) << "processRemoteInterfaceRoutes: delete route " << prefixStr
                    << " for intf " << remoteIntf->getID() << " ("
                    << remoteIntf->getName() << ")";
-        remoteIntfRoutesToDel[remoteIntf->getRouterID()].emplace_back(
+        remoteIntfRoutesToDel[remoteVrf].emplace_back(
             prefix, remoteIntf->getID());
       } else {
         // Pending add for different interface — the add will replace

@@ -49,6 +49,10 @@ std::string normalizeReason(const std::string& v);
 
 std::string validReasonNames();
 
+// Every cfg::PacketRxReason name in the spelling parseReason() accepts from
+// the command line (lowercase, dashes), for shell completion.
+std::vector<std::string> reasonNames();
+
 cfg::PacketRxReason parseReason(const std::string& s);
 
 } // namespace copp_reason

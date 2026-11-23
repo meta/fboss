@@ -157,6 +157,37 @@ TEST_F(CmdConfigLoadBalancingTestFixture, applyHashSeed_setAndClear) {
   EXPECT_FALSE(lb->seed().has_value());
 }
 
+TEST_F(
+    CmdConfigLoadBalancingTestFixture,
+    applyUpdatesOnlyRequestedLoadBalancer) {
+  cfg::LoadBalancer ecmp;
+  ecmp.id() = cfg::LoadBalancerID::ECMP;
+  ecmp.algorithm() = cfg::HashingAlgorithm::CRC;
+  ecmp.seed() = 11;
+
+  cfg::LoadBalancer lag;
+  lag.id() = cfg::LoadBalancerID::AGGREGATE_PORT;
+  lag.algorithm() = cfg::HashingAlgorithm::CRC16_CCITT;
+  lag.seed() = 22;
+
+  cfg::SwitchConfig sw;
+  sw.loadBalancers() = {ecmp, lag};
+  const auto originalLag =
+      *findLoadBalancer(sw, cfg::LoadBalancerID::AGGREGATE_PORT);
+
+  applyLoadBalancerConfig(sw, cfg::LoadBalancerID::ECMP, "hash-seed", "99");
+
+  ASSERT_EQ(sw.loadBalancers()->size(), 2);
+  const auto* updatedEcmp = findLoadBalancer(sw, cfg::LoadBalancerID::ECMP);
+  ASSERT_NE(updatedEcmp, nullptr);
+  ASSERT_TRUE(updatedEcmp->seed().has_value());
+  EXPECT_EQ(*updatedEcmp->seed(), 99);
+  const auto* unchangedLag =
+      findLoadBalancer(sw, cfg::LoadBalancerID::AGGREGATE_PORT);
+  ASSERT_NE(unchangedLag, nullptr);
+  EXPECT_EQ(*unchangedLag, originalLag);
+}
+
 TEST_F(CmdConfigLoadBalancingTestFixture, applyHashSeed_invalid) {
   cfg::SwitchConfig sw;
   EXPECT_THROW(

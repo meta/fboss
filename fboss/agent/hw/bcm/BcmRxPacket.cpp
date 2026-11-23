@@ -15,7 +15,6 @@
 #include "fboss/agent/hw/bcm/RxUtils.h"
 
 #include <fmt/format.h>
-#include <folly/Format.h>
 #include <tuple>
 
 extern "C" {
@@ -45,7 +44,7 @@ void freeRxBuf(void* ptr, void* arg) {
  *  be called.  For PKTIO, nothing needs to be done.  Provide an empty
  *  callback just to avoid the default free() being called.
  */
-void pktioIOBufEmptyCallback(void* ptr, void* arg) {}
+void pktioIOBufEmptyCallback(void* /* ptr */, void* arg) {}
 #endif
 
 const char* const kRxReasonNames[] = BCM_RX_REASON_NAMES_INITIALIZER;

@@ -81,7 +81,8 @@ class CmdShowPort : public CmdHandler<CmdShowPort, CmdShowPortTraits> {
       const std::unordered_map<std::string, cfg::SwitchDrainState>&
           peerDrainStates,
       const std::unordered_map<std::string, PeerPortInfo>& peerPortInfo,
-      const std::vector<std::string>& drainedInterfaces);
+      const std::vector<std::string>& drainedInterfaces,
+      const std::map<std::string, int64_t>& fb303Counters = {});
 
   void printOutput(const RetType& model, std::ostream& out = std::cout);
 

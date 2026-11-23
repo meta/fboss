@@ -29,7 +29,10 @@ struct CmdShowBgpTableTraits : public ReadCommandTraits {
   using RetType = TRibEntryWithHost;
 
   std::vector<utils::LocalOption> LocalOptions = {
-      {kGar, "Show decoded GAR link bandwidth ext community"}};
+#ifndef IS_OSS
+      {kGar, "Show decoded GAR link bandwidth ext community"},
+#endif
+  };
 
   // Human-authored guide prose for the CLI reference wiki. Superset of the
   // one-line help string registered in the command tree.

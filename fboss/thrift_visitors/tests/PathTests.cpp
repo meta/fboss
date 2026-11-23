@@ -90,10 +90,10 @@ TEST(PathTests, WildcardPaths) {
   auto path = root.sw().ports()[wildcard].logicalID();
   auto extTokens = path.extendedTokens();
   EXPECT_EQ(extTokens.size(), 4);
-  EXPECT_EQ(extTokens[0].get_raw(), "2"); // sw id
-  EXPECT_EQ(extTokens[1].get_raw(), "2"); // ports id
-  EXPECT_TRUE(extTokens[2].get_any());
-  EXPECT_EQ(extTokens[3].get_raw(), "1"); // logicalID id
+  EXPECT_EQ(extTokens[0].raw().as_const().value(), "2"); // sw id
+  EXPECT_EQ(extTokens[1].raw().as_const().value(), "2"); // ports id
+  EXPECT_TRUE(extTokens[2].any().as_const().value());
+  EXPECT_EQ(extTokens[3].raw().as_const().value(), "1"); // logicalID id
   EXPECT_THROW(path.tokens(), std::runtime_error);
   EXPECT_THROW(path.idTokens(), std::runtime_error);
 }

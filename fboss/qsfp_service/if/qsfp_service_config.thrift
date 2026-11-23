@@ -200,4 +200,11 @@ struct QsfpServiceConfig {
 
   // [DEPRECATED] fboss2 reads the transceiver catalog from configerator directly.
   11: optional TransceiverProperties transceiverProperties_DEPRECATED;
+
+  // Platform mapping placeholder vendors (used in
+  // PlatformPortConfigOverrideFactor.vendor) and the real transceivers each
+  // stands for.
+  12: optional list<
+    transceiver.TransceiverVendorOverride
+  > transceiverVendorOverrides;
 }

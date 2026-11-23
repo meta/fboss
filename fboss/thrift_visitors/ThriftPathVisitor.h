@@ -84,7 +84,7 @@ struct ThriftPathVisitor<apache::thrift::type::set<ValueTag>, Options> {
              std::string>)
   {
     using Tag = apache::thrift::type::set<ValueTag>;
-    using ValueT = typename folly::remove_cvref_t<Node>::value_type;
+    using ValueT = typename std::remove_cvref_t<Node>::value_type;
 
     static_assert(
         !(shouldCreateNodeIfMissing<Options> && isConst<Node>),
@@ -223,7 +223,7 @@ struct ThriftPathVisitor<
       }
     }
 
-    using KeyT = typename folly::remove_cvref_t<Node>::key_type;
+    using KeyT = typename std::remove_cvref_t<Node>::key_type;
     // Get key
     auto token = *begin++;
     auto key = folly::tryTo<KeyT>(token);

@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/protocol/static/route/add/CmdConfigProtocolStaticRouteAdd.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include <fmt/format.h>
 #include <folly/String.h>
@@ -139,5 +140,24 @@ template void CmdHandler<
 template void CmdHandler<
     CmdConfigProtocolStaticIpv6RouteAdd,
     CmdConfigProtocolStaticIpv6RouteAddTraits>::run();
+
+namespace {
+// <prefix> <nexthop|null0|cpu>: only the keyword next-hops can be offered.
+std::vector<std::string> completeStaticRouteArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(typed, {{}, {"null0", "cpu"}});
+}
+} // namespace
+
+std::vector<std::string> CmdConfigProtocolStaticIpRouteAddTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return completeStaticRouteArgs(typed);
+}
+
+std::vector<std::string>
+CmdConfigProtocolStaticIpv6RouteAddTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return completeStaticRouteArgs(typed);
+}
 
 } // namespace facebook::fboss

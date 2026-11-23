@@ -1,0 +1,16 @@
+{
+  "i2cBusIgnore": [],
+  "psus": [
+    "/run/devmap/sensors/PSU1",
+    "/run/devmap/sensors/PSU2",
+    "/run/devmap/sensors/PSU3",
+    "/run/devmap/sensors/PSU4"
+  ],
+  "i2cDumpDevices": [
+    "/run/devmap/sensors/DPM",
+    "/run/devmap/sensors/DPM_1",
+    "/run/devmap/sensors/DPM_2",
+    "/run/devmap/sensors/MGMT_TEMP_SENSOR",
+    "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR"
+  ]
+}

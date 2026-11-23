@@ -107,6 +107,9 @@ class Tomahawk6Asic : public BroadcomXgsAsic {
   std::optional<uint32_t> getMaxEcmpMembers() const override {
     return 128000;
   }
+  std::optional<uint32_t> getMaxPbrAclEntries() const override {
+    return 1791;
+  }
   std::optional<AcceptedValues> getAcceptedLinkUpHoldoffTimeMs()
       const override {
     return AcceptedValues::range(2, 500);
@@ -118,6 +121,9 @@ class Tomahawk6Asic : public BroadcomXgsAsic {
     return 1;
   }
   std::optional<uint32_t> getMaxNdpTableSize() const override {
+    return 8192;
+  }
+  std::optional<uint32_t> getMaxVrfs() const override {
     return 8192;
   }
   std::optional<uint32_t> getMaxRoutes() const override {

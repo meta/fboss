@@ -35,6 +35,7 @@
 #include "fboss/agent/hw/sai/tracer/NeighborApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/NextHopApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/NextHopGroupApiTracer.h"
+#include "fboss/agent/hw/sai/tracer/PolicerApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/PortApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/QosMapApiTracer.h"
 #include "fboss/agent/hw/sai/tracer/QueueApiTracer.h"
@@ -447,6 +448,12 @@ sai_status_t __wrap_sai_api_query(
           static_cast<sai_virtual_router_api_t*>(*api_method_table);
       *api_method_table = facebook::fboss::wrappedVirtualRouterApi();
       SaiTracer::getInstance()->logApiQuery(sai_api_id, "virtual_router_api");
+      break;
+    case SAI_API_POLICER:
+      SaiTracer::getInstance()->policerApi_ =
+          static_cast<sai_policer_api_t*>(*api_method_table);
+      *api_method_table = facebook::fboss::wrappedPolicerApi();
+      SaiTracer::getInstance()->logApiQuery(sai_api_id, "policer_api");
       break;
     case SAI_API_ISOLATION_GROUP:
       SaiTracer::getInstance()->isolationGroupApi_ =
@@ -1144,6 +1151,35 @@ void SaiTracer::logFdbEntryRemoveFn(
           "remove_fdb_entry(&f_e)"));
 
   // Check return value to be the same as the original run
+  lines.push_back(rvCheck(rv));
+
+  writeToFile(lines);
+}
+
+void SaiTracer::logFdbFlushFn(
+    sai_object_id_t switch_id,
+    uint32_t attr_count,
+    const sai_attribute_t* attr_list,
+    sai_status_t rv) {
+  if (!FLAGS_enable_replayer) {
+    return;
+  }
+
+  vector<string> lines =
+      setAttrList(attr_list, attr_count, SAI_OBJECT_TYPE_FDB_FLUSH, rv);
+  lines.push_back(logTimeAndRv(rv, switch_id));
+  lines.push_back(
+      to<string>(
+          "rv=",
+          folly::get_or_throw(
+              fnPrefix_,
+              SAI_OBJECT_TYPE_FDB_FLUSH,
+              "Unsupported Sai Object type in Sai Tracer"),
+          "flush_fdb_entries(",
+          getVariable(switch_id),
+          ",",
+          attr_count,
+          ",s_a)"));
   lines.push_back(rvCheck(rv));
 
   writeToFile(lines);
@@ -1954,6 +1990,9 @@ vector<string> SaiTracer::setAttrList(
     case SAI_OBJECT_TYPE_FDB_ENTRY:
       setFdbEntryAttributes(attr_list, attr_count, attrLines, rv);
       break;
+    case SAI_OBJECT_TYPE_FDB_FLUSH:
+      setFdbFlushAttributes(attr_list, attr_count, attrLines, rv);
+      break;
     case SAI_OBJECT_TYPE_HASH:
       setHashAttributes(attr_list, attr_count, attrLines, rv);
       break;
@@ -2057,6 +2096,11 @@ vector<string> SaiTracer::setAttrList(
     case SAI_OBJECT_TYPE_TAM:
       setTamAttributes(attr_list, attr_count, attrLines, rv);
       break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    case SAI_OBJECT_TYPE_TAM_INT:
+      setTamIntAttributes(attr_list, attr_count, attrLines, rv);
+      break;
+#endif
     case SAI_OBJECT_TYPE_TAM_EVENT:
       setTamEventAttributes(attr_list, attr_count, attrLines, rv);
       break;
@@ -2080,6 +2124,12 @@ vector<string> SaiTracer::setAttrList(
       break;
     case SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY:
       setTunnelTermAttributes(attr_list, attr_count, attrLines, rv);
+      break;
+    case SAI_OBJECT_TYPE_TUNNEL_MAP:
+      setTunnelMapAttributes(attr_list, attr_count, attrLines, rv);
+      break;
+    case SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY:
+      setTunnelMapEntryAttributes(attr_list, attr_count, attrLines, rv);
       break;
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
     case SAI_OBJECT_TYPE_SRV6_SIDLIST:
@@ -2114,6 +2164,9 @@ vector<string> SaiTracer::setAttrList(
       break;
     case SAI_OBJECT_TYPE_VLAN_MEMBER:
       setVlanMemberAttributes(attr_list, attr_count, attrLines, rv);
+      break;
+    case SAI_OBJECT_TYPE_POLICER:
+      setPolicerAttributes(attr_list, attr_count, attrLines, rv);
       break;
     case SAI_OBJECT_TYPE_ISOLATION_GROUP:
       setIsolationGroupAttributes(attr_list, attr_count, attrLines, rv);
@@ -2624,8 +2677,13 @@ void SaiTracer::initVarCounts() {
   varCounts_.emplace(SAI_OBJECT_TYPE_TAM_EVENT, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_TAM_EVENT_THRESHOLD, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_TAM, 0);
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  varCounts_.emplace(SAI_OBJECT_TYPE_TAM_INT, 0);
+#endif
   varCounts_.emplace(SAI_OBJECT_TYPE_TUNNEL, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY, 0);
+  varCounts_.emplace(SAI_OBJECT_TYPE_TUNNEL_MAP, 0);
+  varCounts_.emplace(SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY, 0);
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
   varCounts_.emplace(SAI_OBJECT_TYPE_SRV6_SIDLIST, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_MY_SID_ENTRY, 0);
@@ -2646,6 +2704,7 @@ void SaiTracer::initVarCounts() {
   varCounts_.emplace(SAI_OBJECT_TYPE_VIRTUAL_ROUTER, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_VLAN, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_VLAN_MEMBER, 0);
+  varCounts_.emplace(SAI_OBJECT_TYPE_POLICER, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_ISOLATION_GROUP, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_ISOLATION_GROUP_MEMBER, 0);
   varCounts_.emplace(SAI_OBJECT_TYPE_WRED, 0);

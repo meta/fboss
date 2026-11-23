@@ -14,7 +14,7 @@ struct TeFlowEntry {
   3: i32 srcPort;
   4: bool enabled;
   5: string counterID;
-  6: list<NextHopInfo> nextHops;
-  7: list<NextHopInfo> resolvedNextHops;
+  6: list<model.NextHopInfo> nextHops;
+  7: list<model.NextHopInfo> resolvedNextHops;
   8: string srcPortName;
 }

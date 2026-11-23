@@ -109,6 +109,14 @@ bool ConfigValidator::isValidFwConfig(
     return false;
   }
 
+  if (fwConfig.delayAfterUpgradeSec() && *fwConfig.delayAfterUpgradeSec() < 0) {
+    XLOG(ERR) << fmt::format(
+        "delayAfterUpgradeSec must be non-negative for device {}, got: {}",
+        deviceName,
+        *fwConfig.delayAfterUpgradeSec());
+    return false;
+  }
+
   // Validate pre-upgrade configurations
   if (fwConfig.preUpgrade().has_value()) {
     for (const auto& preUpgradeConfig : *fwConfig.preUpgrade()) {

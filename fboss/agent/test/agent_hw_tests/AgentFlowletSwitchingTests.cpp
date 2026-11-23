@@ -11,6 +11,8 @@
 #include "fboss/agent/test/agent_hw_tests/AgentArsBase.h"
 
 #include <folly/Conv.h>
+#include <algorithm>
+#include <array>
 
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/AsicUtils.h"
@@ -21,8 +23,8 @@
 #include "fboss/agent/test/AgentHwTest.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/TestUtils.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestEcmpConstants.h"
 #include "fboss/agent/test/utils/AclTestUtils.h"
+#include "fboss/agent/test/utils/AgentTestEcmpConstants.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/LoadBalancerTestUtils.h"
 #include "fboss/agent/test/utils/MirrorTestUtils.h"
@@ -588,6 +590,26 @@ class AgentFlowletAclPriorityTest : public AgentFlowletSwitchingTest {
         .cancel = read(AclType::ECMP_HASH_CANCEL)};
   }
 
+  // A counter the HW agent has not published yet reads as 0. After warm boot
+  // the HW counters keep their values, so a baseline taken before the first
+  // stats sync inflates every delta.
+  bool countersPublished() {
+    constexpr std::array<AclType, 4> kAclTypes{
+        AclType::UDF_ACK,
+        AclType::UDF_FLOWLET,
+        AclType::ROCE_SPRAY_MISS,
+        AclType::ECMP_HASH_CANCEL};
+    for (const auto& [_, stats] : getSw()->getHwSwitchStatsExpensive()) {
+      const auto& nameToCounter = *stats.aclStats()->statNameToCounterMap();
+      if (std::all_of(kAclTypes.begin(), kAclTypes.end(), [&](AclType type) {
+            return nameToCounter.contains(getCounterName(type) + ".packets");
+          })) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   void applyAclConfig(bool withSprayMiss = true) {
     auto newCfg{initialConfig(*getAgentEnsemble())};
     std::vector<std::string> udfGroups =
@@ -623,6 +645,7 @@ class AgentFlowletAclPriorityTest : public AgentFlowletSwitchingTest {
   // an over-matching entry is caught.
   void
   runStep(int roceOpcode, uint8_t bthReserved, int l4DstPort, ExpectedHit hit) {
+    WITH_RETRIES({ ASSERT_EVENTUALLY_TRUE(countersPublished()); });
     auto before = readCounters();
 
     sendRoceTraffic(

@@ -37,9 +37,17 @@ sai_status_t create_mirror_session_fn(
   std::optional<sai_uint16_t> truncateSize;
   std::optional<sai_uint8_t> ipHeaderVersion;
   std::optional<sai_uint32_t> sampleRate;
+  sai_object_id_t policer{SAI_NULL_OBJECT_ID};
 
   for (int i = 0; i < attr_count; ++i) {
     switch (attr_list[i].id) {
+      case SAI_MIRROR_SESSION_ATTR_POLICER:
+        policer = attr_list[i].value.oid;
+        if (policer != SAI_NULL_OBJECT_ID &&
+            !fs->policerManager.exists(policer)) {
+          return SAI_STATUS_INVALID_PARAMETER;
+        }
+        break;
       case SAI_MIRROR_SESSION_ATTR_TYPE:
         type = static_cast<sai_mirror_session_type_t>(attr_list[i].value.s32);
         break;
@@ -139,6 +147,7 @@ sai_status_t create_mirror_session_fn(
     return SAI_STATUS_INVALID_PARAMETER;
   }
 
+  fs->mirrorManager.get(*mirror_session_id).policer = policer;
   return SAI_STATUS_SUCCESS;
 }
 
@@ -154,6 +163,13 @@ sai_status_t set_mirror_session_attribute_fn(
   auto fs = FakeSai::getInstance();
   auto& mirrorSession = fs->mirrorManager.get(mirror_session_id);
   switch (attr->id) {
+    case SAI_MIRROR_SESSION_ATTR_POLICER:
+      if (attr->value.oid != SAI_NULL_OBJECT_ID &&
+          !fs->policerManager.exists(attr->value.oid)) {
+        return SAI_STATUS_INVALID_PARAMETER;
+      }
+      mirrorSession.policer = attr->value.oid;
+      break;
     case SAI_MIRROR_SESSION_ATTR_TYPE:
       return SAI_STATUS_INVALID_PARAMETER;
     case SAI_MIRROR_SESSION_ATTR_MONITOR_PORT:
@@ -215,6 +231,9 @@ sai_status_t get_mirror_session_attribute_fn(
   const auto& mirrorSession = fs->mirrorManager.get(mirror_session_id);
   for (int i = 0; i < attr_count; ++i) {
     switch (attr_list[i].id) {
+      case SAI_MIRROR_SESSION_ATTR_POLICER:
+        attr_list[i].value.oid = mirrorSession.policer;
+        break;
       case SAI_MIRROR_SESSION_ATTR_TYPE:
         attr_list[i].value.s32 = static_cast<int32_t>(mirrorSession.type);
         break;

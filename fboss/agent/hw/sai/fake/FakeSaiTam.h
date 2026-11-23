@@ -23,7 +23,45 @@ class FakeSaiTam {
   sai_object_id_t id;
   std::vector<sai_object_id_t> events_;
   std::vector<sai_int32_t> bindpoints_;
+  std::vector<sai_object_id_t> intObjects_;
 };
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+class FakeSaiTamInt {
+ public:
+  sai_object_id_t id{};
+  sai_int32_t type{};
+  sai_uint32_t deviceId{};
+  sai_int32_t presenceType{};
+  bool inlineMode{true};
+  sai_uint16_t etherType{};
+  sai_int32_t signalType{SAI_CSIG_SIGNAL_TYPE_ABW};
+  sai_uint32_t bandwidthInterval{128};
+  sai_uint32_t bandCount{32};
+  std::vector<sai_uint16_t> bandIds;
+  std::vector<sai_u64_range_t> ranges;
+  sai_uint32_t wideBase{};
+  sai_uint32_t wideStep{1};
+  bool dBit{false};
+};
+
+struct FakeCsigCapabilities {
+  std::vector<sai_int32_t> tagTypes{
+      SAI_TAM_INT_TYPE_CSIG_COMPACT,
+      SAI_TAM_INT_TYPE_CSIG_WIDE};
+  std::vector<sai_int32_t> signals{
+      SAI_CSIG_SIGNAL_TYPE_ABW,
+      SAI_CSIG_SIGNAL_TYPE_ABWC,
+      SAI_CSIG_SIGNAL_TYPE_DELAY,
+      SAI_CSIG_SIGNAL_TYPE_NQD};
+  bool dBit{true};
+  bool customBandIds{true};
+  bool intDelete{true};
+  bool intMetadata{true};
+};
+
+using FakeTamIntManager = FakeManager<sai_object_id_t, FakeSaiTamInt>;
+#endif
 
 class FakeSaiTamEvent {
  public:
@@ -101,9 +139,9 @@ class FakeSaiTamTransport {
  public:
   FakeSaiTamTransport(
       sai_int32_t transportType,
-      sai_uint32_t srcPort,
-      sai_uint32_t dstPort,
-      sai_uint32_t mtu,
+      std::optional<sai_uint32_t> srcPort,
+      std::optional<sai_uint32_t> dstPort,
+      std::optional<sai_uint32_t> mtu,
       std::optional<folly::MacAddress> srcMac,
       std::optional<folly::MacAddress> dstMac)
       : transportType_(transportType),
@@ -114,11 +152,14 @@ class FakeSaiTamTransport {
         dstMac_(dstMac) {}
   sai_object_id_t id;
   sai_int32_t transportType_;
-  sai_uint32_t srcPort_;
-  sai_uint32_t dstPort_;
-  sai_uint32_t mtu_;
+  std::optional<sai_uint32_t> srcPort_;
+  std::optional<sai_uint32_t> dstPort_;
+  std::optional<sai_uint32_t> mtu_;
   std::optional<folly::MacAddress> srcMac_;
   std::optional<folly::MacAddress> dstMac_;
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+  std::optional<sai_uint16_t> greProtocolType_;
+#endif
 };
 
 class FakeSaiTamCollector {
@@ -140,6 +181,14 @@ class FakeSaiTamCollector {
   std::optional<sai_uint16_t> truncateSize_;
   sai_object_id_t transport_;
   std::optional<sai_uint8_t> dscp_;
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+  std::optional<folly::MacAddress> srcMac_;
+  std::optional<folly::MacAddress> dstMac_;
+  std::optional<sai_object_id_t> destination_;
+#endif
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
+  std::optional<bool> localhost_;
+#endif
 };
 
 using FakeTamManager = FakeManager<sai_object_id_t, FakeSaiTam>;

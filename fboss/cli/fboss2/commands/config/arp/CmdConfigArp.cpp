@@ -16,10 +16,12 @@
 #include <folly/Conv.h>
 #include <folly/String.h>
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"

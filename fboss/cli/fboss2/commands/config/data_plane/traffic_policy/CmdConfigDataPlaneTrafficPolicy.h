@@ -25,6 +25,8 @@ namespace facebook::fboss {
 // sw.dataPlaneTrafficPolicy.matchToAction. Parsing, validation and the apply
 // itself are shared with the copp verb; see TrafficPolicyUtils.
 struct CmdConfigDataPlaneTrafficPolicyTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigDataPlane;
   using ObjectArgType = traffic_policy::TrafficPolicyArgs;
   using RetType = std::string;

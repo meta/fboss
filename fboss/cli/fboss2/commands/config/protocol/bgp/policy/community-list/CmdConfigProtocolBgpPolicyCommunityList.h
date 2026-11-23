@@ -60,6 +60,8 @@ class BgpCommunityListConfig : public utils::BaseObjectArgType<std::string> {
 // is a one-entry change. Mirrors CmdConfigProtocolBgpPolicyAsPathList.
 struct CmdConfigProtocolBgpPolicyCommunityListTraits
     : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigProtocolBgpPolicy;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     // Stops CLI11 from classifying attribute tokens as subcommands once the

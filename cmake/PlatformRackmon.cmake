@@ -10,9 +10,10 @@ add_custom_command(
   DEPENDS fboss/platform/rackmon/configs/interface/rackmon.conf fboss/platform/rackmon/configs/interface/rackmon_pls.conf fboss/platform/rackmon/configs/register_map/orv2_psu.json fboss/platform/rackmon/configs/register_map/orv3_psu.json fboss/platform/rackmon/configs/register_map/orv3_bbu.json
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   rackmon_cpp2
   fboss/platform/rackmon/if/rackmonsvc.thrift
+  LANGUAGE cpp2
   SERVICES
   RackmonCtrl
   OPTIONS

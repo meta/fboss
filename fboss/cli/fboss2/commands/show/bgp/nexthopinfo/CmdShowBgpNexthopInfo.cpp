@@ -48,8 +48,7 @@ std::string humanizeAge(int64_t seconds) {
   return out + " ago";
 }
 
-// Unset age => "-" (the value has never been resolved by the underlying
-// system); otherwise a compact "…ago" string.
+// Unset age => "-"; otherwise return a compact "…ago" string.
 std::string ageOrDash(const std::optional<int64_t>& ageSeconds) {
   return ageSeconds.has_value() ? humanizeAge(*ageSeconds) : "-";
 }
@@ -144,7 +143,12 @@ void CmdShowBgpNexthopInfo::printOutput(
   }
 
   utils::Table table;
-  table.setHeader({"Nexthop", "Reachable", "IGP Cost"});
+  table.setHeader(
+      {"Nexthop",
+       "Reachable",
+       "IGP Cost",
+       "Resolved For Selection",
+       "Dependent Routes"});
 
   size_t rows = 0;
   for (const auto& entry : *data.entries()) {
@@ -158,7 +162,12 @@ void CmdShowBgpNexthopInfo::printOutput(
         ? folly::to<std::string>(*entry.igp_cost())
         : "N/A";
 
-    table.addRow({nexthopIpStr(entry), reachable, igpCost});
+    table.addRow(
+        {nexthopIpStr(entry),
+         reachable,
+         igpCost,
+         *entry.is_resolved_for_selection() ? "Yes" : "No",
+         folly::to<std::string>(*entry.route_count())});
     ++rows;
   }
 
@@ -171,16 +180,14 @@ void CmdShowBgpNexthopInfo::printOutput(
 }
 
 std::string_view CmdShowBgpNexthopInfoTraits::description() {
-  return "Displays the BGP nexthop cache: the next-hop addresses the daemon is tracking for reachability and IGP cost, which is what next-hop resolution consults when deciding whether a path may be selected. With no argument it lists every cached next hop with its reachability and IGP cost. Pass one or more addresses for a per-next-hop view that adds whether the next hop is directly connected, whether it is resolved for path selection, how many routes depend on it, and how long ago its reachability and IGP cost last changed; an address that is not cached is reported by name rather than silently skipped. A next hop that is reachable but not resolved for selection is the case to look for when a path is present in 'show bgp table' yet never becomes best. On a switch where nothing populates the cache the command prints 'No nexthop cache entries found', which is a normal state rather than an error.";
+  return "Displays the next hops tracked by the BGP RIB. Reachable is the status reported by the resolver. Resolved for selection also requires an IGP cost unless the platform allows selection without one. With no argument it lists every tracked next hop with its reachability, IGP cost, selection state, and number of dependent BGP paths. Pass one or more addresses for a per-next-hop view that adds whether the next hop is directly connected and how long ago its reachability and IGP cost last changed; an address that is not tracked is reported by name rather than silently skipped. A next hop that is reachable but not resolved for selection is the case to look for when a path is present in 'show bgp table' yet never becomes best. If the RIB is tracking no next hops, the command prints 'No nexthop cache entries found', which is a normal state rather than an error.";
 }
 
 CmdShowBgpNexthopInfo::RetType CmdShowBgpNexthopInfo::sampleModel() {
   /*
-   * Every field is set independently: reachability, direct connection and
-   * resolved-for-selection are distinct properties, and aliasing them produces
-   * combinations a real switch cannot show (a directly connected next hop with
-   * a non-zero IGP cost, say). igpCost and igpCostChangeAge are optional so an
-   * unresolved next hop can render "N/A" without also claiming a cost changed.
+   * Reachability, direct connection and resolved-for-selection are distinct
+   * properties. igpCost and igpCostChangeAge are optional so an unresolved next
+   * hop can render "N/A" without also claiming a cost changed.
    */
   auto nexthop = [](const std::string& address,
                     bool reachable,
@@ -214,14 +221,12 @@ CmdShowBgpNexthopInfo::RetType CmdShowBgpNexthopInfo::sampleModel() {
           /*igpCost=*/10,
           /*isResolvedForSelection=*/true,
           171),
-      // Reachable but NOT resolved for selection: paths via it sit in the RIB
-      // and never become best. This is the state description() points at, so
-      // it keeps its dependent routes - that is what makes it worth finding.
+      // Reachable without a cost, but not resolved for selection.
       nexthop(
           "192.0.2.12",
           /*reachable=*/true,
           /*isConnected=*/false,
-          /*igpCost=*/10,
+          /*igpCost=*/std::nullopt,
           /*isResolvedForSelection=*/false,
           171),
       // Directly connected and unreachable: no IGP cost, so the cost column

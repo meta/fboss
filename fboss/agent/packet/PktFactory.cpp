@@ -586,7 +586,8 @@ std::unique_ptr<facebook::fboss::TxPacket> makeIpInIpTxPacket(
     uint8_t outerHopLimit,
     std::optional<uint8_t> innerHopLimit,
     uint32_t outerFlowLabel,
-    std::optional<std::vector<uint8_t>> payload) {
+    std::optional<std::vector<uint8_t>> payload,
+    uint8_t innerEcn) {
   if (!payload) {
     payload = kDefaultPayload;
   }
@@ -608,6 +609,7 @@ std::unique_ptr<facebook::fboss::TxPacket> makeIpInIpTxPacket(
       static_cast<uint8_t>(IP_PROTO::IP_PROTO_UDP),
       UDPHeader::size() + payloadBytes.size());
   innerIpHdr.dscp = innerDscp;
+  innerIpHdr.ecn = innerEcn;
   innerIpHdr.ttl = innerHopLimit.value_or(outerHopLimit);
   innerIpHdr.computeChecksum();
 

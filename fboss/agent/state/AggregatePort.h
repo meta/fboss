@@ -269,6 +269,21 @@ class AggregatePort
     set<switch_state_tags::aggregatePortType>(aggregatePortType);
   }
 
+  std::optional<bool> getTTLDisableDecrement() const {
+    if (auto value = safe_cref<switch_state_tags::disableTTLDecrement>()) {
+      return value->toThrift();
+    }
+    return std::nullopt;
+  }
+
+  void setTTLDisableDecrement(std::optional<bool> disable) {
+    if (disable) {
+      set<switch_state_tags::disableTTLDecrement>(*disable);
+    } else {
+      safe_ref<switch_state_tags::disableTTLDecrement>().reset();
+    }
+  }
+
   std::optional<int64_t> getConfiguredCapacityMbps() const {
     if (auto val = safe_cref<switch_state_tags::configuredCapacityMbps>()) {
       return val->toThrift();

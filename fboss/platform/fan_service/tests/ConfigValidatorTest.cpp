@@ -75,6 +75,8 @@ TEST(ConfigValidatorTest, OpticConfig) {
   EXPECT_FALSE(ConfigValidator().isValidOpticConfig(optic));
   optic.tempToPwmMaps() = {{"OPTIC_TYPE_100_GENERIC", {{34, 50}, {45, 60}}}};
   EXPECT_TRUE(ConfigValidator().isValidOpticConfig(optic));
+  optic.tempToPwmMaps() = {{"OPTIC_TYPE_1600_GENERIC", {{34, 50}, {45, 60}}}};
+  EXPECT_TRUE(ConfigValidator().isValidOpticConfig(optic));
   optic.aggregationType() = constants::OPTIC_AGGREGATION_TYPE_PID();
   EXPECT_FALSE(ConfigValidator().isValidOpticConfig(optic));
   optic.pidSettings() = {{"UNKNOWN_OPTIC", PidSetting()}};

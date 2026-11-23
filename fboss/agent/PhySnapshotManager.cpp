@@ -49,7 +49,7 @@ std::optional<phy::PhyInfo> PhySnapshotManager::getPhyInfoLocked(
       it != lockedSnapshotMap->end()) {
     auto& snapshots = it->second.getSnapshots();
     if (!snapshots.empty()) {
-      phyInfo = snapshots.last().snapshot_.get_phyInfo();
+      phyInfo = snapshots.last().snapshot_.phyInfo().value();
     }
   }
 

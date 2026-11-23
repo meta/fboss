@@ -20,6 +20,7 @@ using folly::to;
 namespace {
 std::map<int32_t, std::pair<std::string, std::size_t>> _MirrorSessionMap{
     SAI_ATTR_MAP(EnhancedRemoteMirror, Type),
+    SAI_ATTR_MAP(EnhancedRemoteMirror, Policer),
     SAI_ATTR_MAP(EnhancedRemoteMirror, MonitorPort),
     SAI_ATTR_MAP(EnhancedRemoteMirror, TruncateSize),
     SAI_ATTR_MAP(EnhancedRemoteMirror, Tos),

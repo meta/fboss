@@ -10,7 +10,6 @@
 
 #include "fboss/platform/fixmyfboss/ResultPrinter.h"
 
-#include <functional>
 #include <sstream>
 
 namespace facebook::fboss::platform::fixmyfboss {
@@ -24,30 +23,44 @@ void ResultPrinter::clearLine() {
 }
 
 void ResultPrinter::printSummary(
-    const std::vector<platform_checks::CheckResult>& results) {
+    const std::vector<platform_checks::CheckResult>& results,
+    const std::vector<std::string>& labels) {
   out_ << "Ran " << results.size() << " checks\n";
   out_ << "-----\n";
   out_ << "Result summary:\n";
   printStatusGroup(
-      results, platform_checks::CheckStatus::OK, "Passed", COLOR_GREEN);
+      results, labels, platform_checks::CheckStatus::OK, "Passed", COLOR_GREEN);
   printStatusGroup(
-      results, platform_checks::CheckStatus::PROBLEM, "Problems", COLOR_RED);
+      results,
+      labels,
+      platform_checks::CheckStatus::PROBLEM,
+      "Problems",
+      COLOR_RED);
   printStatusGroup(
-      results, platform_checks::CheckStatus::ERROR, "Errors", COLOR_ORANGE);
+      results,
+      labels,
+      platform_checks::CheckStatus::ERROR,
+      "Errors",
+      COLOR_ORANGE);
   printStatusGroup(
-      results, platform_checks::CheckStatus::SKIPPED, "Skipped", COLOR_GRAY);
+      results,
+      labels,
+      platform_checks::CheckStatus::SKIPPED,
+      "Skipped",
+      COLOR_GRAY);
   out_ << "-----\n";
 }
 
 void ResultPrinter::printStatusGroup(
     const std::vector<platform_checks::CheckResult>& results,
+    const std::vector<std::string>& labels,
     platform_checks::CheckStatus status,
     const std::string& label,
     const char* color) {
-  std::vector<std::reference_wrapper<const platform_checks::CheckResult>> group;
-  for (const auto& result : results) {
-    if (*result.status() == status) {
-      group.emplace_back(result);
+  std::vector<size_t> group;
+  for (size_t i = 0; i < results.size(); ++i) {
+    if (*results[i].status() == status) {
+      group.push_back(i);
     }
   }
   if (group.empty()) {
@@ -56,9 +69,12 @@ void ResultPrinter::printStatusGroup(
   out_ << indent(colorize(
               label + ": " + std::to_string(group.size()), color, true))
        << "\n";
-  for (const auto& resultRef : group) {
-    const auto& result = resultRef.get();
+  for (size_t i : group) {
+    const auto& result = results[i];
     std::string line = result.checkName().value_or("Unknown");
+    if (i < labels.size() && !labels[i].empty()) {
+      line += ": " + labels[i];
+    }
     if (status == platform_checks::CheckStatus::SKIPPED &&
         result.errorMessage()) {
       line += " (" + *result.errorMessage() + ")";
@@ -108,6 +124,9 @@ void ResultPrinter::printDetails(
 
 std::string
 ResultPrinter::colorize(const std::string& text, const char* color, bool bold) {
+  if (!color_) {
+    return text;
+  }
   std::string result;
   if (bold) {
     result += STYLE_BOLD;
@@ -121,6 +140,9 @@ ResultPrinter::colorize(const std::string& text, const char* color, bool bold) {
 std::string ResultPrinter::colorizeBackground(
     const std::string& text,
     const char* bgColor) {
+  if (!color_) {
+    return text;
+  }
   return std::string(bgColor) + STYLE_BOLD + text + COLOR_RESET;
 }
 

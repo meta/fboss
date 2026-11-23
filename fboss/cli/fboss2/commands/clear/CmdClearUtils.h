@@ -24,15 +24,23 @@ std::string flushNeighborEntries(
   }
 
   std::vector<IfAndIP> entriesToFlush;
+  std::string deletingLines;
+  // INCOMPLETE entries are flushed too, but the agent only counts an entry it
+  // removes from switch state, and an unresolved entry is usually only in the
+  // neighbor cache. List them separately so the output doesn't announce
+  // deletions that the flushed count won't include.
+  std::string unresolvedLines;
+  size_t numUnresolved = 0;
 
   for (const auto& entry : allNeighbors) {
     // STATIC or DYNAMIC entries cannot be flushed.
-    if (entry.get_state() == "STATIC" || entry.get_state() == "DYNAMIC") {
+    if (entry.state().value() == "STATIC" ||
+        entry.state().value() == "DYNAMIC") {
       continue;
     }
 
     auto ip = folly::IPAddress::fromBinary(
-        folly::ByteRange(folly::StringPiece(entry.get_ip().get_addr())));
+        folly::ByteRange(folly::StringPiece(entry.ip()->addr().value())));
     auto shouldFlush = networkFilter.empty() ||
         std::find_if(
             networkFilter.begin(),
@@ -41,21 +49,44 @@ std::string flushNeighborEntries(
               return ip.inSubnet(network.first, network.second);
             }) != networkFilter.end();
     if (shouldFlush) {
-      std::cout << fmt::format(
-          "Deleting {} entry ip: {} interfaceID: {}\n",
-          nbrTypeStr,
-          ip.str(),
-          entry.get_interfaceID());
+      if (entry.state().value() == "INCOMPLETE") {
+        unresolvedLines += fmt::format(
+            "  ip: {} interfaceID: {}\n",
+            ip.str(),
+            folly::copy(entry.interfaceID().value()));
+        ++numUnresolved;
+      } else {
+        deletingLines += fmt::format(
+            "Deleting {} entry ip: {} interfaceID: {}\n",
+            nbrTypeStr,
+            ip.str(),
+            folly::copy(entry.interfaceID().value()));
+      }
 
       IfAndIP flushEntry;
-      flushEntry.ip() = entry.get_ip();
-      flushEntry.interfaceID() = entry.get_interfaceID();
+      flushEntry.ip() = entry.ip().value();
+      flushEntry.interfaceID() = folly::copy(entry.interfaceID().value());
       entriesToFlush.emplace_back(std::move(flushEntry));
     }
   }
 
   auto numFlushed = agent->sync_flushNeighborEntries(entriesToFlush);
-  return folly::to<std::string>("Flushed ", numFlushed, " entries");
+  auto result = fmt::format(
+      "{}Flushed {} {}",
+      deletingLines,
+      numFlushed,
+      numFlushed == 1 ? "entry" : "entries");
+  if (numUnresolved > 0) {
+    result += fmt::format(
+        "\nNote: {} unresolved (INCOMPLETE) {} {} also sent for flush; "
+        "counted above only if programmed in hardware:\n{}",
+        numUnresolved,
+        nbrTypeStr,
+        numUnresolved == 1 ? "entry was" : "entries were",
+        unresolvedLines);
+    result.pop_back(); // printOutput adds the final newline
+  }
+  return result;
 }
 
 } // namespace facebook::fboss::utils

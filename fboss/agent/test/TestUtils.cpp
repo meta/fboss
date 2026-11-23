@@ -21,6 +21,8 @@
 #include "fboss/agent/hw/mock/MockPlatformMapping.h"
 #include "fboss/agent/hw/mock/MockTestHandle.h"
 #include "fboss/agent/state/Interface.h"
+#include "fboss/agent/state/InterfaceVrf.h"
+#include "fboss/agent/state/InterfaceVrfMap.h"
 #include "fboss/agent/state/Port.h"
 #include "fboss/agent/state/RouteNextHop.h"
 
@@ -28,6 +30,7 @@
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/state/Vlan.h"
 #include "fboss/agent/state/VlanMap.h"
+#include "fboss/agent/state/Vrf.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/MockTunManager.h"
 
@@ -829,6 +832,41 @@ shared_ptr<SwitchState> publishAndApplyConfig(
       rib);
 }
 
+shared_ptr<SwitchState> setInterfaceVrfs(
+    const shared_ptr<SwitchState>& state,
+    const std::map<InterfaceID, RouterID>& interfaceVrfs,
+    const SwitchIdScopeResolver& scopeResolver) {
+  auto newState = state->clone();
+  auto map = newState->getInterfaceVrfs()->modify(&newState);
+  for (const auto& [intf, vrf] : interfaceVrfs) {
+    if (map->getNodeIf(intf)) {
+      map->removeNode(intf);
+    }
+    if (vrf == RouterID(0)) {
+      continue;
+    }
+    auto entry = std::make_shared<InterfaceVrf>(intf, vrf);
+    map->addNode(entry, scopeResolver.scope(entry, newState));
+  }
+  return newState;
+}
+
+shared_ptr<SwitchState> preBindInterfaceVrfs(
+    const shared_ptr<SwitchState>& state,
+    const std::map<InterfaceID, RouterID>& interfaceVrfs) {
+  auto newState = state->clone();
+  auto map = newState->getInterfaceVrfs()->modify(&newState);
+  auto vrfs = newState->getVrfs()->modify(&newState);
+  const HwSwitchMatcher matcher(std::unordered_set<SwitchID>({SwitchID(0)}));
+  for (const auto& [intf, vrf] : interfaceVrfs) {
+    map->addNode(std::make_shared<InterfaceVrf>(intf, vrf), matcher);
+    if (vrf != RouterID(0) && !vrfs->getNodeIf(vrf)) {
+      vrfs->addNode(std::make_shared<Vrf>(vrf), matcher);
+    }
+  }
+  return newState;
+}
+
 std::unique_ptr<SwSwitch> setupMockSwitchWithoutHW(
     MockPlatform* platform,
     const std::shared_ptr<SwitchState>& state,
@@ -1127,7 +1165,6 @@ shared_ptr<SwitchState> testStateA(cfg::SwitchType switchType) {
     // Add Interface 1 to VLAN 1
     auto intf1 = make_shared<Interface>(
         InterfaceID(1),
-        RouterID(0),
         std::optional<VlanID>(1),
         folly::StringPiece("fboss1"),
         MacAddress("00:02:00:00:00:01"),
@@ -1150,7 +1187,6 @@ shared_ptr<SwitchState> testStateA(cfg::SwitchType switchType) {
     // Add Interface 55 to VLAN 55
     auto intf55 = make_shared<Interface>(
         InterfaceID(55),
-        RouterID(0),
         std::optional<VlanID>(55),
         folly::StringPiece("fboss55"),
         MacAddress("00:02:00:00:00:55"),

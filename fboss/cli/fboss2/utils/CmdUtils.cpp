@@ -9,8 +9,8 @@
  */
 #include "fboss/cli/fboss2/utils/CmdUtils.h"
 #include <fboss/agent/if/gen-cpp2/ctrl_types.h>
-#include <fboss/fsdb/oper/instantiations/FsdbPathConverter.h>
-#include <folly/logging/LogConfig.h>
+#include <fboss/fsdb/oper/instantiations/FsdbPathConverter.h> // NOLINT(misc-include-cleaner)
+#include <folly/Utility.h>
 #include <folly/logging/xlog.h>
 #include "folly/Conv.h"
 #ifndef IS_OSS
@@ -50,7 +50,7 @@ std::vector<int32_t> getPortIDList(
           portEntries.begin(),
           portEntries.end(),
           [&interface](const auto& port) {
-            return port.second.get_name() == interface;
+            return port.second.name().value() == interface;
           });
       if (it != portEntries.end()) {
         portIDList.push_back(it->first);
@@ -456,7 +456,7 @@ cfg::SwitchType getSwitchType(
           switchIdToSwitchInfo.begin(),
           switchIdToSwitchInfo.end(),
           [switchType](const auto& pair) {
-            return pair.second.get_switchType() == switchType;
+            return folly::copy(pair.second.switchType().value()) == switchType;
           }));
 
   return switchType;

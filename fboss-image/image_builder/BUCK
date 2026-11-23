@@ -1,1 +1,44 @@
-oncall("fboss_distro")
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
+load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
+load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
+
+oncall("fboss_oss")
+
+python_unittest(
+    name = "kiwi_installer_network_test",
+    srcs = {
+        "tests/test_kiwi_installer_network.py": "test_kiwi_installer_network.py",
+    },
+    base_module = "fboss_image.image_builder",
+    network_access = network_access_utils.none(),
+    resources = {
+        "templates/centos-09.0/root_files/usr/lib/dracut/modules.d/95kiwi-installer-network/NetworkManager.conf": "network_module/NetworkManager.conf",
+        "templates/centos-09.0/root_files/usr/lib/dracut/modules.d/95kiwi-installer-network/module-setup.sh": "network_module/module-setup.sh",
+    },
+)
+
+python_unittest(
+    name = "firstboot_report_test",
+    srcs = {"tests/test_firstboot_report.py": "test_firstboot_report.py"},
+    base_module = "fboss_image.image_builder",
+    network_access = network_access_utils.none(),
+    resources = {
+        "templates/centos-09.0/root_files/usr/lib/dracut/modules.d/96fboss-firstboot-report/module-setup.sh": "firstboot/module-setup.sh",
+        "templates/centos-09.0/root_files/usr/lib/dracut/modules.d/96fboss-firstboot-report/transfer-report-args.sh": "firstboot/transfer-report-args.sh",
+        "templates/centos-09.0/root_files/usr/lib/systemd/system/fboss-firstboot-report.service": "firstboot/service",
+        "templates/centos-09.0/root_files/usr/local/libexec/fboss-firstboot-report": "firstboot/reporter",
+    },
+    deps = ["fbsource//third-party/pypi/parameterized:parameterized"],
+)
+
+export_file(
+    name = "build_image_in_container.sh",
+    src = "bin/build_image_in_container.sh",
+    visibility = ["//fboss/github/fboss-image/distro_cli/tests:"],
+)
+
+export_file(
+    name = "boxbuild.sh",
+    src = "lib/boxbuild.sh",
+    visibility = ["//fboss/github/fboss-image/distro_cli/tests:"],
+)

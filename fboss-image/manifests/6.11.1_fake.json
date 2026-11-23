@@ -10,16 +10,7 @@
   "kernel": {
     "download": "${ARTIFACT_BASE}/kernel/6.11.1/kernel-6.11.1.rpms.tar"
   },
-  "other_dependencies": [
-    {
-      "execute": ["../components/fake/rpm/build_fake_ident.sh"],
-      "artifact": "fake-ident-*.rpm"
-    },
-    {
-      "execute": ["../components/login-containers/rpm/build_login_containers.sh"],
-      "artifact": "login-containers-*.rpm"
-    }
-  ],
+  "other_dependencies": [],
   "fboss-platform-stack": {
     "download": "${ARTIFACT_BASE}/platform/fboss_bins.tar.zst"
   },
@@ -52,8 +43,5 @@
       "download": "${ARTIFACT_BASE}/led/fboss_bins.tar.zst"
     }
   ],
-  "image_build_hooks": {
-    "after_pkgs_install": "fake_after_pkgs_install.json",
-    "after_pkgs_execute": "fake_after_pkgs_execute.json"
-  }
+  "image_build_hooks": {}
 }

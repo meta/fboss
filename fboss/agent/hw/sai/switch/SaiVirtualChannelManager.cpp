@@ -10,14 +10,10 @@
 
 #include "fboss/agent/hw/sai/switch/SaiVirtualChannelManager.h"
 
-#include "fboss/agent/hw/sai/api/PortApi.h"
-#include "fboss/agent/hw/sai/api/SaiApiError.h"
 #include "fboss/agent/hw/sai/store/SaiStore.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/platforms/sai/SaiPlatform.h"
 #include "fboss/agent/state/Port.h"
-
-#include <folly/logging/xlog.h>
 
 namespace facebook::fboss {
 
@@ -41,7 +37,6 @@ SaiVirtualChannelManager::getOrCreateCreditProfile(int64_t reservedCreditSize) {
 #endif
 
 void SaiVirtualChannelManager::programVirtualChannels(
-    [[maybe_unused]] const std::shared_ptr<Port>& oldPort,
     [[maybe_unused]] const std::shared_ptr<Port>& swPort,
     [[maybe_unused]] PortSaiId portSaiId) {
 #if defined(SAI_CBFC_SUPPORTED)
@@ -61,8 +56,6 @@ void SaiVirtualChannelManager::programVirtualChannels(
     handles_.erase(swPort->getID());
     return;
   }
-
-  programSender(oldPort, swPort, portSaiId);
 
   for (const auto& virtualChannel : *virtualChannels) {
     // THRIFT_COPY
@@ -96,58 +89,6 @@ void SaiVirtualChannelManager::programVirtualChannels(
   handles_[swPort->getID()] = std::move(handle);
 #endif
 }
-
-#if defined(SAI_CBFC_SUPPORTED)
-void SaiVirtualChannelManager::programSender(
-    const std::shared_ptr<Port>& oldPort,
-    const std::shared_ptr<Port>& swPort,
-    PortSaiId portSaiId) {
-  // Written only at the first bind: StateUpdateValidator allows the sender
-  // values to change only with a coldboot, where CBFC arrives as a port change.
-  // A warm boot keeps them in hardware. Writing them on any other port change
-  // would briefly drop a live port to the SDK's default credit limit, since a
-  // size or overhead write makes the SDK recompute it.
-  if (!oldPort || oldPort->getVirtualChannels()) {
-    return;
-  }
-
-  // Size and overhead go before the credit limit. brcm-sai writes every sender
-  // field on each set, and a field it has not been given yet goes in as 0
-  // (32 B / 0). A size or overhead set also makes the SDK recompute the port
-  // credit limit, so the limit must come after both, and any change rewrites
-  // all three.
-  if (auto creditSize = swPort->getCbfcSenderCreditSize()) {
-    SaiApiTable::getInstance()->portApi().setAttribute(
-        portSaiId,
-        SaiPortTraits::Attributes::CbfcSenderCreditSize{
-            static_cast<sai_uint16_t>(*creditSize)});
-  }
-  if (auto packetOverhead = swPort->getCbfcSenderPacketOverhead()) {
-    SaiApiTable::getInstance()->portApi().setAttribute(
-        portSaiId,
-        SaiPortTraits::Attributes::CbfcSenderPacketOverhead{*packetOverhead});
-  }
-
-  // Below the caller's guard because brcm-sai 16.0_ea_odp answers INVALID
-  // PARAMETER for this set on a port with no CBFC, and the throw unwinds
-  // through ~SaiPortHandle, whose own remove is NOT SUPPORTED for a port -- so
-  // it terminates the agent rather than failing the port.
-  //
-  // Nothing is written to clear a dropped limit: SAI documents the default as
-  // 0, while brcm-sai writes the value into BUFFER_CREDITS, where 0 is a port
-  // holding no credit. A CBFC change needs a cold boot, which restores the
-  // default anyway.
-  //
-  // Not in the port's CreateAttributes: SaiStore reads every attribute in that
-  // tuple back at init, and this one's GET is rejected.
-  if (auto senderCreditLimit = swPort->getCbfcSenderCreditLimit()) {
-    SaiApiTable::getInstance()->portApi().setAttribute(
-        portSaiId,
-        SaiPortTraits::Attributes::CbfcSenderCreditLimit{
-            static_cast<sai_uint32_t>(*senderCreditLimit)});
-  }
-}
-#endif
 
 #if defined(SAI_CBFC_SUPPORTED)
 const SaiVirtualChannelHandle*

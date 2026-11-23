@@ -9,8 +9,8 @@
  */
 #include "fboss/mdio/BspDeviceMdio.h"
 #include <fcntl.h>
-#include <folly/Format.h>
 #include <folly/Range.h>
+#include <folly/String.h>
 #include <folly/logging/xlog.h>
 #include <sys/ioctl.h>
 #include <cerrno>

@@ -2,9 +2,23 @@
 
 import copy
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from fboss.lib.asic_config_v3.paths import AsicConfigPaths
+
+
+@dataclass(frozen=True)
+class GeneratedVariant:
+    """Serialized thrift ``AsicConfig`` sections for one platform variant.
+
+    ``common`` is omitted only when it is ``None``; an empty string remains a
+    real payload. ``npu_entries`` uses the zero-based switch indices consumed
+    by ``AsicConfig.npuEntries``.
+    """
+
+    common: str | None
+    npu_entries: dict[int, str] = field(default_factory=dict)
 
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -68,8 +82,8 @@ _ENTRY_KEYS: frozenset[str] = frozenset({"name", "description", "condition"})
 class BaseAsicConfigGenerator(ABC):
     """Abstract base class for ASIC config generators.
 
-    Subclasses implement ``generate()`` to produce vendor-specific output
-    such as YAML or JSON.
+    Subclasses implement ``generate()`` to produce one common payload, indexed
+    per-NPU payloads, or both.
     """
 
     # Effects this generator can execute. An entry declaring any other effect
@@ -278,8 +292,8 @@ class BaseAsicConfigGenerator(ABC):
         ...
 
     @abstractmethod
-    def generate(self) -> str:
-        """Generate the complete ASIC config and return it as a string."""
+    def generate(self) -> GeneratedVariant:
+        """Generate the serialized payloads for this platform variant."""
         ...
 
     @property

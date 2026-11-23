@@ -1,17 +1,18 @@
 // (c) Facebook, Inc. and its affiliates. Confidential and proprietary.
 
-#include <boost/algorithm/string.hpp>
-#include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <cstdint>
+#include <map>
+#include <sstream>
 #include <string>
 #include <vector>
 
-#include "fboss/agent/AddressUtil.h"
 #include "fboss/agent/if/gen-cpp2/ctrl_types.h"
 
 #include "fboss/cli/fboss2/commands/show/interface/traffic/CmdShowInterfaceTraffic.h"
 #include "fboss/cli/fboss2/commands/show/interface/traffic/gen-cpp2/model_types.h"
 #include "fboss/cli/fboss2/test/CmdHandlerTestBase.h"
+#include "folly/Utility.h"
 
 using namespace ::testing;
 
@@ -183,6 +184,50 @@ TEST_F(CmdShowInterfaceTrafficTestFixture, printOutput) {
       " Total           --           --     29629.63  4.23%  18.00   237037.04  33.86%  45.00   \n\n";
 
   EXPECT_EQ(expectedOutput, output);
+}
+
+TEST_F(CmdShowInterfaceTrafficTestFixture, extractExpectedPort) {
+  auto cmd = CmdShowInterfaceTraffic();
+  // Meta description conventions keep their parsed peer labels.
+  EXPECT_EQ(cmd.extractExpectedPort(""), "--");
+  EXPECT_EQ(
+      cmd.extractExpectedPort("u-001: fsw001.p001 (F=spine:L=d-051)"),
+      "fsw001.p001");
+  EXPECT_EQ(cmd.extractExpectedPort("rsw001.ssw001.s001"), "ssw001.s001");
+  EXPECT_EQ(cmd.extractExpectedPort("fsw001.s001.p1"), "fsw001.s001");
+  EXPECT_EQ(cmd.extractExpectedPort("host.port"), "port");
+  // Free-form descriptions that lack the expected tokens must not index
+  // past the split result; they are shown verbatim or fall back
+  // to the generic dotted form.
+  EXPECT_EQ(
+      cmd.extractExpectedPort("Port11.lab-tgen:T=us:U=lab:TGEN=ssw_mimic"),
+      "lab-tgen:T=us:U=lab:TGEN=ssw_mimic");
+  EXPECT_EQ(cmd.extractExpectedPort("ssw_mimic"), "ssw_mimic");
+  EXPECT_EQ(cmd.extractExpectedPort("fsw-only-no-dot"), "fsw-only-no-dot");
+  EXPECT_EQ(
+      cmd.extractExpectedPort("peer-switch:T=us:U=lab:B=po301"),
+      "peer-switch:T=us:U=lab:B=po301");
+  EXPECT_EQ(cmd.extractExpectedPort("uplink"), "uplink");
+}
+
+TEST_F(CmdShowInterfaceTrafficTestFixture, createModelFreeFormDescription) {
+  PortInfoThrift port;
+  port.portId() = 4;
+  port.name() = "eth4/1/1";
+  port.operState() = facebook::fboss::PortOperState::UP;
+  port.description() = "Port11.lab-tgen:T=us:U=lab:TGEN=ssw_mimic";
+  port.speedMbps() = 100000;
+  portInfo[4] = port;
+  intCounters["eth4/1/1.in_bytes.rate.60"] = 1234567890;
+  intCounters["eth4/1/1.out_bytes.rate.60"] = 9876543210;
+
+  auto cmd = CmdShowInterfaceTraffic();
+  auto model = cmd.createModel(portInfo, intCounters, queriedIfs);
+  const auto trafficCounters = model.traffic_counters().value();
+  ASSERT_EQ(trafficCounters.size(), 4);
+  EXPECT_EQ(
+      trafficCounters[3].peerIf().value(),
+      "lab-tgen:T=us:U=lab:TGEN=ssw_mimic");
 }
 
 // A box with every front panel port down and no transceivers reports zero for

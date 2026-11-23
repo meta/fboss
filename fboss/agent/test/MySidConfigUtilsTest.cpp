@@ -5,7 +5,36 @@
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/rib/MySidConfigUtils.h"
 
+#include <set>
+
 using namespace facebook::fboss;
+
+namespace {
+
+cfg::MySidConfig makeDecapAndAdjacencyConfig(
+    const std::vector<std::string>& locatorPrefixes) {
+  cfg::MySidConfig config;
+  config.locatorPrefix() = "3001:db8::/32";
+  config.locatorPrefixes() = locatorPrefixes;
+  config.entries()[0x7fff].decap() = cfg::DecapMySidConfig{};
+  cfg::AdjacencyMySidConfig adjConfig;
+  adjConfig.portName() = "eth1/1/1";
+  config.entries()[1].adjacency() = adjConfig;
+  return config;
+}
+
+std::set<std::string> mySidIds(const std::vector<MySidWithNextHops>& entries) {
+  std::set<std::string> ids;
+  for (const auto& entry : entries) {
+    ids.insert(entry.mySid->getID());
+  }
+  return ids;
+}
+
+const std::unordered_map<std::string, InterfaceID> kPortNameToIntfId{
+    {"eth1/1/1", InterfaceID(2001)}};
+
+} // namespace
 
 TEST(MySidConfigUtilsTest, BuildSidAddress) {
   auto locatorAddr = folly::IPAddressV6("3001:db8::");
@@ -412,4 +441,54 @@ TEST(MySidConfigUtilsTest, ConvertMixedConfig) {
   for (const auto& entry : result) {
     EXPECT_EQ(entry.mySid->getClientId(), ClientID::STATIC_ROUTE);
   }
+}
+
+TEST(MySidConfigUtilsTest, ConvertEveryEntryUnderEveryLocatorPrefix) {
+  auto config =
+      makeDecapAndAdjacencyConfig({"fdad:ffff::/32", "fdad:20d::/32"});
+
+  auto result = convertMySidConfig(config, kPortNameToIntfId);
+
+  const std::set<std::string> expected{
+      "fdad:ffff:7fff::/48",
+      "fdad:ffff:1::/48",
+      "fdad:20d:7fff::/48",
+      "fdad:20d:1::/48"};
+  EXPECT_EQ(mySidIds(result), expected);
+}
+
+TEST(MySidConfigUtilsTest, LocatorPrefixesOverrideDeprecatedLocatorPrefix) {
+  auto config = makeDecapAndAdjacencyConfig({"fdad:20d::/32"});
+
+  auto result = convertMySidConfig(config, kPortNameToIntfId);
+
+  const std::set<std::string> expected{"fdad:20d:7fff::/48", "fdad:20d:1::/48"};
+  EXPECT_EQ(mySidIds(result), expected);
+}
+
+TEST(MySidConfigUtilsTest, EmptyLocatorPrefixesFallsBackToLocatorPrefix) {
+  auto config = makeDecapAndAdjacencyConfig({});
+
+  auto result = convertMySidConfig(config, kPortNameToIntfId);
+
+  const std::set<std::string> expected{"3001:db8:7fff::/48", "3001:db8:1::/48"};
+  EXPECT_EQ(mySidIds(result), expected);
+}
+
+TEST(MySidConfigUtilsTest, NoLocatorPrefixThrows) {
+  cfg::MySidConfig config;
+  config.entries()[0x7fff].decap() = cfg::DecapMySidConfig{};
+  EXPECT_THROW(convertMySidConfig(config, kPortNameToIntfId), FbossError);
+}
+
+TEST(MySidConfigUtilsTest, DuplicateLocatorPrefixThrows) {
+  auto config =
+      makeDecapAndAdjacencyConfig({"fdad:ffff::/32", "fdad:ffff:0::/32"});
+  EXPECT_THROW(convertMySidConfig(config, kPortNameToIntfId), FbossError);
+}
+
+TEST(MySidConfigUtilsTest, MismatchedLocatorPrefixLengthThrows) {
+  auto config =
+      makeDecapAndAdjacencyConfig({"fdad:ffff::/32", "fdad:20d::/40"});
+  EXPECT_THROW(convertMySidConfig(config, kPortNameToIntfId), FbossError);
 }

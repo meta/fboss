@@ -32,6 +32,34 @@ using namespace facebook::fboss;
 
 class TunnelIpInIpTest : public Fboss2IntegrationTest {
  protected:
+  static constexpr char kTunnelTermDstIp[] = "2000::1";
+
+  // Keep the hardware-facing DECAP configuration aligned with
+  // AgentIpInIpTunnelTest: P2MP termination without a source filter and
+  // explicit PIPE inheritance modes. This is the common configuration used
+  // by AgentHw tests across ASICs and avoids relying on SDK-specific defaults.
+  Result configureCanonicalDecapTunnel(const std::string& tunnelId, int intfId)
+      const {
+    return runCli(
+        {"config",
+         "tunnel",
+         "ip-in-ip",
+         "decap",
+         tunnelId,
+         "destination",
+         kTunnelTermDstIp,
+         "ttl-mode",
+         "pipe",
+         "dscp-mode",
+         "pipe",
+         "ecn-mode",
+         "pipe",
+         "termination-type",
+         "p2mp",
+         "underlay-intf-id",
+         std::to_string(intfId)});
+  }
+
   void TearDown() override {
     // Stage all deletes first, then commit once: fewer failure points, and a
     // single failed commit can't leave later tunnels undeleted on the shared
@@ -101,33 +129,13 @@ class TunnelIpInIpTest : public Fboss2IntegrationTest {
 // ---------------------------------------------------------------------------
 
 TEST_F(TunnelIpInIpTest, CreateDecapTunnelAndVerifyRunningConfig) {
-  int intfId = ensureUnderlayIntfId();
-  const std::string dstIp = findIpv6OnIntf(intfId);
-  const std::string srcIp = "2001:db8:cafe::1";
+  const int intfId = ensureUnderlayIntfId();
   const std::string tunnelId = "integration-test-decap";
 
   XLOG(INFO) << "[Step 1] Creating decap tunnel " << tunnelId
-             << " (underlayIntf=" << intfId << " dst=" << dstIp << ")...";
-  auto result = runCli(
-      {"config",
-       "tunnel",
-       "ip-in-ip",
-       "decap",
-       tunnelId,
-       "destination",
-       dstIp,
-       "source",
-       srcIp,
-       "ttl-mode",
-       "pipe",
-       "dscp-mode",
-       "pipe",
-       "ecn-mode",
-       "pipe",
-       "termination-type",
-       "p2mp",
-       "underlay-intf-id",
-       std::to_string(intfId)});
+             << " (underlayIntf=" << intfId << " dst=" << kTunnelTermDstIp
+             << ")...";
+  auto result = configureCanonicalDecapTunnel(tunnelId, intfId);
   ASSERT_EQ(result.exitCode, 0) << "Create failed: " << result.stderr;
   commitConfig();
   trackTunnel(tunnelId, "decap");
@@ -136,8 +144,8 @@ TEST_F(TunnelIpInIpTest, CreateDecapTunnelAndVerifyRunningConfig) {
   auto tunnel = waitForTunnelInRunningConfig(tunnelId, /*shouldExist=*/true);
   ASSERT_TRUE(tunnel.has_value())
       << "Tunnel '" << tunnelId << "' not found in running config";
-  EXPECT_EQ((*tunnel)["dstIp"].asString(), dstIp);
-  EXPECT_EQ((*tunnel)["srcIp"].asString(), srcIp);
+  EXPECT_EQ((*tunnel)["dstIp"].asString(), kTunnelTermDstIp);
+  EXPECT_FALSE(tunnel->count("srcIp"));
   EXPECT_EQ((*tunnel)["underlayIntfID"].asInt(), intfId);
   // tunnelType enum serializes as its integer value: IP_IN_IP_DECAP == 0.
   ASSERT_TRUE(tunnel->count("tunnelType"));
@@ -149,6 +157,15 @@ TEST_F(TunnelIpInIpTest, CreateDecapTunnelAndVerifyRunningConfig) {
   EXPECT_EQ(
       (*tunnel)["tunnelTermType"].asInt(),
       static_cast<int>(cfg::TunnelTerminationType::P2MP));
+  ASSERT_TRUE(tunnel->count("ttlMode"));
+  EXPECT_EQ(
+      (*tunnel)["ttlMode"].asInt(), static_cast<int>(cfg::TunnelMode::PIPE));
+  ASSERT_TRUE(tunnel->count("dscpMode"));
+  EXPECT_EQ(
+      (*tunnel)["dscpMode"].asInt(), static_cast<int>(cfg::TunnelMode::PIPE));
+  ASSERT_TRUE(tunnel->count("ecnMode"));
+  EXPECT_EQ(
+      (*tunnel)["ecnMode"].asInt(), static_cast<int>(cfg::TunnelMode::PIPE));
 }
 
 // ---------------------------------------------------------------------------
@@ -199,20 +216,10 @@ TEST_F(TunnelIpInIpTest, CreateEncapTunnelAndVerifyRunningConfig) {
 // ---------------------------------------------------------------------------
 
 TEST_F(TunnelIpInIpTest, DeleteDecapTunnel) {
-  int intfId = ensureUnderlayIntfId();
-  const std::string dstIp = findIpv6OnIntf(intfId);
+  const int intfId = ensureUnderlayIntfId();
   const std::string tunnelId = "integration-test-decap-delete";
 
-  auto result = runCli(
-      {"config",
-       "tunnel",
-       "ip-in-ip",
-       "decap",
-       tunnelId,
-       "destination",
-       dstIp,
-       "underlay-intf-id",
-       std::to_string(intfId)});
+  auto result = configureCanonicalDecapTunnel(tunnelId, intfId);
   ASSERT_EQ(result.exitCode, 0) << "Create failed: " << result.stderr;
   commitConfig();
   trackTunnel(tunnelId, "decap");
@@ -229,58 +236,47 @@ TEST_F(TunnelIpInIpTest, DeleteDecapTunnel) {
 }
 
 // ---------------------------------------------------------------------------
-// Positive: reset an optional attr (ttl-mode) on a decap tunnel and confirm it
-// is gone from the running config while destination survives.
+// Positive: reset an optional attr (termination-type) on a decap tunnel and
+// confirm it is gone from the running config while destination survives.
 // ---------------------------------------------------------------------------
 
 TEST_F(TunnelIpInIpTest, ResetOptionalAttrOnDecapTunnel) {
-  int intfId = ensureUnderlayIntfId();
-  const std::string dstIp = findIpv6OnIntf(intfId);
+  const int intfId = ensureUnderlayIntfId();
   const std::string tunnelId = "integration-test-decap-reset";
 
-  auto result = runCli(
-      {"config",
-       "tunnel",
-       "ip-in-ip",
-       "decap",
-       tunnelId,
-       "destination",
-       dstIp,
-       "ttl-mode",
-       "pipe",
-       "underlay-intf-id",
-       std::to_string(intfId)});
+  auto result = configureCanonicalDecapTunnel(tunnelId, intfId);
   ASSERT_EQ(result.exitCode, 0) << "Create failed: " << result.stderr;
   commitConfig();
   trackTunnel(tunnelId, "decap");
   auto created = waitForTunnelInRunningConfig(tunnelId, true);
   ASSERT_TRUE(created.has_value());
-  // Guard against a vacuous post-reset check: ttlMode must actually be
-  // serialized in the running config before we reset it.
-  ASSERT_TRUE(created->count("ttlMode"))
-      << "ttl-mode not present in running config after create";
+  // Reset termination-type rather than an inheritance mode. The absent value
+  // defaults to P2MP on every supported platform, while absent inheritance
+  // modes can select SDK defaults that some ASICs cannot program.
+  ASSERT_TRUE(created->count("tunnelTermType"))
+      << "termination-type not present in running config after create";
 
-  XLOG(INFO) << "[Step 2] Resetting ttl-mode...";
-  result =
-      runCli({"delete", "tunnel", "ip-in-ip", "decap", tunnelId, "ttl-mode"});
+  XLOG(INFO) << "[Step 2] Resetting termination-type...";
+  result = runCli(
+      {"delete", "tunnel", "ip-in-ip", "decap", tunnelId, "termination-type"});
   ASSERT_EQ(result.exitCode, 0) << "Reset failed: " << result.stderr;
   commitConfig();
 
-  // ttlMode should be gone; dstIp should remain.
+  // tunnelTermType should be gone; dstIp should remain.
   std::optional<folly::dynamic> tunnel;
   const auto deadline =
       std::chrono::steady_clock::now() + std::chrono::seconds(60);
   while (std::chrono::steady_clock::now() < deadline) {
     tunnel = findTunnelInRunningConfig(tunnelId);
-    if (tunnel.has_value() && !tunnel->count("ttlMode")) {
+    if (tunnel.has_value() && !tunnel->count("tunnelTermType")) {
       break;
     }
     std::this_thread::sleep_for(std::chrono::seconds(2));
   }
   ASSERT_TRUE(tunnel.has_value());
-  EXPECT_FALSE(tunnel->count("ttlMode"))
-      << "ttl-mode should be unset after reset";
-  EXPECT_EQ((*tunnel)["dstIp"].asString(), dstIp);
+  EXPECT_FALSE(tunnel->count("tunnelTermType"))
+      << "termination-type should be unset after reset";
+  EXPECT_EQ((*tunnel)["dstIp"].asString(), kTunnelTermDstIp);
 }
 
 // ---------------------------------------------------------------------------

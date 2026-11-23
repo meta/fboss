@@ -30,7 +30,9 @@ bool TomahawkAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::PENDING_L2_ENTRY:
     case HwAsic::Feature::SAI_ECN_WRED:
     case HwAsic::Feature::TELEMETRY_AND_MONITORING:
+    case HwAsic::Feature::PORT_MAC_FLUSH:
     case HwAsic::Feature::MAC_AGING:
+    case HwAsic::Feature::STATIC_FDB_EVICT_DYNAMIC:
     case HwAsic::Feature::REMOVE_PORTS_FOR_COLDBOOT:
     case HwAsic::Feature::EGRESS_MIRRORING:
     case HwAsic::Feature::EGRESS_SFLOW:
@@ -239,17 +241,22 @@ bool TomahawkAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::CUT_THROUGH_FORWARDING:
     case HwAsic::Feature::SRV6_MYSID_DISCARD_COUNTER:
     case HwAsic::Feature::SRV6_MYSID_RESOURCE_COUNTER:
+    case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
+    case HwAsic::Feature::SRV6_DECAP_TUNNEL:
     case HwAsic::Feature::PBR_ACL:
     case HwAsic::Feature::DEVICE_WATERMARK_SUPPORT:
     case HwAsic::Feature::ECN_PROBABILISTIC_MARKING:
     case HwAsic::Feature::SWITCH_CUSTOM_DROP_BITMAP_SUPPORT:
     case HwAsic::Feature::SWITCH_DROP_REASON_LIST_SUPPORT:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
+    case HwAsic::Feature::HIERARCHICAL_ECMP:
     case HwAsic::Feature::CBFC:
     case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:
     case HwAsic::Feature::PORT_DEBOUNCE:
     case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
+    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
+    case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:
     case HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS:
     case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
     case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:
@@ -258,6 +265,11 @@ bool TomahawkAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::ISOLATION_GROUP:
     case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
     case HwAsic::Feature::CSIG:
+    case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
+    case HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED:
+    case HwAsic::Feature::PORT_LATCH_STATUS:
+    case HwAsic::Feature::PCS_ERROR_COUNTERS:
+    case HwAsic::Feature::MIRROR_SESSION_POLICER:
       return false;
   }
   return false;

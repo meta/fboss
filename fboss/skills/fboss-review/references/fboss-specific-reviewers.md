@@ -8,7 +8,7 @@ These reviewers load their respective pattern files from `../fboss-code-standard
 - **#7 FSDB & thrift_cow**: thrift-cow-fsdb-patterns.md — state/stats duality, extern template, COW safety
 - **#8 Platform & Config**: platform-config-patterns.md — JSON/Thrift sync, startup order, OSS split
 - **#9 SAI/SDK Integration**: sai-sdk-patterns.md — SaiApiTable, SaiStore, attribute mapping, SDK guards, client cancellation
-- **#10 Testing Standards**: testing-patterns.md — naming, fixtures, NSDB, GTEST_SKIP, DSF counters, route programming via `routeUpdater.program()` / nexthop IDs on route tests
+- **#10 Testing Standards**: testing-patterns.md — naming, fixtures, NSDB, GTEST_SKIP, DSF counters, route programming via `routeUpdater.program()` / nexthop IDs on route tests, `agent_hw_tests` holds only tests and fixtures (helpers and constants in `test/utils`)
 
 ## Reviewer 11: FBOSS Architect
 
@@ -95,7 +95,7 @@ When reviewing new library dependencies, question whether they bloat build times
 consumers. Prefer small, focused libraries. If a library is "small now," consider that future
 additions to it will impact all dependents.
 - **Example**: "many of the libraries in fboss folder end up taking a long time to build. fboss/lib:thrift_service_utils is small/fast now. But I am not sure what will get added there as dependency in the future" (D93124830)
-- **Github PR**: https://github.com/facebook/fboss/pull/902
+- **Github PR**: https://github.com/meta/fboss/pull/902
 - **Severity**: MEDIUM
 
 ### K. Platform Services Uniformity

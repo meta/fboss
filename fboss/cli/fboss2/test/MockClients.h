@@ -3,12 +3,8 @@
 #pragma once
 
 #include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <cstdint>
 
-#include <folly/io/async/AsyncSocket.h>
-
-#include <fboss/cli/fboss2/options/SSLPolicy.h>
 #include "fboss/agent/gen-cpp2/switch_state_types.h"
 #include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
 #include "fboss/agent/if/gen-cpp2/FbossHwCtrl.h"
@@ -68,6 +64,10 @@ class MockFbossCtrlAgent : public apache::thrift::ServiceHandler<FbossCtrl> {
       void,
       getArpTable,
       (std::vector<facebook::fboss::ArpEntryThrift>&));
+  MOCK_METHOD(
+      int32_t,
+      flushNeighborEntries,
+      (std::unique_ptr<std::vector<IfAndIP>>));
 
   using PortInfoMap = std::map<int32_t, facebook::fboss::PortInfoThrift>&;
   using PortStatusMap = std::map<int32_t, facebook::fboss::PortStatus>&;
@@ -205,6 +205,10 @@ class MockFbossQsfpService
   MOCK_METHOD1(
       getPortMediaInterface,
       void(std::map<std::string, MediaInterfaceCode>&));
+  MOCK_METHOD(
+      void,
+      setPortAdminState,
+      (std::unique_ptr<std::string>, phy::PortComponent, bool));
 };
 
 #ifdef IS_OSS

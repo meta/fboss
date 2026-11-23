@@ -3,17 +3,24 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
-add_fbthrift_cpp_library(
+add_library(weutil_config_cpp2)
+thrift_generate(
   weutil_config_cpp2
   fboss/platform/weutil/if/weutil_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
 )
+target_include_directories(weutil_config_cpp2 PUBLIC ${PROJECT_BINARY_DIR})
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   weutil_eeprom_contents_cpp2
   fboss/platform/weutil/if/eeprom_contents.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -61,7 +68,7 @@ target_link_libraries(weutil_config_utils
   platform_config_lib
   platform_manager_config_cpp2
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   ${RE2}
 )
 

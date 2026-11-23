@@ -11,8 +11,8 @@
 #include <pciaccess.h>
 #include "fboss/lib/PciSystem.h"
 
+#include <fmt/format.h>
 #include <folly/Exception.h>
-#include <folly/Format.h>
 #include <folly/Singleton.h>
 #include <folly/logging/xlog.h>
 
@@ -37,7 +37,7 @@ void PciDevice::open() {
   // already open?
   if (pciDevice_ != nullptr) {
     // All is good, device created correctly
-    XLOG(INFO) << folly::format(
+    XLOG(INFO) << fmt::format(
         "PCI devie {:04x}:{:04x} already open", vendorId_, deviceId_);
     return;
   }
@@ -76,7 +76,7 @@ void PciDevice::open() {
   if (retVal != 0) {
     folly::throwSystemErrorExplicit(
         retVal,
-        folly::format(
+        fmt::format(
             "Could not probe PCI device "
             "{:04x}:{:04x}",
             vendorId_,
@@ -84,7 +84,7 @@ void PciDevice::open() {
   }
 
   // All is good, device created correctly
-  XLOG(DBG1) << folly::format(
+  XLOG(DBG1) << fmt::format(
       "Created PCI access for {:04x}:{:04x}", vendorId_, deviceId_);
 }
 

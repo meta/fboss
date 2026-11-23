@@ -139,14 +139,14 @@ void checkSwHwIntfMatch(
       bcmCheckError(rv, "failed to find l3 intf");
       EXPECT_EQ(swIntf->getMac(), macFromBcm(intf.l3a_mac_addr));
       ASSERT_EQ(swIntf->getMtu(), intf.l3a_mtu);
-      ASSERT_EQ(swIntf->getRouterID(), RouterID(intf.l3a_vrf));
+      ASSERT_EQ(RouterID(0), RouterID(intf.l3a_vrf));
 
       if (verifyIngress) {
         bcm_l3_ingress_t ing_intf;
         bcm_l3_ingress_t_init(&ing_intf);
         rv = bcm_l3_ingress_get(unit, intf.l3a_intf_id, &ing_intf);
         bcmCheckError(rv, "failed to get L3 ingress"); // FAILS
-        ASSERT_EQ(BcmSwitch::getBcmVrfId(swIntf->getRouterID()), ing_intf.vrf);
+        ASSERT_EQ(BcmSwitch::getBcmVrfId(RouterID(0)), ing_intf.vrf);
 
         bcm_vlan_control_vlan_t vlan_ctrl;
         bcm_vlan_control_vlan_t_init(&vlan_ctrl);

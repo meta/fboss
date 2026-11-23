@@ -18,7 +18,7 @@
   },
   "bsps": [
     {
-      "download": "${ARTIFACT_BASE}/bsp/6.11.1/fboss_bsp_kmods.tar"
+      "download": "${ARTIFACT_BASE}/bsp/6.11.1/cisco_bsp_kmods-2026.10.3-1.tar"
     }
   ],
   "npu_sai": {
@@ -28,7 +28,7 @@
   "fboss-forwarding-stack": [
     {
       "name": "agent",
-      "download": "${ARTIFACT_BASE}/agent/cisco/25.5.4210-3/fboss_bins.tar.zst"
+      "download": "${ARTIFACT_BASE}/agent/leaba/25.5.4210/fboss_bins.tar.zst"
     },
     {
       "name": "fsdb",

@@ -79,7 +79,7 @@ The complete development artifact contains:
 ```text
 sai_build.env
 include/
-lib/libsai_impl.a
+lib/libsai_impl.a or lib/libsai_impl.so
 sai-runtime.rpm
 ```
 
@@ -88,9 +88,9 @@ building the forwarding stack. The runtime RPM normally supplies SDK kernel
 modules and initialization files. Current image assembly also accepts a direct
 `lib/modules/<kernel-version>/.../*.ko` tree and runs dependency processing.
 
-Keep SAI headers, static library, runtime package or modules, SDK version, and
-kernel ABI from one compatible build. A successful forwarding-stack compile is
-not proof that its runtime kmods match the image kernel.
+Keep SAI headers, static/dynamic library, runtime package or modules, SDK
+version, and kernel ABI from one compatible build. A successful forwarding-stack
+compile is not proof that its runtime kmods match the image kernel.
 
 ### PHY SAI
 

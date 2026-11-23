@@ -27,7 +27,7 @@
 #include <vector>
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliValueParsers.h"
 #include "fmt/format.h"
-#include "thrift/lib/cpp2/gen/module_types_h.h"
+#include "thrift/lib/cpp/Thrift.h"
 
 /**
  * Generic, target-typed per-attribute handler factories shared by every

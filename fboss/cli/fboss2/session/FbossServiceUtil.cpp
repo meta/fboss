@@ -11,13 +11,22 @@
 #include "fboss/cli/fboss2/session/FbossServiceUtil.h"
 
 #include <fmt/format.h>
+#include <folly/Conv.h>
 #include <folly/String.h>
 #include <glog/logging.h>
 #include <chrono>
+#include <exception>
+#include <memory>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <thread>
+#include <utility>
+#include <vector>
 #include "fboss/agent/AgentDirectoryUtil.h"
 #include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
+#include "fboss/agent/if/gen-cpp2/FbossCtrlAsyncClient.h"
+#include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
 #include "fboss/cli/fboss2/session/SystemdInterface.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"

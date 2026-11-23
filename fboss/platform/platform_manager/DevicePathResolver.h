@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <chrono>
+
 #include "fboss/platform/platform_manager/DataStore.h"
 #include "fboss/platform/platform_manager/I2cExplorer.h"
 #include "fboss/platform/platform_manager/gen-cpp2/platform_manager_config_types.h"
@@ -12,6 +14,11 @@ class DevicePathResolver {
  public:
   virtual ~DevicePathResolver() = default;
   explicit DevicePathResolver(const DataStore& dataStore);
+  // sensorPathWaitSecs bounds how long resolveSensorPath() waits for a sensor
+  // endpoint to appear. Tests override it to keep negative cases fast.
+  DevicePathResolver(
+      const DataStore& dataStore,
+      std::chrono::seconds sensorPathWaitSecs);
 
   // Resolves a given DevicePath to the sensor sysfs path in the system.
   // Throws a runtime exception if devicePath fails to resolve to I2cDevicePath
@@ -57,6 +64,7 @@ class DevicePathResolver {
       const std::string& deviceName);
 
   const DataStore& dataStore_;
+  std::chrono::seconds sensorPathWaitSecs_;
 };
 
 } // namespace facebook::fboss::platform::platform_manager

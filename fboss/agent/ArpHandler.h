@@ -51,20 +51,17 @@ class ArpHandler {
       folly::io::Cursor cursor,
       const std::shared_ptr<VlanOrIntfT>& vlanOrIntf);
 
-  /*
-   * These two static methods are for sending out ARP requests.
-   * The second version actually calls the first and is there
-   * for the convenience of the caller. The first version
-   * does not access the SwitchState so should be preferred where
-   * possible.
-   */
+  // Send an ARP request for targetIP out of intf. The second version picks
+  // the intf address that reaches targetIP as the sender IP.
   static void sendArpRequest(
       SwSwitch* sw,
-      std::optional<VlanID> vlanID,
-      const folly::MacAddress& srcMac,
+      const std::shared_ptr<Interface>& intf,
       const folly::IPAddressV4& senderIP,
       const folly::IPAddressV4& targetIP);
-  static void sendArpRequest(SwSwitch* sw, const folly::IPAddressV4& targetIP);
+  static void sendArpRequest(
+      SwSwitch* sw,
+      const std::shared_ptr<Interface>& intf,
+      const folly::IPAddressV4& targetIP);
 
   /*
    * Send gratuitous arp on all vlans

@@ -30,7 +30,7 @@ target_link_libraries(fsdb_handler
   log_thrift_call
   oper_path_helpers
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   fb303::fb303
 )
 

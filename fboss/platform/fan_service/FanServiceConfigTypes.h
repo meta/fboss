@@ -20,7 +20,8 @@ inline const std::vector<std::string>& allOpticTypes() {
       constants::OPTIC_TYPE_200_GENERIC(),
       constants::OPTIC_TYPE_400_GENERIC(),
       constants::OPTIC_TYPE_800_GENERIC(),
-      constants::OPTIC_TYPE_800_ZR()};
+      constants::OPTIC_TYPE_800_ZR(),
+      constants::OPTIC_TYPE_1600_GENERIC()};
   return kOpticTypes;
 }
 

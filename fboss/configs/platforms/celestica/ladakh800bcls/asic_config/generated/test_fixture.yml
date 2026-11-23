@@ -1939,6 +1939,7 @@ bcm_device:
       global_flexctr_egr_pool_num_reserved: 5
       global_flexctr_egr_op_profile_num_reserved: 10
       global_flexctr_egr_group_num_reserved: 1
+      sai_uncached_port_stats: 0x1
       l3_ecmp_member_secondary_mem_size: 24576
       l3_ecmp_member_first_lkup_mem_size: 8192
       dlb_quality_adjustment_default_value_select: 1

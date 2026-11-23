@@ -72,11 +72,15 @@ using TransceiverOverrides = std::vector<cfg::TransceiverConfigOverride>;
 struct TransceiverConfig {
   explicit TransceiverConfig(
       const TransceiverOverrides& overrides,
-      const std::map<std::string, std::string>& partNumberToFwHandle = {})
+      const std::map<std::string, std::string>& partNumberToFwHandle = {},
+      const std::optional<std::vector<TransceiverVendorOverride>>&
+          vendorOverrides = std::nullopt)
       : overridesConfig_(overrides),
-        partNumberToFwHandle_(partNumberToFwHandle) {}
+        partNumberToFwHandle_(partNumberToFwHandle),
+        vendorOverrides_(vendorOverrides) {}
   TransceiverOverrides overridesConfig_;
   std::map<std::string, std::string> partNumberToFwHandle_;
+  std::optional<std::vector<TransceiverVendorOverride>> vendorOverrides_;
 };
 
 /*
@@ -555,6 +559,10 @@ class QsfpModule : public Transceiver {
   }
 
   virtual bool isAecModule() const {
+    return false;
+  }
+
+  virtual bool isCpo() const {
     return false;
   }
 

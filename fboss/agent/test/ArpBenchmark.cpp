@@ -69,7 +69,6 @@ unique_ptr<SwSwitch> setupSwitch() {
     // Add Interface 1 to VLAN 1
     auto intf1 = make_shared<Interface>(
         InterfaceID(1),
-        RouterID(0),
         std::optional<VlanID>(1),
         folly::StringPiece("interface1"),
         MacAddress("02:00:01:00:00:01"),

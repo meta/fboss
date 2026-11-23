@@ -514,7 +514,7 @@ std::unordered_set<std::string> ConfigValidator::getAllUniversalSensorNames(
     }
     sensorNames.insert(intersection.begin(), intersection.end());
   }
-  if (const auto& asicCmd = sensorConfig.asicCommand()) {
+  if (auto asicCmd = sensorConfig.asicCommand()) {
     sensorNames.emplace(*asicCmd->sensorName());
   }
   return sensorNames;
@@ -571,7 +571,7 @@ bool ConfigValidator::isValidSensorName(
       }
     }
   }
-  if (const auto& asicCmd = sensorConfig.asicCommand()) {
+  if (auto asicCmd = sensorConfig.asicCommand()) {
     if (sensorName == asicCmd->sensorName()) {
       return true;
     }

@@ -304,7 +304,21 @@ class TestDeviceCommands(unittest.TestCase):
         )
 
         ip = get_device_ip(self.test_mac)
-        self.assertEqual(ip, "fe80::1")
+        self.assertEqual(ip, "fe80::1%lo")
+
+    @patch("distro_cli.cmds.device.container.exec_in_container")
+    @patch("distro_cli.cmds.device.container.container_is_running")
+    def test_get_device_ip_ipv6_global_unscoped(self, mock_is_running, mock_exec):
+        """Test get_device_ip does not scope a global IPv6 address"""
+        mock_is_running.return_value = True
+        mock_exec.return_value = (
+            0,
+            '{"mac": "aa:bb:cc:dd:ee:ff", "ipv6": "2001:db8::1"}',
+            "",
+        )
+
+        ip = get_device_ip(self.test_mac)
+        self.assertEqual(ip, "2001:db8::1")
 
     @patch("distro_cli.cmds.device.container.exec_in_container")
     @patch("distro_cli.cmds.device.container.container_is_running")
@@ -884,6 +898,40 @@ class TestDeviceUpdater(unittest.TestCase):
         with self.assertRaises(DeviceUpdateError) as ctx:
             updater.update()
         self.assertIn("Device IP not set", str(ctx.exception))
+
+    def _scp_target(self, device_ip: str) -> str:
+        manifest = ImageManifest(self.update_manifest_path)
+        updater = DeviceUpdater(
+            mac="aa:bb:cc:dd:ee:ff",
+            manifest=manifest,
+            component="fboss-forwarding-stack",
+            device_ip=device_ip,
+        )
+        with patch("distro_cli.lib.device_update.subprocess.run") as mock_run:
+            mock_run.return_value = Mock(returncode=0, stdout=b"", stderr=b"")
+            updater._transfer_and_execute(Path("/tmp/artifact.tar"), ["wedge_agent"])
+        scp_args = next(
+            c.args[0] for c in mock_run.call_args_list if c.args[0][0] == "scp"
+        )
+        return scp_args[-1]
+
+    def test_scp_target_ipv4(self):
+        """Test scp target leaves an IPv4 address unbracketed"""
+        self.assertRegex(
+            self._scp_target("192.168.1.100"),
+            r"^root@192\.168\.1\.100:/tmp/fboss-update-[0-9a-f]+/$",
+        )
+
+    def test_scp_target_ipv6_bracketed(self):
+        """Test scp target brackets global and scoped link-local IPv6 addresses"""
+        self.assertRegex(
+            self._scp_target("2001:db8::1"),
+            r"^root@\[2001:db8::1\]:/tmp/fboss-update-[0-9a-f]+/$",
+        )
+        self.assertRegex(
+            self._scp_target("fe80::1%eth0"),
+            r"^root@\[fe80::1%eth0\]:/tmp/fboss-update-[0-9a-f]+/$",
+        )
 
     def test_acquire_artifacts_and_services(self):
         """Test services are available for platform-stack component"""

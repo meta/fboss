@@ -65,8 +65,9 @@ bool RouteUpdateLoggingPrefixTracker::trackingImpl(
     const RoutePrefix<folly::IPAddress>& prefix,
     std::vector<std::string>& identifiers) const {
   identifiers.clear();
-  SYNCHRONIZED_CONST(trackedPrefixes_) {
-    for (const auto& prefixes : trackedPrefixes_) {
+  {
+    auto lockedPrefixes = trackedPrefixes_.rlock();
+    for (const auto& prefixes : *lockedPrefixes) {
       const auto match =
           prefixes.second.longestMatch(prefix.network(), prefix.mask());
       if (match != prefixes.second.end()) {
@@ -86,8 +87,9 @@ bool RouteUpdateLoggingPrefixTracker::trackingImpl(
 std::vector<RouteUpdateLoggingInstance>
 RouteUpdateLoggingPrefixTracker::getTrackedPrefixes() const {
   std::vector<RouteUpdateLoggingInstance> allPrefixes;
-  SYNCHRONIZED_CONST(trackedPrefixes_) {
-    for (const auto& prefixes : trackedPrefixes_) {
+  {
+    auto lockedPrefixes = trackedPrefixes_.rlock();
+    for (const auto& prefixes : *lockedPrefixes) {
       for (const auto& itr : prefixes.second) {
         allPrefixes.push_back(itr->value());
       }

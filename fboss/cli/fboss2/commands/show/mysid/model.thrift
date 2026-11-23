@@ -11,4 +11,5 @@ struct MySidEntryModel {
   2: string type;
   3: list<string> nextHops;
   4: list<string> resolvedNextHops;
+  5: list<string> backupResolvedNextHops;
 }

@@ -7,6 +7,7 @@
 #include "fboss/agent/state/IpTunnel.h"
 #include "fboss/agent/types.h"
 
+#include <optional>
 #include <string>
 
 using namespace facebook::fboss;
@@ -39,6 +40,58 @@ class AclTableManagerRedirectTest : public ManagerTestBase {
     tunnel->setSrcIP(folly::IPAddressV6("2401:db00::1"));
     tunnel->setDstIP(folly::IPAddressV6("2401:db00:ffff::1"));
     return tunnel;
+  }
+
+  cfg::RedirectNextHop tunnelRedirectNextHop() const {
+    cfg::RedirectNextHop nh;
+    nh.ip() = "2401:db00:ffff::1";
+    nh.tunnelType() = TunnelType::IP_IN_IP_ENCAP;
+    nh.tunnelId() = "encapTunnel0";
+    return nh;
+  }
+
+  cfg::RedirectNextHop plainRedirectNextHop() const {
+    cfg::RedirectNextHop nh;
+    nh.ip() = "2401:db00::2";
+    return nh;
+  }
+
+  std::shared_ptr<AclEntry> makeRedirectEntry(
+      const cfg::RedirectNextHop& nh,
+      std::optional<bool> enabled) {
+    auto aclEntry =
+        std::make_shared<AclEntry>(kPriority(), std::string("AclEntry1"));
+    aclEntry->setDscp(kDscp());
+    if (enabled.has_value()) {
+      aclEntry->setEnabled(*enabled);
+    }
+    cfg::RedirectToNextHopAction redirectAction;
+    redirectAction.redirectNextHops() = {nh};
+    MatchAction matchAction;
+    matchAction.setRedirectToNextHop(
+        std::make_pair(redirectAction, MatchAction::NextHopSet()));
+    aclEntry->setAclAction(matchAction);
+    return aclEntry;
+  }
+
+  AclEntrySaiId addEntry(const std::shared_ptr<AclEntry>& aclEntry) {
+    return saiManagerTable->aclTableManager().addAclEntry(
+        aclEntry,
+        cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE(),
+        nullptr /*state*/);
+  }
+
+  bool enabledInHw(AclEntrySaiId aclEntryId) {
+    return saiApiTable->aclApi().getAttribute(
+        aclEntryId, SaiAclEntryTraits::Attributes::Enabled{});
+  }
+
+  AclEntrySaiId entryId() {
+    auto aclTableHandle = saiManagerTable->aclTableManager().getAclTableHandle(
+        cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE());
+    return saiManagerTable->aclTableManager()
+        .getAclEntryHandle(aclTableHandle, kPriority(), "AclEntry1")
+        ->aclEntry->adapterKey();
   }
 
   TestInterface intf0_;
@@ -149,4 +202,49 @@ TEST_F(AclTableManagerRedirectTest, aclEntryRedirectMissingTunnel) {
           cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE(),
           nullptr /*state*/),
       FbossError);
+}
+
+// An entry software disabled, e.g. a redirect whose nexthop is unresolved,
+// must be programmed with admin state off so lower priority entries match.
+TEST_F(AclTableManagerRedirectTest, disabledAclEntryProgrammedDisabled) {
+  auto aclEntryId = addEntry(makeRedirectEntry(plainRedirectNextHop(), false));
+  EXPECT_FALSE(enabledInHw(aclEntryId));
+}
+
+TEST_F(
+    AclTableManagerRedirectTest,
+    disabledTunnelEncapRedirectProgrammedDisabled) {
+  saiManagerTable->tunnelManager().addTunnel(makeEncapTunnel("encapTunnel0"));
+  auto aclEntryId = addEntry(makeRedirectEntry(tunnelRedirectNextHop(), false));
+  EXPECT_FALSE(enabledInHw(aclEntryId));
+}
+
+TEST_F(AclTableManagerRedirectTest, aclEntryEnabledByDefaultAndWhenSet) {
+  auto unsetId =
+      addEntry(makeRedirectEntry(plainRedirectNextHop(), std::nullopt));
+  EXPECT_TRUE(enabledInHw(unsetId));
+  saiManagerTable->aclTableManager().removeAclEntry(
+      makeRedirectEntry(plainRedirectNextHop(), std::nullopt),
+      cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE());
+
+  auto enabledId = addEntry(makeRedirectEntry(plainRedirectNextHop(), true));
+  EXPECT_TRUE(enabledInHw(enabledId));
+}
+
+// Nexthop resolution changes flip the software enabled state; the HW admin
+// state must follow in both directions.
+TEST_F(AclTableManagerRedirectTest, aclEntryEnabledStateFollowsChanges) {
+  auto disabled = makeRedirectEntry(plainRedirectNextHop(), false);
+  auto enabled = makeRedirectEntry(plainRedirectNextHop(), true);
+  const auto table = cfg::switch_config_constants::DEFAULT_INGRESS_ACL_TABLE();
+  addEntry(disabled);
+  EXPECT_FALSE(enabledInHw(entryId()));
+
+  saiManagerTable->aclTableManager().changedAclEntry(
+      disabled, enabled, table, nullptr /*state*/);
+  EXPECT_TRUE(enabledInHw(entryId()));
+
+  saiManagerTable->aclTableManager().changedAclEntry(
+      enabled, disabled, table, nullptr /*state*/);
+  EXPECT_FALSE(enabledInHw(entryId()));
 }

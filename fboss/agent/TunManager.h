@@ -103,7 +103,11 @@ class TunManager : public StateObserver {
   virtual void startObservingUpdates();
 
   /*
-   * Probe linux for tun interfaces already configured
+   * Probe linux for tun interfaces already configured.
+   *
+   * May be called from any thread. The probe runs on evb_'s thread, because
+   * it registers TunIntf handlers on evb_ and libevent is not thread safe.
+   * Blocks until the probe has finished and rethrows any error it raised.
    */
   virtual void probe();
 

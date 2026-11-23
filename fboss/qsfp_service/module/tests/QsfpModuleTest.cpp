@@ -37,7 +37,8 @@ class QsfpModuleTest : public TransceiverManagerTestHelper {
     setupQsfp();
   }
 
-  void setupQsfp() {
+  void setupQsfp(
+      std::shared_ptr<const TransceiverConfig> tcvrConfig = nullptr) {
     auto transceiverImpl = std::make_unique<NiceMock<MockTransceiverImpl>>();
     // So we can check what happens during testing
     transImpl_ = transceiverImpl.get();
@@ -48,7 +49,7 @@ class QsfpModuleTest : public TransceiverManagerTestHelper {
             std::make_unique<MockSffModule>(
                 transceiverManager_->getPortNames(kTcvrID),
                 qsfpImpls_.back().get(),
-                tcvrConfig_,
+                tcvrConfig ? tcvrConfig : tcvrConfig_,
                 transceiverManager_->getTransceiverName(kTcvrID))));
     qsfp_->setVendorPN();
 
@@ -564,6 +565,36 @@ TEST_F(QsfpModuleTest, getFwStorageHandleUnknownPartNumber) {
   transceiverManager_->refreshStateMachines();
   qsfp_->useActualGetTransceiverInfo();
   EXPECT_EQ(qsfp_->getFwStorageHandle(), "");
+}
+
+TEST_F(QsfpModuleTest, vendorOverridesFromQsfpConfig) {
+  TransceiverVendorPartNumber placeholder, transceiver;
+  placeholder.vendor() = "Vendor_1";
+  placeholder.partNumber() = "PartNum_1";
+  transceiver.vendor() = "FBOSSONE";
+  transceiver.partNumber() = "PN_1";
+  TransceiverVendorOverride vendorOverride;
+  vendorOverride.placeholder() = placeholder;
+  vendorOverride.transceivers() = {transceiver};
+  const std::vector<TransceiverVendorOverride> vendorOverrides = {
+      vendorOverride};
+  setupQsfp(
+      std::make_shared<const TransceiverConfig>(
+          TransceiverOverrides{},
+          std::map<std::string, std::string>{},
+          vendorOverrides));
+  transceiverManager_->refreshStateMachines();
+  qsfp_->useActualGetTransceiverInfo();
+  EXPECT_EQ(
+      qsfp_->getTransceiverInfo().tcvrState()->vendorOverrides().to_optional(),
+      vendorOverrides);
+}
+
+TEST_F(QsfpModuleTest, vendorOverridesUnsetWithoutQsfpConfig) {
+  transceiverManager_->refreshStateMachines();
+  qsfp_->useActualGetTransceiverInfo();
+  EXPECT_FALSE(
+      qsfp_->getTransceiverInfo().tcvrState()->vendorOverrides().has_value());
 }
 
 TEST_F(QsfpModuleTest, cdbFwDownloadStartBufferOverflowProtection) {

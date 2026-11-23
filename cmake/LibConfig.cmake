@@ -20,11 +20,14 @@ add_library(fboss_agent_config_utils
   fboss/lib/config/agent/CoppConfigUtils.cpp
   fboss/lib/config/agent/InterfaceConfigUtils.cpp
   fboss/lib/config/agent/PortConfigUtils.cpp
+  fboss/lib/config/agent/SwitchSettingsConfigUtils.cpp
   fboss/lib/config/agent/VlanConfigUtils.cpp
 )
 
 target_link_libraries(fboss_agent_config_utils
+	Folly::folly
 	fboss_error
+	fboss_common_cpp2
 	fboss_types
 	switch_config_cpp2
 	platform_mapping

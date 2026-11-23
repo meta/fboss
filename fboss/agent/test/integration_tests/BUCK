@@ -23,6 +23,7 @@ cpp_library(
     ],
     link_whole = True,  # Required for gtest to find tests in other files.
     exported_deps = [
+        "fbsource//xplat/folly:subprocess",
         "//configerator/structs/neteng/fboss/bgp/if:bgp_attr-cpp2-types",
         "//fb303:service_data",
         "//fboss/agent:core",
@@ -42,7 +43,6 @@ cpp_library(
         "//fboss/fsdb/common:flags",
         "//fboss/lib:common_utils",
         "//fboss/lib/config:fboss_config_utils",
-        "//folly:subprocess",
         "//neteng/fboss/bgp/cpp:bgp_service_lib",
         "//neteng/fboss/bgp/if:bgp_thrift-cpp2-services",
         "//neteng/fboss/bgp/if:bgp_thrift-cpp2-types",

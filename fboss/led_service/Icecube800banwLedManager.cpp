@@ -1,7 +1,6 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include "fboss/led_service/Icecube800banwLedManager.h"
-#include "fboss/agent/platforms/common/icecube800banw/Icecube800banwPlatformMapping.h"
 #include "fboss/lib/bsp/BspGenericSystemContainer.h"
 #include "fboss/lib/bsp/icecube800bc/Icecube800bcBspPlatformMapping.h"
 
@@ -14,7 +13,7 @@ namespace facebook::fboss {
  * icecube800banw platform
  */
 Icecube800banwLedManager::Icecube800banwLedManager() : BspLedManager() {
-  init<Icecube800bcBspPlatformMapping, Icecube800banwPlatformMapping>();
+  init<Icecube800bcBspPlatformMapping>(PlatformType::PLATFORM_ICECUBE800BANW);
   XLOG(INFO) << "Created Icecube800banw BSP LED Manager";
 }
 

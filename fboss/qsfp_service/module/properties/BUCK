@@ -21,8 +21,8 @@ cpp_library(
         "//thrift/lib/cpp2/folly_dynamic:folly_dynamic",
     ],
     exported_deps = [
-        "//fboss/agent:switch_config-cpp2-types",
-        "//fboss/qsfp_service/if:transceiver-cpp2-types",
-        "//fboss/qsfp_service/if:transceiver_properties-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
+        "//fboss/qsfp_service/if:transceiver-cpp2-serialization",
+        "//fboss/qsfp_service/if:transceiver_properties-cpp2-serialization",
     ],
 )

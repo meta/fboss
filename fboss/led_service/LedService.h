@@ -24,7 +24,11 @@ class LedService {
  public:
   // Constructor / destructor
   LedService() {}
-  ~LedService() {}
+  ~LedService() {
+    if (pLedManager_) {
+      pLedManager_->stop();
+    }
+  }
 
   // Instantiates all data used by LED Service
   void kickStart();

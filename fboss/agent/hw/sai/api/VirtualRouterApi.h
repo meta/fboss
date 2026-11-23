@@ -33,7 +33,9 @@ struct SaiVirtualRouterTraits {
       SAI_OBJECT_TYPE_VIRTUAL_ROUTER;
   using SaiApiT = VirtualRouterApi;
   using AdapterKey = VirtualRouterSaiId;
-  using AdapterHostKey = std::monostate;
+  // Keyed by RouterID, which the adapter does not know, so SaiStore saves it
+  // in warm boot state (AdapterHostKeyWarmbootRecoverable is false).
+  using AdapterHostKey = RouterID;
   struct Attributes {
     using EnumType = sai_virtual_router_attr_t;
     using SrcMac = SaiAttribute<
@@ -45,10 +47,6 @@ struct SaiVirtualRouterTraits {
 };
 
 SAI_ATTRIBUTE_NAME(VirtualRouter, SrcMac)
-
-template <>
-struct IsSaiObjectOwnedByAdapter<SaiVirtualRouterTraits>
-    : public std::true_type {};
 
 class VirtualRouterApi : public SaiApi<VirtualRouterApi> {
  public:

@@ -1762,9 +1762,16 @@ void ConfigValidator::buildDeviceNameCache(
        *platformConfig.pmUnitConfigs()) {
     const auto& slotType = *pmUnitConfig.pluggedInSlotType();
 
-    // Add device names from i2cDeviceConfigs
+    // Add device names from i2cDeviceConfigs, plus one bus name per mux
+    // channel ("<name>@<channel>"), as registered by PlatformExplorer.
     for (const auto& i2cConfig : *pmUnitConfig.i2cDeviceConfigs()) {
       cache[slotType].insert(*i2cConfig.pmUnitScopedName());
+      if (i2cConfig.numOutgoingChannels()) {
+        for (int i = 0; i < *i2cConfig.numOutgoingChannels(); ++i) {
+          cache[slotType].insert(
+              fmt::format("{}@{}", *i2cConfig.pmUnitScopedName(), i));
+        }
+      }
     }
 
     // Add device names from embeddedSensorConfigs

@@ -101,6 +101,9 @@ class RouteNextHopEntry
   // nexthops will be removeed in the future
   NextHopSet getNextHopSet() const;
   void setNextHops(const NextHopSet& nhops);
+  // Drops the inline nexthops, keeping the action and the set IDs. Readers
+  // must already resolve via the IDs.
+  void clearInlineNextHops();
 
   const std::optional<RouteCounterID> getCounterID() const {
     if (auto counter = safe_cref<switch_state_tags::counterID>()) {
@@ -196,6 +199,22 @@ class RouteNextHopEntry
       ref<switch_state_tags::namedNextHopGroup>() = *name;
     } else {
       ref<switch_state_tags::namedNextHopGroup>().reset();
+    }
+  }
+
+  // The level the client set. Resolution treats unset as level 0.
+  std::optional<int32_t> getLevel() const {
+    if (auto level = safe_cref<switch_state_tags::level>()) {
+      return level->cref();
+    }
+    return std::nullopt;
+  }
+
+  void setLevel(std::optional<int32_t> level) {
+    if (level) {
+      ref<switch_state_tags::level>() = *level;
+    } else {
+      ref<switch_state_tags::level>().reset();
     }
   }
 

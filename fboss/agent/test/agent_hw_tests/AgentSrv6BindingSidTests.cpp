@@ -285,6 +285,11 @@ class AgentSrv6BindingSidTest : public AgentHwTest {
     auto outerTc = ecnMarked ? static_cast<uint8_t>((kDscp << 2) | 0x3)
                              : static_cast<uint8_t>(kDscp << 2);
 
+    // The binding SID's decap tunnel is UNIFORM, so the ASIC copies the outer
+    // TTL and DSCP/ECN onto the inner header before the route lookup decrements
+    // the TTL. Send an inner header that already carries the outer DSCP/ECN, as
+    // in production, and an outer TTL one above the inner, so the received
+    // inner packet matches the one sent on every vendor.
     std::unique_ptr<TxPacket> txPacket;
     if (isV4) {
       txPacket = utility::makeIpInIpTxPacket(
@@ -299,9 +304,12 @@ class AgentSrv6BindingSidTest : public AgentHwTest {
           8000,
           8001,
           outerTc,
-          0,
+          kDscp,
+          kHopLimit + 1,
           kHopLimit,
-          64);
+          0 /* outerFlowLabel */,
+          std::nullopt /* payload */,
+          static_cast<uint8_t>(outerTc & 0x3) /* innerEcn */);
     } else {
       txPacket = utility::makeIpInIpTxPacket(
           this->getSw(),
@@ -315,9 +323,9 @@ class AgentSrv6BindingSidTest : public AgentHwTest {
           8000,
           8001,
           outerTc,
-          0,
-          kHopLimit,
-          64);
+          outerTc,
+          kHopLimit + 1,
+          kHopLimit);
     }
 
     auto originalFrame = utility::makeEthFrame(*txPacket);
@@ -383,7 +391,7 @@ class AgentSrv6BindingSidTest : public AgentHwTest {
     EXPECT_TRUE(sidMatch) << "Outer DA " << v6Hdr.dstAddr
                           << " does not match any expected SID";
 
-    EXPECT_EQ(v6Hdr.hopLimit, kHopLimit - 1);
+    EXPECT_EQ(v6Hdr.hopLimit, kHopLimit);
     EXPECT_EQ(v6Hdr.trafficClass >> 2, kDscp);
     EXPECT_EQ(v6Hdr.trafficClass & 0x3, ecnMarked ? 0x3 : 0);
 
@@ -631,6 +639,10 @@ class AgentSrv6BindingSidTest : public AgentHwTest {
     tunnelList.push_back(
         utility::makeSrv6TunnelConfig(
             "srv6Tunnel0", InterfaceID(cfg.interfaces()[0].intfID().value())));
+    // The decap tunnel does not take effect on Cisco (Leaba), whose SDK does
+    // not create SRv6 decap tunnels.
+    tunnelList.push_back(
+        utility::makeSrv6DecapTunnelConfig("srv6DecapTunnel0"));
     cfg.srv6Tunnels() = tunnelList;
   }
 };
@@ -890,6 +902,175 @@ TYPED_TEST(AgentSrv6BindingSidTest, multiHopUnresolvedToResolved) {
         egressPorts, {this->kSid0, this->kSid1});
   };
 
+  this->verifyAcrossWarmBoots(setup, verify);
+}
+
+template <typename PortType>
+class AgentMixedIpSrv6BindingSidTest
+    : public AgentSrv6BindingSidTest<PortType> {
+ protected:
+  const folly::IPAddressV6 kMixedInnerDst{"2001:db8::2"};
+
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    auto features =
+        AgentSrv6BindingSidTest<PortType>::getProductionFeaturesVerified();
+    features.push_back(ProductionFeature::MIXED_IP_SRV6_NEXT_HOP_GROUPS);
+    return features;
+  }
+
+  void setCmdLineFlagOverrides() const override {
+    AgentSrv6BindingSidTest<PortType>::setCmdLineFlagOverrides();
+    FLAGS_allow_mixed_ip_srv6_nhop_groups = true;
+  }
+
+  cfg::SwitchConfig initialConfig(
+      const AgentEnsemble& ensemble) const override {
+    auto cfg = AgentSrv6BindingSidTest<PortType>::initialConfig(ensemble);
+    auto asic = checkSameAndGetAsicForTesting(ensemble.getL3Asics());
+    // SID traps copy SRv6-encapped packets after loopback (outer DA = SID).
+    // Inner-destination trap copies plain-IP packets (DA unchanged).
+    utility::addTrapPacketAcl(
+        asic, &cfg, folly::CIDRNetwork{kMixedInnerDst, 128});
+    return cfg;
+  }
+
+  void addMixedBindingSid() {
+    NextHopThrift plainNhop;
+    plainNhop.address() =
+        facebook::network::toBinaryAddress(this->getLoopbacks()[1]);
+    utility::addBindingSidEntry(
+        this->getSw(),
+        this->kMySidPrefix,
+        this->kMySidPrefixLen,
+        {utility::makeSrv6NextHopThrift(this->getLoopbacks()[0], this->kSid0),
+         plainNhop});
+  }
+
+  std::vector<PortID> memberEgressPorts(const PortDescriptor& portDesc) const {
+    if (portDesc.isPhysicalPort()) {
+      return {portDesc.phyPortID()};
+    }
+    auto aggPort = this->getProgrammedState()->getAggregatePorts()->getNodeIf(
+        portDesc.aggPortID());
+    std::vector<PortID> ports;
+    for (const auto& subport : aggPort->sortedSubports()) {
+      ports.push_back(subport.portID);
+    }
+    return ports;
+  }
+
+  std::map<PortID, std::pair<int64_t, int64_t>> portCounters(
+      const std::vector<PortID>& ports) {
+    std::map<PortID, std::pair<int64_t, int64_t>> counters;
+    for (const auto& port : ports) {
+      auto stats = this->getLatestPortStats(port);
+      counters[port] = {*stats.outBytes_(), *stats.outUnicastPkts_()};
+    }
+    return counters;
+  }
+
+  std::pair<int64_t, int64_t> portCounterDelta(
+      const std::vector<PortID>& ports,
+      const std::map<PortID, std::pair<int64_t, int64_t>>& before) {
+    int64_t bytesDelta = 0;
+    int64_t pktsDelta = 0;
+    for (const auto& port : ports) {
+      auto stats = this->getLatestPortStats(port);
+      bytesDelta += *stats.outBytes_() - before.at(port).first;
+      pktsDelta += *stats.outUnicastPkts_() - before.at(port).second;
+    }
+    return {bytesDelta, pktsDelta};
+  }
+
+  void sendMixedBindingSidFlow(uint16_t srcPort) {
+    auto intfMac =
+        getMacForFirstInterfaceWithPortsForTesting(this->getProgrammedState());
+    // Vary the UDP source port and the outer flow label so flows spread
+    // across the ECMP members, as in AgentMixedIpSrv6EncapTest.
+    auto txPacket = utility::makeIpInIpTxPacket(
+        this->getSw(),
+        this->getVlanIDForTx().value(),
+        intfMac,
+        intfMac,
+        folly::IPAddressV6("100::1"),
+        this->kMySidPrefix,
+        folly::IPAddressV6("2001:db8::1"),
+        this->kMixedInnerDst,
+        srcPort,
+        8001,
+        static_cast<uint8_t>(this->kDscp << 2),
+        static_cast<uint8_t>(this->kDscp << 2),
+        this->kHopLimit + 1,
+        this->kHopLimit,
+        srcPort);
+    this->sendPacketSwitchedAsync(std::move(txPacket));
+  }
+
+  void verifyMixedBindingSidForwarding() {
+    auto ecmpHelper = this->makeEcmpHelper();
+    const auto srv6Ports = this->memberEgressPorts(ecmpHelper.nhop(0).portDesc);
+    const auto ipPorts = this->memberEgressPorts(ecmpHelper.nhop(1).portDesc);
+    ASSERT_FALSE(srv6Ports.empty());
+    ASSERT_FALSE(ipPorts.empty());
+
+    std::vector<PortID> allPorts = srv6Ports;
+    allPorts.insert(allPorts.end(), ipPorts.begin(), ipPorts.end());
+    const auto before = this->portCounters(allPorts);
+    constexpr int kNumFlows = 100;
+    for (int flow = 0; flow < kNumFlows; ++flow) {
+      this->sendMixedBindingSidFlow(8000 + flow);
+    }
+    WITH_RETRIES({
+      const auto srv6Delta = this->portCounterDelta(srv6Ports, before);
+      const auto ipDelta = this->portCounterDelta(ipPorts, before);
+      EXPECT_EVENTUALLY_TRUE(srv6Delta.first > 0);
+      EXPECT_EVENTUALLY_TRUE(srv6Delta.second > 0);
+      EXPECT_EVENTUALLY_TRUE(ipDelta.first > 0);
+      EXPECT_EVENTUALLY_TRUE(ipDelta.second > 0);
+    });
+
+    utility::SwSwitchPacketSnooper snooper(
+        this->getSw(), "srv6MixedBindingSidSnooper");
+    bool foundSrv6Packet = false;
+    bool foundIpPacket = false;
+    constexpr int kSnoopFlows = 20;
+    for (int flow = 0; flow < kSnoopFlows; ++flow) {
+      this->sendMixedBindingSidFlow(9000 + flow);
+      auto frameRx = snooper.waitForPacket(1);
+      ASSERT_TRUE(frameRx.has_value())
+          << "No egress packet captured for flow " << flow;
+      folly::io::Cursor cursor((*frameRx).get());
+      utility::EthFrame frame(cursor);
+      auto v6Payload = frame.v6PayLoad();
+      ASSERT_TRUE(v6Payload.has_value());
+      auto v6Hdr = v6Payload->header();
+      EXPECT_EQ(v6Hdr.hopLimit, this->kHopLimit);
+      EXPECT_EQ(v6Hdr.trafficClass >> 2, this->kDscp);
+      if (v6Hdr.dstAddr == this->kSid0) {
+        auto innerV6 = v6Payload->v6PayLoad();
+        ASSERT_NE(innerV6, nullptr);
+        EXPECT_EQ(innerV6->header().dstAddr, this->kMixedInnerDst);
+        foundSrv6Packet = true;
+      } else if (v6Hdr.dstAddr == this->kMixedInnerDst) {
+        foundIpPacket = true;
+      } else {
+        ADD_FAILURE() << "Unexpected egress DA " << v6Hdr.dstAddr;
+      }
+    }
+    EXPECT_TRUE(foundSrv6Packet) << "No SRv6-encap packet captured in 20 flows";
+    EXPECT_TRUE(foundIpPacket) << "No IP-nexthop packet captured in 20 flows";
+  }
+};
+
+TYPED_TEST_SUITE(AgentMixedIpSrv6BindingSidTest, Srv6BindingSidPortTypes);
+
+TYPED_TEST(AgentMixedIpSrv6BindingSidTest, mixedSrv6AndIpBindingSid) {
+  auto setup = [this]() {
+    this->setupHelper();
+    this->addMixedBindingSid();
+  };
+  auto verify = [this]() { this->verifyMixedBindingSidForwarding(); };
   this->verifyAcrossWarmBoots(setup, verify);
 }
 

@@ -212,6 +212,10 @@ class CmisModule : public QsfpModule {
 
   VdmDiagsLocationStatus getVdmDiagsValLocation(VdmConfigType vdmConf) const;
 
+  // CMIS only defines the VDM freeze for statistics (min/max/average)
+  // reporting registers
+  bool hasVdmStatisticsObservables() const;
+
   bool tcvrPortStateSupported(TransceiverPortState& portState) const override;
 
   bool isRequestValidMultiportSpeedConfig(
@@ -223,6 +227,16 @@ class CmisModule : public QsfpModule {
   ApplicationAdvertisingFields getModuleCapabilities() {
     return moduleCapabilities_;
   }
+  /*
+   * Returns the ApplicationAdvertisingField that should be programmed for the
+   * media interface code.
+   * Skips advertised applications that have the wrong lane count, as well as
+   * InfiniBand applications
+   */
+  std::optional<ApplicationAdvertisingField> selectApplicationField(
+      uint8_t mediaInterfaceCode,
+      uint8_t startHostLane,
+      std::optional<int> hostLaneCount) const;
   // Public since its used for unit testing
   static uint8_t laneMask(uint8_t startLane, uint8_t numLanes) {
     return ((1 << numLanes) - 1) << startLane;
@@ -790,6 +804,9 @@ class CmisModule : public QsfpModule {
   void resetDataPath(const std::string& portName) override;
   // Intra-bank mask of lanes with a non-zero active AppSel code
   uint8_t getActiveAppSelLaneMask(uint8_t bank);
+  // True if this is a CPO module with TX disabled on any lane in the intra-bank
+  // laneMask
+  bool isCpoTxDisabled(uint8_t laneMask, uint8_t bank);
 
   void resetDatapathProgrammingStateLocked() override;
 
@@ -804,6 +821,8 @@ class CmisModule : public QsfpModule {
   bool isAecModule() const override {
     return getMediaTypeEncoding() == MediaTypeEncodings::ACTIVE_CABLES;
   }
+
+  bool isCpo() const override;
 
   /*
    * returns whether optics frequency is tunable or not
@@ -852,11 +871,11 @@ class CmisModule : public QsfpModule {
    */
   std::optional<TunableLaserStatus> getTunableLaserStatus() override;
   /*
-   * Returns the ApplicationAdvertisingField corresponding to the application
-   * or nullopt if it doesn't exist
+   * Returns the ApplicationAdvertisingField corresponding to the media
+   * interface code (moduleMediaInterface) or nullopt if it doesn't exist
    */
   std::optional<ApplicationAdvertisingField> getApplicationField(
-      uint8_t application,
+      uint8_t mediaInterfaceCode,
       uint8_t startHostLane) const;
 
   // Returns the list of host lanes configured in the same datapath as the
@@ -1200,7 +1219,9 @@ class CmisModule : public QsfpModule {
   static double readS16(const uint8_t* p, int off);
 
   bool isMultiPortOptics() {
-    return getIdentifier() == TransceiverModuleIdentifier::OSFP;
+    const auto identifier = getIdentifier();
+    return identifier == TransceiverModuleIdentifier::OSFP ||
+        identifier == TransceiverModuleIdentifier::CPO;
   }
 
   // Utility functions for power state management

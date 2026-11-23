@@ -31,7 +31,7 @@ void FwUtilVersionHandler::printDarwinVersion(const std::string& fpd) {
     } else {
       XLOG(INFO)
           << fpd
-          << " is not part of the firmware target_name list. Please use ./fw-util --helpon=Flags for the right usage";
+          << " is not part of the firmware target_name list. Please use fw_util --help for the right usage";
     }
   }
 }
@@ -42,7 +42,7 @@ std::string FwUtilVersionHandler::getSingleVersion(const std::string& fpd) {
   if (iter == fwUtilConfig_.fwConfigs()->end()) {
     throw std::runtime_error(
         "Firmware target name not found in config: " + fpd +
-        " Please use ./fw-util --helpon=Flags for the right usage");
+        " Please use fw_util --help for the right usage");
   }
 
   const auto& versionConfig = *iter->second.version();

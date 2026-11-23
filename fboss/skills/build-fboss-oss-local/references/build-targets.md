@@ -103,7 +103,7 @@ from an earlier shell can win over what you think you set.
 | `BENCHMARK_INSTALL` | build and install benchmark binaries |
 | `BUILD_SAI_FAKE_BENCHMARKS`, `BUILD_SAI_FAKE_LINK_TEST` | extra fake-SAI targets |
 | `SKIP_ALL_INSTALL` | build without running install rules |
-| `WITH_ASAN` | ASAN + UBSAN build; also disables the jemalloc injection |
+| `WITH_ASAN` | ASAN + UBSAN build of FBOSS and folly only; also disables the jemalloc injection. Use `run-getdeps.py --asan`, which sets it and instruments the other dependencies too |
 | `FBOSS_BUILD_PROFILE` | `full` (default), `fsdb_client`, or `exported_libraries` |
 | `GITHUB_ACTIONS_BUILD` | adds one extra aggregate target used by CI |
 

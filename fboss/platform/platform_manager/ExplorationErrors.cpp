@@ -34,6 +34,15 @@ bool isExpectedError(
     }
   }
 
+  // M5120CSC PSU IDPROMs do not use the Meta EEPROM format
+  if (*platformConfig.platformName() == "M5120CSC" &&
+      errorType == ExplorationErrorType::IDPROM_READ) {
+    auto [slotPath, _] = Utils().parseDevicePath(devicePath);
+    if (re2::RE2::PartialMatch(slotPath, kPsuSlotPath)) {
+      return true;
+    }
+  }
+
   // RTM outlet tsensor may not be present on EVT1A hardware for ladakh800bcls
   if (*platformConfig.platformName() == "LADAKH800BCLS" &&
       (errorType == ExplorationErrorType::I2C_DEVICE_CREATE ||

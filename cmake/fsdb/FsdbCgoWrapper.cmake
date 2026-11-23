@@ -21,7 +21,7 @@ set(fsdb_cgo_pub_sub_wrapper_libs
   fsdb_model
   thrift_service_client
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 target_link_libraries(fsdb_cgo_pub_sub_wrapper ${fsdb_cgo_pub_sub_wrapper_libs})

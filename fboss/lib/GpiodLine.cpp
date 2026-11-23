@@ -8,7 +8,7 @@
  *
  */
 #include "fboss/lib/GpiodLine.h"
-#include <folly/Format.h>
+#include <folly/String.h>
 
 namespace facebook::fboss {
 

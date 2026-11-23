@@ -36,7 +36,7 @@ class BuckTarget:
 
 @dataclass
 class CmakeTarget:
-    """Represents a cmake target (add_library, add_fbthrift_cpp_library, etc.)"""
+    """Represents a cmake target (add_library, thrift_add_library, etc.)"""
 
     name: str
     target_type: str  # "library", "thrift", "executable"
@@ -281,8 +281,8 @@ class CmakeParser:
         # Parse add_library
         self._parse_add_library(content, str(file_path))
 
-        # Parse add_fbthrift_cpp_library
-        self._parse_add_fbthrift_cpp_library(content, str(file_path))
+        # Parse C++ Thrift libraries
+        self._parse_thrift_cpp_libraries(content, str(file_path))
 
         # Parse add_executable
         self._parse_add_executable(content, str(file_path))
@@ -328,7 +328,7 @@ class CmakeParser:
     def _parse_add_library(self, content: str, file_path: str):
         """Parse add_library calls"""
         # Match add_library(name\n  file1.cpp\n  file2.cpp\n)
-        pattern = r"add_library\s*\(\s*(\w+)\s*\n([^)]*)\)"
+        pattern = r"\badd_library\s*\(\s*(\w+)\s*\n([^)]*)\)"
         for match in re.finditer(pattern, content):
             name = match.group(1)
             files_block = match.group(2)
@@ -353,19 +353,27 @@ class CmakeParser:
             )
             self._add_target(name, target)
 
-    def _parse_add_fbthrift_cpp_library(self, content: str, file_path: str):
-        """Parse add_fbthrift_cpp_library calls"""
+    def _parse_thrift_cpp_libraries(self, content: str, file_path: str):
+        """Parse the calls that generate C++ Thrift libraries"""
         # Match the target name and thrift file
-        pattern = r"add_fbthrift_cpp_library\s*\(\s*(\w+)\s*\n\s*([^\s]+\.thrift)"
+        pattern = (
+            r"\b(thrift_add_library|thrift_generate)"
+            r"\s*\(\s*([\w-]+)\s*\n\s*([^\s]+\.thrift)"
+        )
         for match in re.finditer(pattern, content):
-            name = match.group(1)
-            thrift_file = match.group(2)
+            command, name, thrift_file = match.groups()
 
             # Find the full block to extract DEPENDS
             block_start = match.start()
             block = self._extract_cmake_block(content, block_start)
+            # thrift_generate() also generates code for other languages, and
+            # adds it to a target created with add_library(), whose
+            # dependencies target_link_libraries() lists.
+            is_generate = command == "thrift_generate"
+            if is_generate and not re.search(r"\bLANGUAGE\s+cpp2\b", block or ""):
+                continue
             deps = []
-            if block:
+            if block and not is_generate:
                 deps = self._extract_thrift_depends(block)
 
             target = CmakeTarget(

@@ -5,6 +5,16 @@
       "slot": 1,
       "pimName": "",
       "interfaces": {
+        "eth1/1/1": {
+            "neighbor": "eth1/2/1",
+            "profileID": 38,
+            "hasTransceiver": true
+        },
+        "eth1/1/5": {
+            "neighbor": "eth1/2/5",
+            "profileID": 38,
+            "hasTransceiver": true
+        },
         "eth1/10/1": {
             "neighbor": "eth1/25/1",
             "profileID": 58,
@@ -204,6 +214,16 @@
             "neighbor": "eth1/35/7",
             "profileID": 58,
             "hasTransceiver": false
+        },
+        "eth1/2/1": {
+            "neighbor": "eth1/1/1",
+            "profileID": 38,
+            "hasTransceiver": true
+        },
+        "eth1/2/5": {
+            "neighbor": "eth1/1/5",
+            "profileID": 38,
+            "hasTransceiver": true
         },
         "eth1/20/1": {
             "neighbor": "eth1/32/1",
@@ -405,6 +425,16 @@
             "profileID": 58,
             "hasTransceiver": false
         },
+        "eth1/3/1": {
+            "neighbor": "eth1/4/1",
+            "profileID": 38,
+            "hasTransceiver": true
+        },
+        "eth1/3/5": {
+            "neighbor": "eth1/4/5",
+            "profileID": 38,
+            "hasTransceiver": true
+        },
         "eth1/30/1": {
             "neighbor": "eth1/18/1",
             "profileID": 58,
@@ -604,6 +634,16 @@
             "neighbor": "eth1/55/7",
             "profileID": 58,
             "hasTransceiver": false
+        },
+        "eth1/4/1": {
+            "neighbor": "eth1/3/1",
+            "profileID": 38,
+            "hasTransceiver": true
+        },
+        "eth1/4/5": {
+            "neighbor": "eth1/3/5",
+            "profileID": 38,
+            "hasTransceiver": true
         },
         "eth1/40/1": {
             "neighbor": "eth1/59/1",
@@ -805,6 +845,16 @@
             "profileID": 58,
             "hasTransceiver": false
         },
+        "eth1/5/1": {
+            "neighbor": "eth1/6/1",
+            "profileID": 38,
+            "hasTransceiver": true
+        },
+        "eth1/5/5": {
+            "neighbor": "eth1/6/5",
+            "profileID": 38,
+            "hasTransceiver": true
+        },
         "eth1/50/1": {
             "neighbor": "eth1/50/1",
             "profileID": 58,
@@ -1005,6 +1055,16 @@
             "profileID": 58,
             "hasTransceiver": false
         },
+        "eth1/6/1": {
+            "neighbor": "eth1/5/1",
+            "profileID": 38,
+            "hasTransceiver": true
+        },
+        "eth1/6/5": {
+            "neighbor": "eth1/5/5",
+            "profileID": 38,
+            "hasTransceiver": true
+        },
         "eth1/60/1": {
             "neighbor": "eth1/45/1",
             "profileID": 58,
@@ -1084,6 +1144,31 @@
             "neighbor": "eth1/48/7",
             "profileID": 58,
             "hasTransceiver": false
+        },
+        "eth1/7/1": {
+            "neighbor": "eth1/8/1",
+            "profileID": 38,
+            "hasTransceiver": true
+        },
+        "eth1/7/5": {
+            "neighbor": "eth1/8/5",
+            "profileID": 38,
+            "hasTransceiver": true
+        },
+        "eth1/8/1": {
+            "neighbor": "eth1/7/1",
+            "profileID": 38,
+            "hasTransceiver": true
+        },
+        "eth1/8/5": {
+            "neighbor": "eth1/7/5",
+            "profileID": 38,
+            "hasTransceiver": true
+        },
+        "eth1/9/1": {
+            "neighbor": "eth1/9/1",
+            "profileID": 23,
+            "hasTransceiver": true
         }
       },
       "tcvrs": {

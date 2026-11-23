@@ -424,7 +424,6 @@ class GetRouteAndNextHopsTest : public ::testing::Test {
 
     auto intf = std::make_shared<Interface>(
         InterfaceID(1),
-        kRid0,
         std::optional<VlanID>(VlanID(1)),
         folly::StringPiece("intf1"),
         folly::MacAddress("00:00:00:00:00:01"),

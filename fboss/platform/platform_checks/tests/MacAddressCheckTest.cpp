@@ -67,6 +67,8 @@ TEST_F(MacAddressCheckTest, MismatchedAddresses) {
 
   EXPECT_EQ(result.checkType(), CheckType::MAC_ADDRESS_CHECK);
   EXPECT_EQ(result.status(), CheckStatus::PROBLEM);
+  EXPECT_THAT(*result.details(), HasSubstr("eth0 MAC: 01:02:03:04:05:06"));
+  EXPECT_THAT(*result.details(), HasSubstr("eth0 MAC: 00:02:03:04:05:06"));
 }
 
 TEST_F(MacAddressCheckTest, ZeroAddress) {

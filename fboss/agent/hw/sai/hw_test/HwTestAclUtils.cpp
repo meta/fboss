@@ -25,6 +25,40 @@ DECLARE_bool(sai_user_defined_trap);
 
 namespace facebook::fboss::utility {
 
+namespace {
+folly::IPAddressV6 ipV6WordToAddress(uint32_t word, int wordIndex) {
+  folly::ByteArray16 bytes{{0}};
+  // SAI word3 is the most-significant IPv6 word; word0 is least-significant.
+  auto byteOffset = (3 - wordIndex) * sizeof(uint32_t);
+  bytes[byteOffset] = static_cast<uint8_t>(word >> 24);
+  bytes[byteOffset + 1] = static_cast<uint8_t>(word >> 16);
+  bytes[byteOffset + 2] = static_cast<uint8_t>(word >> 8);
+  bytes[byteOffset + 3] = static_cast<uint8_t>(word);
+  return folly::IPAddressV6(bytes);
+}
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+std::string getAclCounterLabel(
+    const SaiAclTableManager& aclTableManager,
+    sai_object_id_t aclCounterId) {
+  auto& aclApi = SaiApiTable::getInstance()->aclApi();
+  if (aclTableManager.aclCounterLabelExtendedSupported()) {
+    auto label = aclApi.getAttribute(
+        AclCounterSaiId(aclCounterId),
+        SaiAclCounterTraits::Attributes::LabelExtended());
+    std::string labelStr(label.begin(), label.end());
+    labelStr.erase(labelStr.find_last_not_of('\0') + 1);
+    return labelStr;
+  }
+  return aclApi
+      .getAttribute(
+          AclCounterSaiId(aclCounterId),
+          SaiAclCounterTraits::Attributes::Label())
+      .data();
+}
+#endif
+} // namespace
+
 std::string getActualAclTableName(
     const std::optional<std::string>& aclTableName) {
   // Previously hardcoded kAclTable1 in all use cases since only supported
@@ -139,6 +173,51 @@ void checkSwHwAclMatch(
       EXPECT_EQ(dstIpV4DataGot, swAcl->getDstIp().first.asV4());
       EXPECT_EQ(dstIpV4MaskGot, dstIpV4MaskExpected);
     }
+  }
+
+  if (auto dstIpWithMask = swAcl->getDstIpWithMask()) {
+    const auto& [dstIp, dstIpMask] = *dstIpWithMask;
+    if (dstIp.isV6()) {
+      auto [dstIpV6DataGot, dstIpV6MaskGot] =
+          SaiApiTable::getInstance()
+              ->aclApi()
+              .getAttribute(
+                  aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6())
+              .getDataAndMask();
+      EXPECT_EQ(dstIpV6DataGot, dstIp.asV6());
+      EXPECT_EQ(dstIpV6MaskGot, dstIpMask.asV6());
+    } else {
+      auto [dstIpV4DataGot, dstIpV4MaskGot] =
+          SaiApiTable::getInstance()
+              ->aclApi()
+              .getAttribute(
+                  aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV4())
+              .getDataAndMask();
+      EXPECT_EQ(dstIpV4DataGot, dstIp.asV4());
+      EXPECT_EQ(dstIpV4MaskGot, dstIpMask.asV4());
+    }
+  }
+
+  if (auto word1 = swAcl->getDstIpV6Word1WithMask()) {
+    auto [dataGot, maskGot] =
+        SaiApiTable::getInstance()
+            ->aclApi()
+            .getAttribute(
+                aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word1())
+            .getDataAndMask();
+    EXPECT_EQ(dataGot, ipV6WordToAddress(word1->first, 1));
+    EXPECT_EQ(maskGot, ipV6WordToAddress(word1->second, 1));
+  }
+
+  if (auto word0 = swAcl->getDstIpV6Word0WithMask()) {
+    auto [dataGot, maskGot] =
+        SaiApiTable::getInstance()
+            ->aclApi()
+            .getAttribute(
+                aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word0())
+            .getDataAndMask();
+    EXPECT_EQ(dataGot, ipV6WordToAddress(word0->first, 0));
+    EXPECT_EQ(maskGot, ipV6WordToAddress(word0->second, 0));
   }
 
   if (swAcl->getSrcPort()) {
@@ -483,12 +562,8 @@ void checkAclEntryAndStatCount(
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
     if (hwSwitch->getPlatform()->getAsic()->isSupported(
             HwAsic::Feature::ACL_COUNTER_LABEL)) {
-      auto aclCounterNameGot =
-          SaiApiTable::getInstance()->aclApi().getAttribute(
-              AclCounterSaiId(aclCounterIdGot),
-              SaiAclCounterTraits::Attributes::Label());
       XLOG(DBG2) << "checkAclEntryAndStatCount:: aclCounterNameGot: "
-                 << aclCounterNameGot.data();
+                 << getAclCounterLabel(aclTableManager, aclCounterIdGot);
     }
 #endif
 
@@ -532,26 +607,24 @@ void checkAclStat(
     EXPECT_NE(aclCounterIdGot, SAI_NULL_OBJECT_ID);
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
-    SaiCharArray32 aclCounterNameGot{};
+    std::string aclCounterNameGotStr;
     // Counter name must match what was previously configured
     if (hw->getPlatform()->getAsic()->isSupported(
             HwAsic::Feature::ACL_COUNTER_LABEL)) {
       if constexpr (AdapterHostKeyWarmbootRecoverable<
                         SaiAclCounterTraits>::value) {
-        aclCounterNameGot = SaiApiTable::getInstance()->aclApi().getAttribute(
-            AclCounterSaiId(aclCounterIdGot),
-            SaiAclCounterTraits::Attributes::Label());
+        aclCounterNameGotStr =
+            getAclCounterLabel(aclTableManager, aclCounterIdGot);
       } else {
         auto saiSwitch = static_cast<const SaiSwitch*>(hw);
         auto saiObject =
             saiSwitch->getSaiStore()->get<SaiAclCounterTraits>().find(
                 AclCounterSaiId(aclCounterIdGot));
         EXPECT_NE(saiObject, nullptr);
-        aclCounterNameGot =
-            GET_OPT_ATTR(AclCounter, Label, (saiObject->attributes()));
+        aclCounterNameGotStr =
+            GET_OPT_ATTR(AclCounter, Label, (saiObject->attributes())).data();
       }
     }
-    std::string aclCounterNameGotStr(aclCounterNameGot.data());
     EXPECT_EQ(statName, aclCounterNameGotStr);
 
     // Verify that only the configured 'types' (byte/packet) of counters are
@@ -638,11 +711,7 @@ void checkAclStatDeleted(
             HwAsic::Feature::ACL_COUNTER_LABEL)) {
       continue;
     }
-    auto aclCounterNameGot = SaiApiTable::getInstance()->aclApi().getAttribute(
-        AclCounterSaiId(aclCounterIdGot),
-        SaiAclCounterTraits::Attributes::Label());
-    std::string aclCounterNameGotStr(aclCounterNameGot.data());
-    EXPECT_NE(statName, aclCounterNameGotStr);
+    EXPECT_NE(statName, getAclCounterLabel(aclTableManager, aclCounterIdGot));
   }
 #else
   // On earlier SAI versions, we cannot test since there is no ACL counter

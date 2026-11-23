@@ -11,4 +11,5 @@ add_library(firmware_storage
 target_link_libraries(firmware_storage
   ${YAML-CPP}
   Folly::folly
+  Boost::filesystem
 )

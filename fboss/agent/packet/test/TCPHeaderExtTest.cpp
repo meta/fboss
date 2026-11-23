@@ -62,8 +62,7 @@ TEST(TCPHeaderExtTest, fullConstructor) {
   EXPECT_EQ(hdr.sequenceNumber, 1000);
   EXPECT_EQ(hdr.ackNumber, 2000);
   EXPECT_EQ(hdr.flags, 0x12);
-  // windowSize constructor param is uint8_t, so 65535 truncates to 255
-  EXPECT_EQ(hdr.windowSize, 255);
+  EXPECT_EQ(hdr.windowSize, 65535);
   EXPECT_EQ(hdr.urgentPointer, 0);
 }
 

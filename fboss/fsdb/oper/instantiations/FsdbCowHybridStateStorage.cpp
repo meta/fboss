@@ -12,11 +12,45 @@
 
 namespace facebook::fboss::fsdb {
 
-template class CowStorage<
-    FsdbOperStateRoot,
-    thrift_cow::FsdbHybridCowStateRoot>;
+using FsdbCowHybridStateStorage =
+    CowStorage<FsdbOperStateRoot, thrift_cow::FsdbHybridCowStateRoot>;
 
-template CowStorage<FsdbOperStateRoot, thrift_cow::FsdbHybridCowStateRoot>::
-    CowStorage(const FsdbOperStateRoot&);
+template bool FsdbCowHybridStateStorage::isPublished_impl();
+
+template void FsdbCowHybridStateStorage::publish_impl();
+
+template folly::Expected<OperState, StorageError>
+    FsdbCowHybridStateStorage::get_encoded_impl(
+        FsdbCowHybridStateStorage::PathIter,
+        FsdbCowHybridStateStorage::PathIter,
+        OperProtocol) const;
+
+template std::vector<TaggedOperState>
+    FsdbCowHybridStateStorage::get_encoded_extended_impl(
+        FsdbCowHybridStateStorage::ExtPathIter,
+        FsdbCowHybridStateStorage::ExtPathIter,
+        OperProtocol) const;
+
+template std::optional<StorageError>
+FsdbCowHybridStateStorage::set_encoded_impl(
+    FsdbCowHybridStateStorage::PathIter,
+    FsdbCowHybridStateStorage::PathIter,
+    const OperState&);
+
+template std::optional<StorageError> FsdbCowHybridStateStorage::patch_impl(
+    const OperDelta&);
+
+template std::optional<StorageError> FsdbCowHybridStateStorage::patch_impl(
+    const TaggedOperState&);
+
+template std::optional<StorageError> FsdbCowHybridStateStorage::remove_impl(
+    FsdbCowHybridStateStorage::PathIter,
+    FsdbCowHybridStateStorage::PathIter);
+
+template const std::shared_ptr<FsdbCowHybridStateStorage::StorageImpl>&
+FsdbCowHybridStateStorage::root() const;
+
+template std::shared_ptr<FsdbCowHybridStateStorage::StorageImpl>
+FsdbCowHybridStateStorage::root();
 
 } // namespace facebook::fboss::fsdb

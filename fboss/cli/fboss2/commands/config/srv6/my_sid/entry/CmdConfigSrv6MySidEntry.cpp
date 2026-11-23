@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/srv6/my_sid/entry/CmdConfigSrv6MySidEntry.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -62,5 +63,11 @@ void CmdConfigSrv6MySidEntry::printOutput(const RetType& output) {
 
 template void
 CmdHandler<CmdConfigSrv6MySidEntry, CmdConfigSrv6MySidEntryTraits>::run();
+
+std::vector<std::string> CmdConfigSrv6MySidEntryTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(
+      typed, {{}, {"type"}, {"adjacency", "node", "decap"}});
+}
 
 } // namespace facebook::fboss

@@ -10,7 +10,10 @@ include "fboss/agent/if/ctrl.thrift"
 include "fboss/agent/switch_config.thrift"
 
 service TestCtrl extends ctrl.FbossCtrl {
-  void gracefullyRestartService(1: string serviceName);
+  void gracefullyRestartService(
+    1: string serviceName,
+    2: i32 delayInSeconds = 0,
+  );
 
   void ungracefullyRestartService(1: string serviceName);
 

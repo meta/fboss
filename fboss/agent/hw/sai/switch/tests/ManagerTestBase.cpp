@@ -21,16 +21,16 @@
 #include "fboss/agent/hw/sai/switch/SaiVlanManager.h"
 #include "fboss/agent/platforms/sai/SaiFakePlatform.h"
 #include "fboss/agent/state/AggregatePort.h"
-#include "fboss/agent/state/FibInfo.h"
 #include "fboss/agent/state/FibInfoMap.h"
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/MacEntry.h"
 #include "fboss/agent/state/MacTable.h"
-#include "fboss/agent/state/NextHopIdMaps.h"
 #include "fboss/agent/state/Port.h"
 #include "fboss/agent/state/QosPolicy.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/state/Vlan.h"
+#include "fboss/agent/state/Vrf.h"
+#include "fboss/agent/state/VrfMap.h"
 #include "fboss/agent/test/utils/NextHopIdTestUtils.h"
 
 #include <fmt/format.h>
@@ -77,9 +77,14 @@ void ManagerTestBase::SetUp() {
   setupSaiPlatform();
 }
 
+std::unique_ptr<SaiPlatform> ManagerTestBase::createSaiPlatformForTest(
+    std::unique_ptr<PlatformProductInfo> productInfo) {
+  return std::make_unique<SaiFakePlatform>(std::move(productInfo));
+}
+
 void ManagerTestBase::setupSaiPlatform() {
   auto productInfo = fakeProductInfo();
-  saiPlatform = std::make_unique<SaiFakePlatform>(std::move(productInfo));
+  saiPlatform = createSaiPlatformForTest(std::move(productInfo));
   auto thriftAgentConfig = getDummyConfig();
   auto agentConfig = std::make_unique<AgentConfig>(
       std::move(thriftAgentConfig), "dummyConfigStr");
@@ -121,6 +126,9 @@ void ManagerTestBase::setupSaiPlatform() {
   for (int i = 0; i < testRemoteInterfaces.size(); ++i) {
     testRemoteInterfaces[i] = TestInterface{10 + i, 1};
   }
+  for (const auto& [intfId, routerId] : testInterfaceRouterIds) {
+    testInterfaces.at(intfId).routerId = routerId;
+  }
 
   HwSwitchMatcher scope(std::unordered_set<SwitchID>({SwitchID(0)}));
   TestQosPolicy testQosPolicy{{10, 0, 2}, {42, 1, 4}};
@@ -161,16 +169,41 @@ void ManagerTestBase::setupSaiPlatform() {
       vlans->addNode(swVlan, scopeResolver().scope(swVlan));
     }
   }
+  if (setupStage & SetupStage::VRF) {
+    auto* vrfs = setupState->getVrfs()->modify(&setupState);
+    for (const auto& testInterface : testInterfaces) {
+      if (testInterface.routerId != RouterID(0) &&
+          !vrfs->getNodeIf(testInterface.routerId)) {
+        auto vrf = std::make_shared<Vrf>(testInterface.routerId);
+        vrfs->addNode(vrf, scopeResolver().scope(vrf));
+      }
+    }
+  }
   if (setupStage & SetupStage::INTERFACE) {
     auto* interfaces = setupState->getInterfaces()->modify(&setupState);
+    std::vector<std::shared_ptr<InterfaceVrf>> interfaceVrfs;
     for (const auto& testInterface : testInterfaces) {
       auto swInterface = makeInterface(testInterface);
       interfaces->addNode(swInterface, scope);
+      if (testInterface.routerId != RouterID(0)) {
+        interfaceVrfs.push_back(
+            std::make_shared<InterfaceVrf>(
+                swInterface->getID(), testInterface.routerId));
+      }
       if (setupStage & SetupStage::SYSTEM_PORT) {
         auto swPortInterface =
             makeInterface(testInterface, cfg::InterfaceType::SYSTEM_PORT);
         interfaces->addNode(swPortInterface, scope);
+        if (testInterface.routerId != RouterID(0)) {
+          interfaceVrfs.push_back(
+              std::make_shared<InterfaceVrf>(
+                  swPortInterface->getID(), testInterface.routerId));
+        }
       }
+    }
+    auto* interfaceVrfMap = setupState->getInterfaceVrfs()->modify(&setupState);
+    for (const auto& interfaceVrf : interfaceVrfs) {
+      interfaceVrfMap->addNode(interfaceVrf, scope);
     }
     auto* remoteInterfaces =
         setupState->getRemoteInterfaces()->modify(&setupState);
@@ -413,7 +446,6 @@ std::shared_ptr<Interface> ManagerTestBase::makeInterface(
   }
   interface = std::make_shared<Interface>(
       getIntfID(testInterface, type),
-      RouterID(0),
       std::optional<VlanID>(vlan),
       folly::StringPiece(fmt::format("intf{}", testInterface.id)),
       testInterface.routerMac,
@@ -429,6 +461,19 @@ std::shared_ptr<Interface> ManagerTestBase::makeInterface(
     interface->setPortID(PortID(testInterface.id));
   }
   return interface;
+}
+
+std::shared_ptr<MultiSwitchInterfaceVrfMap> ManagerTestBase::makeInterfaceVrfs(
+    const std::map<InterfaceID, RouterID>& interfaceVrfs) const {
+  auto interfaceVrfMap = std::make_shared<MultiSwitchInterfaceVrfMap>();
+  for (const auto& [intfId, vrf] : interfaceVrfs) {
+    if (vrf != RouterID(0)) {
+      interfaceVrfMap->addNode(
+          std::make_shared<InterfaceVrf>(intfId, vrf),
+          HwSwitchMatcher(std::unordered_set<SwitchID>({SwitchID(0)})));
+    }
+  }
+  return interfaceVrfMap;
 }
 
 std::shared_ptr<Interface> ManagerTestBase::makeAggregatePortInterface(
@@ -463,7 +508,6 @@ std::shared_ptr<Interface> ManagerTestBase::makeInterface(
     const std::vector<folly::CIDRNetwork>& subnets) const {
   auto interface = std::make_shared<Interface>(
       InterfaceID(sysPort.getID()),
-      RouterID(0),
       std::optional<VlanID>(std::nullopt),
       folly::StringPiece(
           fmt::format("intf{}", static_cast<int>(sysPort.getID()))),

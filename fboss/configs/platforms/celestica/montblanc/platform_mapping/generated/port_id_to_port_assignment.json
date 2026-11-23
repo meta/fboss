@@ -1604,6 +1604,21 @@
         "portName": "eth1/65/1",
         "portType": 4,
         "scope": 0
+    },
+    "352": {
+        "portName": "eth1/65/2",
+        "portType": 4,
+        "scope": 0
+    },
+    "353": {
+        "portName": "eth1/65/3",
+        "portType": 4,
+        "scope": 0
+    },
+    "354": {
+        "portName": "eth1/65/4",
+        "portType": 4,
+        "scope": 0
     }
   }
 }

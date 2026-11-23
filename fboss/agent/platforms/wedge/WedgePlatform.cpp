@@ -155,7 +155,7 @@ PlatformPort* WedgePlatform::getPlatformPort(const PortID port) const {
 std::map<std::string, std::string> WedgePlatform::loadConfig() {
   auto cfg = config();
   if (cfg) {
-    return *cfg->thrift.platform()->chip()->get_bcm().config();
+    return *cfg->thrift.platform()->chip()->bcm()->config();
   }
   return BcmConfig::loadDefaultConfig();
 }
@@ -167,8 +167,7 @@ std::string WedgePlatform::loadYamlConfig() {
     // yaml config just like WedgePlatform::loadConfig()
     throw FbossError("Failed to get agent config");
   }
-  if (auto yamlConfig =
-          cfg->thrift.platform()->chip()->get_bcm().yamlConfig()) {
+  if (auto yamlConfig = cfg->thrift.platform()->chip()->bcm()->yamlConfig()) {
     return *yamlConfig;
   }
   throw FbossError("Failed to get bcm yaml config from agent config");

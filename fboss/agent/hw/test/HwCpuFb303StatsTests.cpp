@@ -8,11 +8,16 @@
  *
  */
 
+#include "fboss/agent/hw/CounterUtils.h"
 #include "fboss/agent/hw/HwCpuFb303Stats.h"
-#include "fboss/agent/hw/StatsConstants.h"
+#include "fboss/agent/hw/HwFb303Stats.h"
 
+#include <common/stats/MonotonicCounter.h>
 #include <fb303/ServiceData.h>
 #include <folly/logging/xlog.h>
+
+#include <cstring>
+#include <new>
 
 #include <gtest/gtest.h>
 using namespace facebook::fboss;
@@ -324,6 +329,30 @@ TEST(HwCpuFb303Stats, queueNameWithSwitchId) {
               counterName, queueIdAndName.first, queueIdAndName.second)));
     }
   }
+}
+
+TEST(HwFb303Stats, CumulativeValueInitializedToZero) {
+  alignas(HwFb303Counter) unsigned char storage[sizeof(HwFb303Counter)];
+  std::memset(storage, 0xA5, sizeof(storage));
+  auto* counter = new (storage) HwFb303Counter(
+      facebook::stats::MonotonicCounter(
+          "test.cumulativeInitPoison", SUM, RATE));
+  EXPECT_EQ(counter->cumulativeValue, 0);
+  utility::deleteCounter("test.cumulativeInitPoison");
+  counter->~HwFb303Counter();
+}
+
+TEST(HwFb303Stats, CumulativeValueZeroBeforeFirstUpdate) {
+  HwFb303Stats stats(std::nullopt);
+  const std::string kStat{"test.cumulativeInit"};
+  auto now = duration_cast<seconds>(system_clock::now().time_since_epoch());
+  stats.reinitStat(kStat, std::nullopt);
+  EXPECT_EQ(stats.getCumulativeValueIf(kStat), 0);
+  stats.updateStat(now, kStat, 0x123456789ABCDELL);
+  EXPECT_EQ(stats.getCumulativeValueIf(kStat), 0x123456789ABCDEULL);
+  stats.removeStat(kStat);
+  stats.reinitStat(kStat, std::nullopt);
+  EXPECT_EQ(stats.getCumulativeValueIf(kStat), 0);
 }
 
 TEST(HwCpuFb303Stats, getCpuStats) {

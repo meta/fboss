@@ -196,10 +196,13 @@ class AgentHwAclQualifierTest : public AgentHwTest {
       const std::optional<SwitchID>& switchIDOpt = std::nullopt) {
     SwitchID switchID = resolveSwitchId(switchIDOpt);
     auto asic = hwAsicForSwitch(switchID);
-    // P200 drops DA from the ACL key profile
+    // P200 drops DA from the ACL key profile. G200 (YUBA) and G202X drop DA
+    // from the IPv4/IPv6 ingress keys, so DA with IP-only fields is rejected.
     bool dstMacEnabled =
         (asic->getAsicVendor() != HwAsic::AsicVendor::ASIC_VENDOR_CHENAB) &&
-        (asic->getAsicType() != cfg::AsicType::ASIC_TYPE_P200);
+        (asic->getAsicType() != cfg::AsicType::ASIC_TYPE_P200) &&
+        (asic->getAsicType() != cfg::AsicType::ASIC_TYPE_YUBA) &&
+        (asic->getAsicType() != cfg::AsicType::ASIC_TYPE_G202X);
     configureQualifier(acl->dstMac(), dstMacEnabled, "00:11:22:33:44:55");
     auto switchType = getAgentEnsemble()
                           ->getSw()

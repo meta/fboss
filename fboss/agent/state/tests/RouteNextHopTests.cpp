@@ -1148,3 +1148,389 @@ TEST(RouteNextHopTest, Srv6ValidationMissingTunnelId) {
       makeSrv6UnresolvedNextHop(addr, 10, segList, TunnelType::SRV6_ENCAP),
       FbossError);
 }
+
+TEST(RouteNextHopTest, OverlayDstMacThriftRoundTrip) {
+  UnresolvedNextHop nh(
+      folly::IPAddress("10.0.0.1"),
+      1,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      TunnelType::VXLAN,
+      "vxlan_tunnel_1",
+      std::nullopt,
+      NextHopRole::PRIMARY,
+      std::nullopt,
+      folly::MacAddress("02:00:00:00:00:01"));
+  auto thrift = NextHop(nh).toThrift();
+  ASSERT_TRUE(thrift.overlayDstMac().has_value());
+  EXPECT_EQ(*thrift.overlayDstMac(), "02:00:00:00:00:01");
+  auto roundTripped = util::fromThrift(thrift);
+  EXPECT_EQ(
+      roundTripped.overlayDstMac(), folly::MacAddress("02:00:00:00:00:01"));
+  EXPECT_EQ(roundTripped.tunnelType(), TunnelType::VXLAN);
+  EXPECT_EQ(roundTripped.tunnelId(), "vxlan_tunnel_1");
+
+  // A different MAC must not compare or hash equal: the SAI tunnel NH
+  // key includes the MAC.
+  UnresolvedNextHop otherMac(
+      folly::IPAddress("10.0.0.1"),
+      1,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      TunnelType::VXLAN,
+      "vxlan_tunnel_1",
+      std::nullopt,
+      NextHopRole::PRIMARY,
+      std::nullopt,
+      folly::MacAddress("02:00:00:00:00:02"));
+  EXPECT_NE(NextHop(nh), NextHop(otherMac));
+  EXPECT_NE(
+      std::hash<NextHop>{}(NextHop(nh)),
+      std::hash<NextHop>{}(NextHop(otherMac)));
+}
+
+TEST(RouteNextHopTest, OverlayDstMacValidation) {
+  // overlayDstMac without a VXLAN tunnel type is an error, never dropped.
+  EXPECT_THROW(
+      UnresolvedNextHop(
+          folly::IPAddress("10.0.0.1"),
+          1,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          {},
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          NextHopRole::PRIMARY,
+          std::nullopt,
+          folly::MacAddress("02:00:00:00:00:01")),
+      std::exception);
+  EXPECT_THROW(
+      UnresolvedNextHop(
+          folly::IPAddress("10.0.0.1"),
+          1,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          {},
+          TunnelType::VXLAN,
+          std::nullopt,
+          std::nullopt,
+          NextHopRole::PRIMARY,
+          std::nullopt,
+          folly::MacAddress("02:00:00:00:00:01")),
+      std::exception);
+  NextHopThrift nht;
+  *nht.address() =
+      facebook::network::toBinaryAddress(folly::IPAddress("10.0.0.1"));
+  nht.tunnelType() = TunnelType::VXLAN;
+  nht.tunnelId() = "vxlan_tunnel_1";
+  nht.overlayDstMac() = "not-a-mac";
+  EXPECT_THROW(util::fromThrift(nht), std::exception);
+}
+
+TEST(RouteNextHopTest, TunnelVniThriftRoundTrip) {
+  UnresolvedNextHop nh(
+      folly::IPAddress("10.0.0.1"),
+      1,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      TunnelType::VXLAN,
+      "vxlan_tunnel_1",
+      std::nullopt,
+      NextHopRole::PRIMARY,
+      std::nullopt,
+      folly::MacAddress("02:00:00:00:00:01"),
+      10001);
+  auto thrift = NextHop(nh).toThrift();
+  ASSERT_TRUE(thrift.tunnelVni().has_value());
+  EXPECT_EQ(*thrift.tunnelVni(), 10001);
+  auto roundTripped = util::fromThrift(thrift);
+  ASSERT_TRUE(roundTripped.tunnelVni().has_value());
+  EXPECT_EQ(*roundTripped.tunnelVni(), 10001);
+  EXPECT_EQ(roundTripped.tunnelType(), TunnelType::VXLAN);
+  EXPECT_EQ(roundTripped.tunnelId(), "vxlan_tunnel_1");
+
+  // A different VNI must not compare or hash equal.
+  UnresolvedNextHop otherVni(
+      folly::IPAddress("10.0.0.1"),
+      1,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      TunnelType::VXLAN,
+      "vxlan_tunnel_1",
+      std::nullopt,
+      NextHopRole::PRIMARY,
+      std::nullopt,
+      folly::MacAddress("02:00:00:00:00:01"),
+      10002);
+  EXPECT_NE(NextHop(nh), NextHop(otherVni));
+  EXPECT_NE(
+      std::hash<NextHop>{}(NextHop(nh)),
+      std::hash<NextHop>{}(NextHop(otherVni)));
+}
+
+TEST(RouteNextHopTest, TunnelVniValidation) {
+  // tunnelVni without a VXLAN tunnel type is an error, never dropped.
+  EXPECT_THROW(
+      UnresolvedNextHop(
+          folly::IPAddress("10.0.0.1"),
+          1,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          {},
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          NextHopRole::PRIMARY,
+          std::nullopt,
+          std::nullopt,
+          10001),
+      std::exception);
+  EXPECT_THROW(
+      UnresolvedNextHop(
+          folly::IPAddress("10.0.0.1"),
+          1,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          {},
+          TunnelType::VXLAN,
+          std::nullopt,
+          std::nullopt,
+          NextHopRole::PRIMARY,
+          std::nullopt,
+          std::nullopt,
+          10001),
+      std::exception);
+  // VNI range is 1..16777215.
+  EXPECT_THROW(
+      UnresolvedNextHop(
+          folly::IPAddress("10.0.0.1"),
+          1,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          {},
+          TunnelType::VXLAN,
+          "vxlan_tunnel_1",
+          std::nullopt,
+          NextHopRole::PRIMARY,
+          std::nullopt,
+          std::nullopt,
+          0),
+      std::exception);
+  EXPECT_THROW(
+      UnresolvedNextHop(
+          folly::IPAddress("10.0.0.1"),
+          1,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          {},
+          TunnelType::VXLAN,
+          "vxlan_tunnel_1",
+          std::nullopt,
+          NextHopRole::PRIMARY,
+          std::nullopt,
+          std::nullopt,
+          16777216),
+      std::exception);
+  for (int32_t vni : {1, 16777215}) {
+    UnresolvedNextHop valid(
+        folly::IPAddress("10.0.0.1"),
+        1,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        {},
+        TunnelType::VXLAN,
+        "vxlan_tunnel_1",
+        std::nullopt,
+        NextHopRole::PRIMARY,
+        std::nullopt,
+        std::nullopt,
+        vni);
+    EXPECT_EQ(*valid.tunnelVni(), vni);
+  }
+  NextHopThrift nht;
+  *nht.address() =
+      facebook::network::toBinaryAddress(folly::IPAddress("10.0.0.1"));
+  nht.tunnelVni() = 0;
+  EXPECT_THROW(util::fromThrift(nht), std::exception);
+}
+
+TEST(RouteNextHopTest, TunnelVniSetterValidation) {
+  auto vxlanNh = makeResolvedSrv6NextHop(
+      folly::IPAddress("10.0.0.1"),
+      InterfaceID(1),
+      1,
+      {},
+      TunnelType::VXLAN,
+      "vxlan_tunnel_1");
+  EXPECT_FALSE(vxlanNh.tunnelVni().has_value());
+  vxlanNh.setTunnelVni(10001);
+  ASSERT_TRUE(vxlanNh.tunnelVni().has_value());
+  EXPECT_EQ(*vxlanNh.tunnelVni(), 10001);
+  EXPECT_THROW(vxlanNh.setTunnelVni(0), std::exception);
+  EXPECT_THROW(vxlanNh.setTunnelVni(16777216), std::exception);
+  EXPECT_EQ(*vxlanNh.tunnelVni(), 10001);
+  vxlanNh.setTunnelVni(std::nullopt);
+  EXPECT_FALSE(vxlanNh.tunnelVni().has_value());
+
+  auto plainNh =
+      makeResolvedSrv6NextHop(folly::IPAddress("10.0.0.1"), InterfaceID(1), 1);
+  EXPECT_THROW(plainNh.setTunnelVni(10001), std::exception);
+  EXPECT_FALSE(plainNh.tunnelVni().has_value());
+}
+
+TEST(RouteNextHopTest, VrfThriftRoundTrip) {
+  NextHopThrift nht;
+  nht.address() =
+      facebook::network::toBinaryAddress(folly::IPAddress("2401:db00::10"));
+  nht.tunnelType() = TunnelType::VXLAN;
+  nht.tunnelId() = "vx0";
+  nht.vrf() = 0;
+
+  auto nhop = util::fromThrift(nht);
+  EXPECT_EQ(nhop.vrf(), RouterID(0));
+  EXPECT_EQ(nhop.toThrift().vrf(), 0);
+
+  nht.vrf().reset();
+  EXPECT_EQ(util::fromThrift(nht).vrf(), std::nullopt);
+  EXPECT_FALSE(util::fromThrift(nht).toThrift().vrf().has_value());
+}
+
+TEST(RouteNextHopTest, NextHopsDifferingOnlyInVrf) {
+  auto addr = folly::IPAddress("2401:db00::10");
+  auto makeUnresolved = [&](const std::optional<RouterID>& vrf) {
+    return UnresolvedNextHop(
+        addr,
+        UCMP_DEFAULT_WEIGHT,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        {},
+        TunnelType::VXLAN,
+        "vx0",
+        std::nullopt,
+        NextHopRole::PRIMARY,
+        vrf);
+  };
+  NextHop inRouteVrf = makeUnresolved(std::nullopt);
+  NextHop inDefaultVrf = makeUnresolved(RouterID(0));
+
+  EXPECT_NE(inRouteVrf, inDefaultVrf);
+  EXPECT_NE(
+      std::hash<NextHop>()(inRouteVrf), std::hash<NextHop>()(inDefaultVrf));
+  EXPECT_EQ((std::unordered_set<NextHop>{inRouteVrf, inDefaultVrf}).size(), 2);
+
+  ResolvedNextHop resolved(addr, InterfaceID(1), UCMP_DEFAULT_WEIGHT);
+  auto resolvedInDefaultVrf = resolved;
+  resolvedInDefaultVrf.setVrf(RouterID(0));
+  EXPECT_FALSE(resolved == resolvedInDefaultVrf);
+  EXPECT_NE(
+      std::hash<ResolvedNextHop>()(resolved),
+      std::hash<ResolvedNextHop>()(resolvedInDefaultVrf));
+}
+
+TEST(RouteNextHopTest, ResolvedTunnelNextHopWithoutInterface) {
+  auto vtep = folly::IPAddress("2001:db8:500::1");
+  NextHop resolved = ResolvedNextHop(
+      vtep,
+      std::nullopt,
+      UCMP_DEFAULT_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      TunnelType::VXLAN,
+      "vx0",
+      std::nullopt,
+      NextHopRole::PRIMARY,
+      std::nullopt,
+      true /* resolvedInNextLevel */);
+  EXPECT_TRUE(resolved.isResolved());
+  EXPECT_TRUE(resolved.resolvedInNextLevel());
+  EXPECT_EQ(resolved.intfID(), std::nullopt);
+
+  auto nht = resolved.toThrift();
+  EXPECT_TRUE(*nht.resolvedInNextLevel());
+  EXPECT_FALSE(nht.address()->ifName().has_value());
+  EXPECT_EQ(util::fromThrift(nht), resolved);
+
+  NextHop unresolved = UnresolvedNextHop(
+      vtep,
+      UCMP_DEFAULT_WEIGHT,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      {},
+      TunnelType::VXLAN,
+      "vx0");
+  EXPECT_FALSE(unresolved.isResolved());
+  EXPECT_FALSE(unresolved.resolvedInNextLevel());
+  EXPECT_NE(resolved, unresolved);
+  EXPECT_NE(std::hash<NextHop>()(resolved), std::hash<NextHop>()(unresolved));
+  EXPECT_FALSE(unresolved.toThrift().resolvedInNextLevel().has_value());
+}
+
+TEST(RouteNextHopTest, ResolvedNextHopWithInterfaceOmitsFlag) {
+  NextHop resolved = ResolvedNextHop(
+      folly::IPAddress("2401:db00::10"), InterfaceID(1), UCMP_DEFAULT_WEIGHT);
+  EXPECT_TRUE(resolved.isResolved());
+  EXPECT_FALSE(resolved.resolvedInNextLevel());
+  auto nht = resolved.toThrift();
+  EXPECT_FALSE(nht.resolvedInNextLevel().has_value());
+  EXPECT_EQ(util::fromThrift(nht, true), resolved);
+}
+
+TEST(RouteNextHopTest, ResolvedNextHopInterfaceOrNextLevel) {
+  auto addr = folly::IPAddress("2401:db00::10");
+  auto make = [&](const std::optional<InterfaceID>& intf,
+                  bool resolvedInNextLevel) {
+    return ResolvedNextHop(
+        addr,
+        intf,
+        UCMP_DEFAULT_WEIGHT,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        {},
+        std::nullopt,
+        std::nullopt,
+        std::nullopt,
+        NextHopRole::PRIMARY,
+        std::nullopt,
+        resolvedInNextLevel);
+  };
+  // Neither an interface nor resolved in the next level
+  EXPECT_THROW(make(std::nullopt, false), FbossError);
+  // Both
+  EXPECT_THROW(make(InterfaceID(1), true), FbossError);
+}

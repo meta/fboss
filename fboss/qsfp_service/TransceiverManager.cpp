@@ -572,15 +572,20 @@ TransceiverManager::getPortsRequiringOpticsFwUpgrade() const {
 }
 
 void TransceiverManager::ensureFwUpgradeAllowed() const {
+  std::string reason;
   if (!isFullyInitialized()) {
-    throw FbossError("Service is still initializing...");
+    reason = "Service is still initializing...";
+  } else if (isUpgradingFirmware()) {
+    reason = "Service is already upgrading firmware...";
+  } else if (!FLAGS_firmware_upgrade_supported) {
+    reason =
+        "Firmware upgrade is not supported, --firmware_upgrade_supported is false";
   }
-  if (isUpgradingFirmware()) {
-    throw FbossError("Service is already upgrading firmware...");
+  if (reason.empty()) {
+    return;
   }
-  if (!FLAGS_firmware_upgrade_supported) {
-    throw FbossError("Firmware upgrade is not supported...");
-  }
+  XLOG(ERR) << "Rejecting optics firmware upgrade request: " << reason;
+  throw FbossError(reason);
 }
 
 std::map<std::string, FirmwareUpgradeData>
@@ -1736,7 +1741,7 @@ TransceiverManager::getOpticalChannelConfig(TransceiverID id) const {
       const auto& centerFreq = freqConfig->centerFrequencyConfig();
       if (centerFreq->getType() ==
           facebook::fboss::cfg::CenterFrequencyConfig::Type::frequencyMhz) {
-        int freqMhz = centerFreq->get_frequencyMhz();
+        int freqMhz = centerFreq.as_const()->frequencyMhz().value();
         MODULE_LOG(DBG2, "", id) << "The frequency is " << freqMhz
                             << " port_name " << portName;
       }
@@ -2523,7 +2528,7 @@ void TransceiverManager::completeRefresh() {
     /* We don't want to set warm boot flag here for platforms with external
      * PHYs The reason is SAI based external PHYs platforms needs to
      * gracefully shutdown to store the warmboot state */
-    if (!phyManager_) {
+    if (!hasExternalPhy()) {
       setCanWarmBoot();
     }
 
@@ -2972,9 +2977,15 @@ bool TransceiverManager::checkWarmBootFlags() {
     return false;
   }
 
-  // Instead of removing the can_warm_boot file, we keep it unless it's a
-  // coldboot, so that qsfp_service crash can still use warm boot.
+  // The can_warm_boot file is kept, so a qsfp_service crash can still warm
+  // boot. On SAI xphy platforms the xphy warm boot state is only valid right
+  // after a graceful exit, and each xphy consumes its own flag on startup, so
+  // consume this one too: if this start fails or qsfp_service crashes, the next
+  // start is a cold boot instead of another warm boot.
   bool canWarmBoot = checkFileExists(warmBootFile);
+  if (canWarmBoot && hasSaiExternalPhy()) {
+    removeWarmBootFlag();
+  }
   XLOG(INFO) << "Warm Boot flag: " << warmBootFile << " is "
              << (canWarmBoot ? "set" : "missing");
   return canWarmBoot;
@@ -3640,6 +3651,10 @@ void TransceiverManager::setPortAdminState(
 
   XLOG(INFO) << " TransceiverManager::setPortAdminState Port "
              << static_cast<int>(swPort.value());
+  if (!getPhyManager()) {
+    throw FbossError(
+        "Unable to set xphy admin state when PhyManager is not set");
+  }
   getPhyManager()->setPortAdminState(
       PortID(swPort.value()), component, setAdminUp);
 }

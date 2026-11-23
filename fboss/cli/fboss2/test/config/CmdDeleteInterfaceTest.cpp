@@ -41,6 +41,8 @@ class CmdDeleteInterfaceTestFixture : public CmdConfigTestBase {
         "state": 2,
         "speed": 100000,
         "loopbackMode": 1,
+        "ingressMirror": "span0",
+        "egressMirror": "span0",
         "lookupClasses": [10, 11],
         "description": "to-spine1",
         "expectedLLDPValues": {
@@ -212,6 +214,36 @@ TEST_F(CmdDeleteInterfaceTestFixture, queryClientMultipleAttrs) {
   auto& ports = *ConfigSession::getInstance().getAgentConfig().sw()->ports();
   EXPECT_EQ(*ports[0].loopbackMode(), cfg::PortLoopbackMode::NONE);
   EXPECT_EQ(ports[0].expectedLLDPValues()->count(cfg::LLDPTag::PORT), 0);
+}
+
+TEST_F(CmdDeleteInterfaceTestFixture, queryClientClearsPortMirrors) {
+  setupTestableConfigSession(
+      cmdPrefix_, "eth1/1/1 mirror-ingress mirror-egress");
+  auto cmd = CmdDeleteInterface();
+  auto deleteAttrs =
+      InterfaceDeleteConfig({"eth1/1/1", "mirror-ingress", "mirror-egress"});
+
+  auto result = cmd.queryClient(localhost(), deleteAttrs);
+
+  EXPECT_THAT(result, HasSubstr("mirror-ingress"));
+  EXPECT_THAT(result, HasSubstr("mirror-egress"));
+  const auto& ports =
+      *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  EXPECT_FALSE(ports[0].ingressMirror().has_value());
+  EXPECT_FALSE(ports[0].egressMirror().has_value());
+}
+
+TEST_F(
+    CmdDeleteInterfaceTestFixture,
+    queryClientClearingPortMirrorIsIdempotent) {
+  setupTestableConfigSession(cmdPrefix_, "eth1/2/1 mirror-ingress");
+  auto cmd = CmdDeleteInterface();
+  auto deleteAttrs = InterfaceDeleteConfig({"eth1/2/1", "mirror-ingress"});
+
+  EXPECT_NO_THROW(cmd.queryClient(localhost(), deleteAttrs));
+  const auto& ports =
+      *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+  EXPECT_FALSE(ports[1].ingressMirror().has_value());
 }
 
 // ---------------------------------------------------------------------------

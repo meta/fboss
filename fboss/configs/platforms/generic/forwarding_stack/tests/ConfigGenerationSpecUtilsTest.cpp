@@ -27,7 +27,7 @@ namespace {
 namespace fs = std::filesystem;
 
 constexpr std::string_view kConfig =
-    R"({"serviceToOptions":{"AGENT":[{"profile":"BENCHMARK","variant":"example","asicConfigVariant":"default"}]}})";
+    R"({"serviceToOptions":{"AGENT":[{"profile":"BENCHMARK","variant":"example","asicConfigVariant":"default","linkTopologyVariant":"link_test_default","platformMappingVariant":"test_fixture"}]}})";
 
 void writeTestFile(const fs::path& path, std::string_view contents) {
   fs::create_directories(path.parent_path());
@@ -43,6 +43,8 @@ TEST(ConfigGenerationSpecUtilsTest, ParsesEnumNamesIntoTypedConfig) {
   EXPECT_EQ(*option.profile(), ConfigProfileType::BENCHMARK);
   EXPECT_EQ(*option.variant(), "example");
   EXPECT_EQ(*option.asicConfigVariant(), "default");
+  EXPECT_EQ(*option.linkTopologyVariant(), "link_test_default");
+  EXPECT_EQ(*option.platformMappingVariant(), "test_fixture");
 }
 
 TEST(ConfigGenerationSpecUtilsTest, LoadsPlatformFromOwningDirectory) {
@@ -66,11 +68,13 @@ TEST(ConfigGenerationSpecUtilsTest, RejectsInvalidConfigs) {
       R"({"serviceToOptions":{"AGENT":[]}})",
       R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT","variant":""}]}})",
       R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT","asicConfigVariant":""}]}})",
+      R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT","linkTopologyVariant":""}]}})",
       R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT"},{"profile":"DEFAULT"}]}})",
       R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT","unknown":true}]}})",
       R"({"platform":"PLATFORM_MONTBLANC","serviceToOptions":{"AGENT":[{"profile":"DEFAULT"}]}})",
       R"({"serviceToOptions":{"NOT_A_SERVICE":[{"profile":"DEFAULT"}]}})",
       R"({"serviceToOptions":{"AGENT":[{"profile":"NOT_A_PROFILE"}]}})",
+      R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT","platformMappingVariant":""}]}})",
   };
 
   for (const auto config : invalidConfigs) {

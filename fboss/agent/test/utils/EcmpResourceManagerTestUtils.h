@@ -62,6 +62,17 @@ void assertAllRouteIdsResolvable(
 
 void assertAllDeltaIdsResolvable(const std::vector<StateDelta>& deltas);
 
+// Checks FibInfo's override id map and every route's override id against
+// resourceMgr; no-op with the NextHop id manager off.
+void assertOverrideSetIdsConsistency(
+    const EcmpResourceManager& resourceMgr,
+    const std::shared_ptr<SwitchState>& state);
+
+// Checks every delta's routes against that delta's override id map.
+void assertOverrideSetIdsInDeltas(
+    const EcmpResourceManager& resourceMgr,
+    const std::vector<StateDelta>& deltas);
+
 void assertRibFibEquivalence(
     const std::shared_ptr<SwitchState>& state,
     const RoutingInformationBase* rib);

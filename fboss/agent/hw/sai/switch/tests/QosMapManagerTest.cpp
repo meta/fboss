@@ -154,6 +154,36 @@ TEST_F(QosMapManagerTest, vcQosMapsBoundToPort) {
       handle->queueToVcMap->adapterKey());
 }
 
+TEST_F(QosMapManagerTest, onlyTcToVcMapBoundToManagementPort) {
+  TestQosPolicy testQosPolicy{{10, 0, 2}, {42, 1, 4}};
+  auto qp = makeQosPolicy("default", testQosPolicy);
+  qp->setTrafficClassToVcIdMap({{0, 2}});
+  qp->setQueueToVcIdMap({{2, 2}});
+  saiManagerTable->qosMapManager().addQosMap(qp, true);
+
+  auto oldPort = makePort(TestPort{1});
+  auto mgmtPort = oldPort->clone();
+  mgmtPort->setPortType(cfg::PortType::MANAGEMENT_PORT);
+  saiManagerTable->portManager().changePort(oldPort, mgmtPort);
+  auto portId = mgmtPort->getID();
+  saiManagerTable->portManager().setQosPolicy(portId, "default");
+
+  auto* handle = saiManagerTable->qosMapManager().getQosMap();
+  auto portSaiId =
+      saiManagerTable->portManager().getPortHandle(portId)->port->adapterKey();
+  auto& portApi = SaiApiTable::getInstance()->portApi();
+
+  // TC_TO_VC goes with the shared DSCP_TO_TC map; QUEUE_TO_VC is skipped.
+  EXPECT_EQ(
+      portApi.getAttribute(
+          portSaiId, SaiPortTraits::Attributes::QosTcToVcMap{}),
+      handle->tcToVcMap->adapterKey());
+  EXPECT_EQ(
+      portApi.getAttribute(
+          portSaiId, SaiPortTraits::Attributes::QosQueueToVcMap{}),
+      SAI_NULL_OBJECT_ID);
+}
+
 TEST_F(QosMapManagerTest, vcQosMapsReboundOnReapply) {
   TestQosPolicy testQosPolicy{{10, 0, 2}, {42, 1, 4}};
   auto qp = makeQosPolicy("default", testQosPolicy);

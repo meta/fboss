@@ -29,6 +29,7 @@
 #include "fboss/agent/hw/sai/api/NeighborApi.h"
 #include "fboss/agent/hw/sai/api/NextHopApi.h"
 #include "fboss/agent/hw/sai/api/NextHopGroupApi.h"
+#include "fboss/agent/hw/sai/api/PolicerApi.h"
 #include "fboss/agent/hw/sai/api/PortApi.h"
 #include "fboss/agent/hw/sai/api/QosMapApi.h"
 #include "fboss/agent/hw/sai/api/QueueApi.h"
@@ -112,6 +113,8 @@ class SaiApiTable {
   const NextHopGroupApi& nextHopGroupApi() const;
 
   const NeighborApi& neighborApi() const;
+
+  const PolicerApi& policerApi() const;
 
   const PortApi& portApi() const;
 
@@ -214,6 +217,7 @@ class SaiApiTable {
       std::unique_ptr<MyMacApi>,
 #endif
       std::unique_ptr<NeighborApi>,
+      std::unique_ptr<PolicerApi>,
       std::unique_ptr<PortApi>,
       std::unique_ptr<QosMapApi>,
       std::unique_ptr<QueueApi>,

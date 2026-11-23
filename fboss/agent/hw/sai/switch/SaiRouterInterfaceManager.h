@@ -15,6 +15,8 @@
 #include "fboss/agent/hw/sai/store/SaiObjectWithCounters.h"
 #include "fboss/agent/hw/sai/switch/SaiRouteManager.h"
 #include "fboss/agent/state/Interface.h"
+#include "fboss/agent/state/InterfaceMap.h"
+#include "fboss/agent/state/InterfaceVrfMap.h"
 #include "fboss/agent/state/StateDelta.h"
 #include "fboss/agent/types.h"
 
@@ -68,6 +70,7 @@ struct SaiRouterInterfaceHandle {
 
   cfg::InterfaceType intfType{cfg::InterfaceType::VLAN};
   bool isLocalRif{true};
+  RouterID vrf{0};
   SaiRouterInterface routerInterface{};
   std::vector<std::shared_ptr<SaiRoute>> toMeRoutes{};
 };
@@ -78,9 +81,14 @@ class SaiRouterInterfaceManager {
       SaiStore* saiStore,
       SaiManagerTable* managerTable,
       const SaiPlatform* platform);
+  // A local interface's VRF comes from the interface VRF map
   RouterInterfaceSaiId addLocalRouterInterface(
-      const std::shared_ptr<Interface>& swInterface) {
-    return addRouterInterface(swInterface, true /*isLocal*/);
+      const std::shared_ptr<Interface>& swInterface,
+      const std::shared_ptr<MultiSwitchInterfaceVrfMap>& interfaceVrfs) {
+    return addRouterInterface(
+        swInterface,
+        true /*isLocal*/,
+        interfaceVrfs->getVrf(swInterface->getID()));
   }
   void removeLocalRouterInterface(
       const std::shared_ptr<Interface>& swInterface) {
@@ -88,13 +96,39 @@ class SaiRouterInterfaceManager {
   }
   void changeLocalRouterInterface(
       const std::shared_ptr<Interface>& oldInterface,
-      const std::shared_ptr<Interface>& newInterface) {
-    changeRouterInterface(oldInterface, newInterface, true /*isLocal*/);
+      const std::shared_ptr<Interface>& newInterface,
+      const std::shared_ptr<MultiSwitchInterfaceVrfMap>& interfaceVrfs) {
+    changeRouterInterface(
+        oldInterface,
+        newInterface,
+        true /*isLocal*/,
+        interfaceVrfs->getVrf(newInterface->getID()));
+  }
+
+  // Interface VRF map changes move local router interfaces
+  void changeInterfaceVrf(
+      const std::shared_ptr<InterfaceVrf>& /* oldInterfaceVrf */,
+      const std::shared_ptr<InterfaceVrf>& newInterfaceVrf,
+      const std::shared_ptr<MultiSwitchInterfaceMap>& interfaces) {
+    moveRouterInterface(
+        newInterfaceVrf->getID(), newInterfaceVrf->getVrf(), interfaces);
+  }
+  void addInterfaceVrf(
+      const std::shared_ptr<InterfaceVrf>& interfaceVrf,
+      const std::shared_ptr<MultiSwitchInterfaceMap>& interfaces) {
+    moveRouterInterface(
+        interfaceVrf->getID(), interfaceVrf->getVrf(), interfaces);
+  }
+  void removeInterfaceVrf(
+      const std::shared_ptr<InterfaceVrf>& interfaceVrf,
+      const std::shared_ptr<MultiSwitchInterfaceMap>& interfaces) {
+    moveRouterInterface(interfaceVrf->getID(), RouterID(0), interfaces);
   }
 
   RouterInterfaceSaiId addRemoteRouterInterface(
       const std::shared_ptr<Interface>& swInterface) {
-    return addRouterInterface(swInterface, false /*isLocal*/);
+    return addRouterInterface(
+        swInterface, false /*isLocal*/, swInterface->getRemoteIntfRouterID());
   }
   void removeRemoteRouterInterface(
       const std::shared_ptr<Interface>& swInterface) {
@@ -103,7 +137,11 @@ class SaiRouterInterfaceManager {
   void changeRemoteRouterInterface(
       const std::shared_ptr<Interface>& oldInterface,
       const std::shared_ptr<Interface>& newInterface) {
-    changeRouterInterface(oldInterface, newInterface, false /*isLocal*/);
+    changeRouterInterface(
+        oldInterface,
+        newInterface,
+        false /*isLocal*/,
+        newInterface->getRemoteIntfRouterID());
   }
 
   SaiRouterInterfaceHandle* getRouterInterfaceHandle(const InterfaceID& swId);
@@ -126,21 +164,30 @@ class SaiRouterInterfaceManager {
  private:
   RouterInterfaceSaiId addRouterInterface(
       const std::shared_ptr<Interface>& swInterface,
-      bool isLocal);
+      bool isLocal,
+      RouterID vrf);
   void removeRouterInterface(const std::shared_ptr<Interface>& swInterface);
   void changeRouterInterface(
       const std::shared_ptr<Interface>& oldInterface,
       const std::shared_ptr<Interface>& newInterface,
-      bool isLocal);
+      bool isLocal,
+      RouterID newVrf);
+  void moveRouterInterface(
+      InterfaceID intfId,
+      RouterID vrf,
+      const std::shared_ptr<MultiSwitchInterfaceMap>& interfaces);
   RouterInterfaceSaiId addOrUpdateRouterInterface(
       const std::shared_ptr<Interface>& swInterface,
-      bool isLocal);
+      bool isLocal,
+      RouterID vrf);
   RouterInterfaceSaiId addOrUpdateVlanRouterInterface(
       const std::shared_ptr<Interface>& swInterface,
-      bool isLocal);
+      bool isLocal,
+      RouterID vrf);
   RouterInterfaceSaiId addOrUpdatePortRouterInterface(
       const std::shared_ptr<Interface>& swInterface,
-      bool isLocal);
+      bool isLocal,
+      RouterID vrf);
   SaiRouterInterfaceHandle* getRouterInterfaceHandleImpl(
       const InterfaceID& swId) const;
   SaiPortRouterInterfaceTraits::Attributes::PortId getPortId(

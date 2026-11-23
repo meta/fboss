@@ -18,7 +18,6 @@
 #include "fboss/agent/platforms/tests/utils/BcmTestWedge100Platform.h"
 #include "fboss/agent/platforms/tests/utils/BcmTestWedge400Platform.h"
 #include "fboss/agent/platforms/tests/utils/BcmTestYampPlatform.h"
-#include "fboss/agent/platforms/tests/utils/FakeBcmTestPlatform.h"
 
 namespace facebook::fboss {
 
@@ -55,8 +54,6 @@ std::unique_ptr<Platform> createTestPlatform() {
     return std::make_unique<BcmTestFujiPlatform>(std::move(productInfo));
   } else if (mode == PlatformType::PLATFORM_ELBERT) {
     return std::make_unique<BcmTestElbertPlatform>(std::move(productInfo));
-  } else if (mode == PlatformType::PLATFORM_FAKE_WEDGE) {
-    return std::make_unique<FakeBcmTestPlatform>();
   } else {
     throw std::runtime_error("invalid mode ");
   }

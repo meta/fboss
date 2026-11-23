@@ -2,11 +2,15 @@
 
 #include "fboss/agent/AclNexthopHandler.h"
 #include <folly/logging/xlog.h>
+#include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
 #include "fboss/agent/state/AclEntry.h"
 #include "fboss/agent/state/AclMap.h"
+#include "fboss/agent/state/AclTable.h"
+#include "fboss/agent/state/AclTableGroup.h"
+#include "fboss/agent/state/AclTableGroupMap.h"
 #include "fboss/agent/state/SwitchState.h"
 
 namespace facebook::fboss {
@@ -37,6 +41,7 @@ bool AclNexthopHandler::hasAclChanges(const StateDelta& delta) {
 
   aclsChanged =
       (aclsChanged || fibsMapChanged ||
+       !isEmpty(delta.getAclTableGroupsDelta()) ||
        !isEmpty(delta.getLabelForwardingInformationBaseDelta()));
   XLOG(DBG2) << "aclsChanged: " << aclsChanged;
   return aclsChanged;
@@ -66,35 +71,56 @@ void AclNexthopHandler::resolveActionNexthops(MatchAction& action) {
   RouteNextHopSet nexthops;
   const auto& redirect = action.getRedirectToNextHop();
 
-  auto addFilteredNexthops = [&nexthops](auto& fibNextHops, auto& intfID) {
-    if (intfID.has_value()) {
-      for (const auto& nhop : fibNextHops) {
-        if (nhop.intfID().has_value() &&
-            InterfaceID(intfID.value()) == nhop.intfID().value()) {
-          nexthops.insert(nhop);
-        }
-      }
+  bool hasTunnelNexthop = false;
+  bool hasNonTunnelNexthop = false;
+  for (const auto& nh : *redirect.value().first.redirectNextHops()) {
+    if (nh.tunnelType().has_value() &&
+        nh.tunnelType().value() == TunnelType::IP_IN_IP_ENCAP) {
+      hasTunnelNexthop = true;
     } else {
-      nexthops.merge(std::move(fibNextHops));
+      hasNonTunnelNexthop = true;
     }
-  };
+  }
+  if (hasTunnelNexthop && hasNonTunnelNexthop) {
+    throw FbossError(
+        "Redirect must not mix tunnel encap and non-tunnel nexthops");
+  }
+
   for (auto& nhIpStruct : *redirect.value().first.redirectNextHops()) {
     auto nhIp = folly::IPAddress(*nhIpStruct.ip());
     auto intfID = nhIpStruct.intfID();
+    // Link-local nexthops are only meaningful when scoped to an interface
+    // and are inherently resolved (directly connected), so skip RIB lookup
+    // and use the configured address + interface directly.
+    if (nhIp.isV6() && nhIp.isLinkLocal()) {
+      if (!intfID.has_value()) {
+        throw FbossError(
+            "Link-local nexthop ", nhIp.str(), " must specify an interface");
+      }
+      nexthops.emplace(ResolvedNextHop(
+          nhIp, InterfaceID(intfID.value()), UCMP_DEFAULT_WEIGHT));
+      continue;
+    }
+    if (intfID.has_value()) {
+      throw FbossError(
+          "Non-link-local nexthop ",
+          nhIp.str(),
+          " must not specify an interface");
+    }
     if (nhIp.isV4()) {
       auto result =
           sw_->getRib()->getRouteAndNextHops(nhIp.asV4(), RouterID(0));
       if (!result || !result->first->isResolved()) {
         continue;
       }
-      addFilteredNexthops(result->second, intfID);
+      nexthops.merge(std::move(result->second));
     } else {
       auto result =
           sw_->getRib()->getRouteAndNextHops(nhIp.asV6(), RouterID(0));
       if (!result || !result->first->isResolved()) {
         continue;
       }
-      addFilteredNexthops(result->second, intfID);
+      nexthops.merge(std::move(result->second));
     }
   }
   action.setRedirectToNextHop(std::make_pair(redirect.value().first, nexthops));
@@ -112,6 +138,7 @@ std::shared_ptr<MultiSwitchAclMap> AclNexthopHandler::updateAcls(
       }
     }
   }
+  updateAclTableGroups(newState, changed);
   if (!changed) {
     return nullptr;
   }
@@ -121,54 +148,110 @@ std::shared_ptr<MultiSwitchAclMap> AclNexthopHandler::updateAcls(
 AclEntry* FOLLY_NULLABLE AclNexthopHandler::updateAcl(
     const std::shared_ptr<AclEntry>& origAclEntry,
     std::shared_ptr<SwitchState>& newState) {
+  auto newAclEntry = resolvedAclEntry(origAclEntry);
+  if (!newAclEntry) {
+    return nullptr;
+  }
+  auto* ptr = newAclEntry.get();
+  newState->getAcls()->modify(&newState)->updateNode(
+      std::move(newAclEntry), sw_->getScopeResolver()->scope(origAclEntry));
+  return ptr;
+}
+
+bool AclNexthopHandler::needsAclResolution(
+    const std::shared_ptr<AclEntry>& aclEntry) {
+  const auto& aclAction = aclEntry->getAclAction();
+  if (!aclAction || !aclAction->cref<switch_state_tags::redirectToNextHop>()) {
+    return false;
+  }
+  // Tunnel encap nexthops are resolved by the HW pipeline via a second
+  // routing lookup on the outer header, so only non-tunnel nexthops need
+  // RIB resolution.
+  auto redirectNhops = aclAction->cref<switch_state_tags::redirectToNextHop>()
+                           ->cref<switch_state_tags::action>()
+                           ->cref<switch_config_tags::redirectNextHops>();
+  for (const auto& nh : std::as_const(*redirectNhops)) {
+    const auto& tunnelType = nh->cref<switch_config_tags::tunnelType>();
+    if (!tunnelType.has_value() ||
+        tunnelType->toThrift() != TunnelType::IP_IN_IP_ENCAP) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool AclNexthopHandler::resolveAclEntry(
+    AclEntry* newAclEntry,
+    const std::shared_ptr<AclEntry>& origAclEntry) {
+  newAclEntry->setEnabled(true);
+
+  // THRIFT_COPY
+  MatchAction action =
+      MatchAction::fromThrift(newAclEntry->getAclAction()->toThrift());
+  resolveActionNexthops(action);
+  newAclEntry->setAclAction(action);
+  // Disable acl if there are no nexthops available
+  if (action.getRedirectToNextHop().has_value() &&
+      !action.getRedirectToNextHop().value().second.size()) {
+    XLOG(DBG2) << "Disabling acl as no resolved nexthops are available";
+    newAclEntry->setEnabled(false);
+  }
+  const auto& newAclAction = newAclEntry->getAclAction();
   const auto& origAclAction = origAclEntry->getAclAction();
-  if (origAclAction &&
-      origAclAction->cref<switch_state_tags::redirectToNextHop>()) {
-    // Tunnel encap nexthops are resolved by the HW pipeline via a second
-    // routing lookup on the outer header, so they don't need RIB resolution.
-    auto redirectAction =
-        origAclAction->cref<switch_state_tags::redirectToNextHop>()
-            ->cref<switch_state_tags::action>();
-    auto redirectNhops =
-        redirectAction->cref<switch_config_tags::redirectNextHops>();
-    bool allTunnelEncap = !redirectNhops->empty();
-    for (const auto& nh : std::as_const(*redirectNhops)) {
-      const auto& tunnelType = nh->cref<switch_config_tags::tunnelType>();
-      if (!tunnelType.has_value() ||
-          tunnelType->toThrift() != TunnelType::IP_IN_IP_ENCAP) {
-        allTunnelEncap = false;
-        break;
+  return (
+      (newAclAction->cref<switch_state_tags::redirectToNextHop>()->toThrift() !=
+       origAclAction->cref<switch_state_tags::redirectToNextHop>()
+           ->toThrift()) ||
+      (newAclEntry->isEnabled() != origAclEntry->isEnabled()));
+}
+
+std::shared_ptr<AclEntry> AclNexthopHandler::resolvedAclEntry(
+    const std::shared_ptr<AclEntry>& origAclEntry) {
+  if (!needsAclResolution(origAclEntry)) {
+    return nullptr;
+  }
+  auto newAclEntry = origAclEntry->clone();
+  return resolveAclEntry(newAclEntry.get(), origAclEntry) ? newAclEntry
+                                                          : nullptr;
+}
+
+void AclNexthopHandler::updateAclTableGroups(
+    std::shared_ptr<SwitchState>& newState,
+    bool& changed) {
+  auto tableGroups = newState->getAclTableGroups();
+  for (const auto& matcherIter : std::as_const(*tableGroups)) {
+    HwSwitchMatcher matcher(matcherIter.first);
+    for (const auto& groupIter : std::as_const(*matcherIter.second)) {
+      auto stage = groupIter.first;
+      auto tableMap = groupIter.second->getAclTableMap();
+      if (!tableMap) {
+        continue;
+      }
+      for (const auto& tableIter : std::as_const(*tableMap)) {
+        auto table = tableIter.second;
+        auto aclMap = table->getAclMap().unwrap();
+        if (!aclMap) {
+          continue;
+        }
+        std::vector<std::shared_ptr<AclEntry>> updated;
+        for (const auto& entryIter : std::as_const(*aclMap)) {
+          if (auto newEntry = resolvedAclEntry(entryIter.second)) {
+            updated.push_back(std::move(newEntry));
+          }
+        }
+        if (updated.empty()) {
+          continue;
+        }
+        auto* newTable = table->modify(&newState, matcher, stage);
+        auto newAclMap = aclMap->clone();
+        for (auto& newEntry : updated) {
+          newAclMap->updateNode(std::move(newEntry));
+        }
+        newTable->setAclMap(std::move(newAclMap));
+        changed = true;
       }
     }
-    if (allTunnelEncap) {
-      return nullptr;
-    }
-
-    auto newAclEntry = origAclEntry->modify(
-        &newState, sw_->getScopeResolver()->scope(origAclEntry));
-    newAclEntry->setEnabled(true);
-
-    // THRIFT_COPY
-    MatchAction action =
-        MatchAction::fromThrift(newAclEntry->getAclAction()->toThrift());
-    resolveActionNexthops(action);
-    newAclEntry->setAclAction(action);
-    // Disable acl if there are no nexthops available
-    if (action.getRedirectToNextHop().has_value() &&
-        !action.getRedirectToNextHop().value().second.size()) {
-      XLOG(DBG2) << "Disabling acl as no resolved nexthops are available";
-      newAclEntry->setEnabled(false);
-    }
-    const auto& newAclAction = newAclEntry->getAclAction();
-    return ((newAclAction->cref<switch_state_tags::redirectToNextHop>()
-                 ->toThrift() !=
-             origAclAction->cref<switch_state_tags::redirectToNextHop>()
-                 ->toThrift()) ||
-            (newAclEntry->isEnabled() != origAclEntry->isEnabled()))
-        ? newAclEntry
-        : nullptr;
   }
-  return nullptr;
 }
 
 } // namespace facebook::fboss

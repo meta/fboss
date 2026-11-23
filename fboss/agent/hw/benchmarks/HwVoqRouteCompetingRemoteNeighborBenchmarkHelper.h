@@ -16,6 +16,7 @@
 #include "fboss/agent/test/AgentEnsemble.h"
 #include "fboss/agent/test/utils/VoqTestUtils.h"
 
+#include <fmt/format.h>
 #include <folly/Benchmark.h>
 #include <folly/Synchronized.h>
 #include <chrono>
@@ -117,7 +118,7 @@ class PerSwitchInterfaceMapScheduler {
             ensemble_->getSw()->getRib()->updateStateInRibThread(
                 [this, updateDsfStateFn]() {
                   ensemble_->getSw()->updateStateWithHwFailureProtection(
-                      folly::sformat(
+                      fmt::format(
                           "Update interface map for switch: {}",
                           static_cast<uint16_t>(switchId_)),
                       updateDsfStateFn);

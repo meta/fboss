@@ -55,6 +55,7 @@ TEST_F(KernelVersionCheckTest, SupportedKernelVersion) {
 
   EXPECT_EQ(result.checkType(), CheckType::KERNEL_VERSION_CHECK);
   EXPECT_EQ(result.status(), CheckStatus::OK);
+  EXPECT_THAT(*result.details(), HasSubstr("$ uname -r\n" + currentKernel));
 }
 
 TEST_F(KernelVersionCheckTest, UnsupportedKernelVersion) {

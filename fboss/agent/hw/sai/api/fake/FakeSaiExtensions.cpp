@@ -7,6 +7,7 @@
 #include "fboss/agent/hw/sai/api/CounterApi.h"
 #include "fboss/agent/hw/sai/api/DebugCounterApi.h"
 #include "fboss/agent/hw/sai/api/HostifApi.h"
+#include "fboss/agent/hw/sai/api/LagApi.h"
 #include "fboss/agent/hw/sai/api/MirrorApi.h"
 #include "fboss/agent/hw/sai/api/NextHopGroupApi.h"
 #include "fboss/agent/hw/sai/api/PortApi.h"
@@ -15,11 +16,26 @@
 #include "fboss/agent/hw/sai/api/SystemPortApi.h"
 #include "fboss/agent/hw/sai/api/TamApi.h"
 
+#include <atomic>
+
 extern "C" {
 #include "fboss/agent/hw/sai/api/fake/saifakeextensions.h"
 }
 
+namespace {
+std::atomic<bool> legacyCsigTagAction{false};
+}
+
+extern "C" void fake_sai_set_legacy_csig_tag_action(bool available) {
+  legacyCsigTagAction.store(available, std::memory_order_relaxed);
+}
+
 namespace facebook::fboss {
+
+std::optional<sai_attr_id_t>
+SaiLagTraits::Attributes::AttributeDisableTtlDecrement::operator()() {
+  return std::nullopt;
+}
 
 namespace detail {
 std::optional<sai_int32_t> trapDrops() {
@@ -367,12 +383,20 @@ SaiPortTraits::Attributes::AttributeLinkScanMode::operator()() {
 
 std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeCsigTagActionWrapper::operator()() {
+  if (legacyCsigTagAction.load(std::memory_order_relaxed)) {
+    return SAI_PORT_ATTR_EXT_FAKE_CSIG_TAG_ACTION;
+  }
   return std::nullopt;
 }
 
 std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeCsigLinkLocatorWrapper::operator()() {
   return std::nullopt;
+}
+
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeCbfcReceiverCreditLimit::operator()() {
+  return SAI_PORT_ATTR_EXT_CBFC_RECEIVER_CREDIT_LIMIT;
 }
 
 std::optional<sai_attr_id_t>
@@ -986,6 +1010,11 @@ SaiPortTraits::linkUpDebounceRetriggerStats() {
   return stats;
 }
 
+const std::vector<sai_stat_id_t>& SaiPortTraits::pcsErrorStats() {
+  static const std::vector<sai_stat_id_t> stats;
+  return stats;
+}
+
 const std::vector<sai_stat_id_t>& SaiPortTraits::llrExtensionStats() {
   static const std::vector<sai_stat_id_t> stats;
   return stats;
@@ -1139,6 +1168,16 @@ std::optional<sai_attr_id_t>
 SaiSwitchTraits::Attributes::AttributePacketDropTypeEgressList::operator()() {
   return SAI_SWITCH_ATTR_EXT_PACKET_DROP_TYPE_EGRESS_LIST;
 }
+
+std::optional<sai_attr_id_t>
+SaiSwitchTraits::Attributes::AttributeDropReasonList::operator()() {
+  return SAI_SWITCH_ATTR_EXT_DROP_REASON_LIST;
+}
+
+std::optional<sai_attr_id_t>
+SaiSwitchTraits::Attributes::AttributeStaticFdbReplaceDynamic::operator()() {
+  return SAI_SWITCH_ATTR_EXT_STATIC_FDB_REPLACE_DYNAMIC;
+}
 #if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
 std::optional<sai_attr_id_t>
 SaiArsProfileTraits::Attributes::AttributeArsMaxGroups::operator()() {
@@ -1189,6 +1228,13 @@ std::optional<sai_attr_id_t>
 SaiAclTableTraits::Attributes::AttributeFieldRouteDestination::operator()() {
   return SAI_ACL_TABLE_ATTR_FIELD_ROUTE_DST;
 }
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+std::optional<sai_attr_id_t>
+SaiAclCounterTraits::Attributes::AttributeLabelExtendedWrapper::operator()() {
+  return SAI_ACL_COUNTER_ATTR_EXT_LABEL_EXTENDED;
+}
+#endif
 
 std::optional<sai_attr_id_t>
 SaiArsTraits::Attributes::AttributeNextHopGroupType::operator()() {

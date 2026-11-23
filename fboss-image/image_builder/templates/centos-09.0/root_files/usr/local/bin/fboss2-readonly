@@ -1,0 +1,2 @@
+#!/bin/bash
+exec /usr/local/lib/fboss_cmd_find.sh fboss2-readonly "$@"

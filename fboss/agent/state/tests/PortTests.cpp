@@ -1110,6 +1110,34 @@ TEST(Port, portModifyPublished) {
   EXPECT_NE(port.get(), port->modify(&state));
 }
 
+TEST(Port, macLimitErrorDisabledPortStaysDisabledOnConfigApply) {
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  registerPort(stateV0, PortID(1), "port1", scope());
+  cfg::SwitchConfig config;
+  config.ports()->resize(1);
+  preparedMockPortConfig(config.ports()[0], 1);
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+
+  auto stateV2 = stateV1->clone();
+  auto port = stateV2->getPorts()->getNodeIf(PortID(1))->modify(&stateV2);
+  port->setAdminState(cfg::PortState::DISABLED);
+  port->addError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
+
+  EXPECT_EQ(nullptr, publishAndApplyConfig(stateV2, &config, platform.get()));
+
+  config.ports()[0].description() = "changed";
+  auto stateV3 = publishAndApplyConfig(stateV2, &config, platform.get());
+  ASSERT_NE(nullptr, stateV3);
+  auto portV3 = stateV3->getPorts()->getNodeIf(PortID(1));
+  EXPECT_EQ("changed", portV3->getDescription());
+  EXPECT_EQ(cfg::PortState::DISABLED, portV3->getAdminState());
+  const std::vector<PortError> expectedErrors{
+      PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED};
+  EXPECT_EQ(expectedErrors, portV3->getActiveErrors());
+}
+
 TEST(Port, portErrors) {
   auto platform = createMockPlatform();
   auto stateV0 = make_shared<SwitchState>();

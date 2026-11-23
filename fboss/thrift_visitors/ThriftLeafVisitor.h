@@ -86,7 +86,7 @@ struct ThriftLeafVisitor<apache::thrift::type::union_t<Node>> {
     apache::thrift::op::invoke_by_field_id<Node>(
         static_cast<apache::thrift::FieldId>(node.getType()),
         [&]<class Id>(Id) {
-          path.emplace_back(apache::thrift::op::get_name_v<Node, Id>);
+          path.emplace_back(apache::thrift::op::get_field_name<Node, Id>());
           ThriftLeafVisitor<apache::thrift::op::get_type_tag<Node, Id>>::visit(
               path,
               *apache::thrift::op::get<Id, Node>(node),
@@ -123,7 +123,7 @@ struct ThriftLeafVisitor<apache::thrift::type::struct_t<Node>> {
         }
       }
       // Look for the expected member name
-      path.emplace_back(apache::thrift::op::get_name_v<Node, Id>);
+      path.emplace_back(apache::thrift::op::get_field_name<Node, Id>());
 
       // Recurse further
       ThriftLeafVisitor<apache::thrift::op::get_type_tag<Node, Id>>::visit(

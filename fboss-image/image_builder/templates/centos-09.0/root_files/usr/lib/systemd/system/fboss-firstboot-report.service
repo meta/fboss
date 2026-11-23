@@ -1,0 +1,14 @@
+[Unit]
+Description=Report the first boot of an installed FBOSS Distro image
+Wants=network-online.target NetworkManager-wait-online.service
+After=network-online.target NetworkManager-wait-online.service
+ConditionPathExists=!/var/lib/fboss/firstboot-reported
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/fboss-firstboot-report
+Restart=no
+TimeoutStartSec=2min
+
+[Install]
+WantedBy=multi-user.target

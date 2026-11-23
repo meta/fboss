@@ -27,6 +27,12 @@ sai_status_t create_virtual_router_fn(
 
 sai_status_t remove_virtual_router_fn(sai_object_id_t virtual_router_id) {
   auto fs = FakeSai::getInstance();
+  // Like Broadcom and Cisco SAI, refuse while router interfaces use it
+  for (const auto& [rifId, rif] : fs->routeInterfaceManager.map()) {
+    if (rif.virtualRouterId == virtual_router_id) {
+      return SAI_STATUS_OBJECT_IN_USE;
+    }
+  }
   fs->virtualRouteManager.remove(virtual_router_id);
   return SAI_STATUS_SUCCESS;
 }

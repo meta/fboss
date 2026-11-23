@@ -13,8 +13,8 @@
 #include "fboss/agent/packet/PktFactory.h"
 #include "fboss/agent/test/AgentHwTest.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestAddressConstants.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestEcmpConstants.h"
+#include "fboss/agent/test/utils/AgentTestAddressConstants.h"
+#include "fboss/agent/test/utils/AgentTestEcmpConstants.h"
 
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/utils/AclTestUtils.h"

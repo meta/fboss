@@ -429,7 +429,10 @@ template <typename Storage, typename SubscribeManager>
 auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
     serveSubscriptionsLoop(std::chrono::milliseconds tick)
         -> folly::coro::Task<void> {
-  std::map<std::string, uint64_t> lastServedPublisherRootUpdates;
+  // Per bucket: buckets serve different updates, so a shared map would let
+  // whichever bucket ran first on a tick suppress the others' latency export.
+  std::vector<std::map<std::string, uint64_t>> lastServedPublisherRootUpdates(
+      subscriptions_.numBuckets());
   uint64_t tickCount = 0;
 
   while (true) {
@@ -473,7 +476,16 @@ auto NaivePeriodicSubscribableStorage<Storage, SubscribeManager>::
       subscriptions_.serveSubscriptions(
           oldRoot, newRoot, metadataServer, bucket);
       exportServeMetrics(
-          start, metadataServer, lastServedPublisherRootUpdates, tick);
+          start,
+          metadataServer,
+          lastServedPublisherRootUpdates[bucket],
+          tick * (bucket + 1),
+          bucket);
+    }
+    // Default cadence only: these are process levels, and an idle storage must
+    // not pay a /proc read per tick (NSDB runs one loop per shard).
+    if (tickCount % numBuckets == 0) {
+      exportTickMetrics();
     }
     refreshPublishedStateForReads();
 

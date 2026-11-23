@@ -75,6 +75,24 @@ TEST(ConfigValidatorTest, InvalidConfigNegativePriority) {
   EXPECT_FALSE(ConfigValidator().isValid(config));
 }
 
+TEST(ConfigValidatorTest, ValidDelayAfterUpgradeSec) {
+  auto config = FwUtilConfig();
+  auto fwConfig = createValidNewFwConfig();
+  fwConfig.delayAfterUpgradeSec() = 30;
+  config.fwConfigs() = {{"bios", fwConfig}};
+
+  EXPECT_TRUE(ConfigValidator().isValid(config));
+}
+
+TEST(ConfigValidatorTest, InvalidNegativeDelayAfterUpgradeSec) {
+  auto config = FwUtilConfig();
+  auto fwConfig = createValidNewFwConfig();
+  fwConfig.delayAfterUpgradeSec() = -1;
+  config.fwConfigs() = {{"bios", fwConfig}};
+
+  EXPECT_FALSE(ConfigValidator().isValid(config));
+}
+
 TEST(ConfigValidatorTest, InvalidConfigInvalidVersionType) {
   auto config = FwUtilConfig();
 

@@ -12,6 +12,7 @@
 
 #include "fboss/platform/data_corral_service/if/gen-cpp2/DataCorralServiceThrift.h"
 
+#include <folly/Synchronized.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -20,7 +21,8 @@ namespace facebook::fboss::platform::data_corral_service {
 
 class DataCorralServiceThriftHandler : public DataCorralServiceThriftSvIf {
  public:
-  explicit DataCorralServiceThriftHandler() = default;
+  explicit DataCorralServiceThriftHandler(std::string eepromPath = "")
+      : eepromPath_(std::move(eepromPath)) {}
 
 #if FOLLY_HAS_COROUTINES
   folly::coro::Task<std::unique_ptr<DataCorralFruidReadResponse>> co_getFruid(
@@ -33,7 +35,9 @@ class DataCorralServiceThriftHandler : public DataCorralServiceThriftSvIf {
   void getFruid(DataCorralFruidReadResponse& response, bool force) override;
 
  private:
+  std::string eepromPath_;
   // Cached Fruid
-  std::vector<std::pair<std::string, std::string>> fruid_{};
+  folly::Synchronized<std::vector<std::pair<std::string, std::string>>>
+      fruid_{};
 };
 } // namespace facebook::fboss::platform::data_corral_service

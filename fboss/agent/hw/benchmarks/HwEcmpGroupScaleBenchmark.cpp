@@ -42,6 +42,9 @@ void programRoutes(
     const utility::EcmpSetupTargetedPorts<folly::IPAddressV6>* ecmpHelper) {
   auto constexpr kClientID(ClientID::BGPD);
   const AdminDistance kDefaultAdminDistance = AdminDistance::EBGP;
+  CHECK_EQ(portDescs.size(), prefixes.size())
+      << "nhop-group/route count mismatch: have " << portDescs.size()
+      << " groups for " << prefixes.size() << " routes";
   for (auto i = 0; i < prefixes.size(); ++i) {
     RouteNextHopSet nhopSet;
     for (const auto& portDesc : portDescs[i]) {
@@ -96,11 +99,29 @@ void ecmpGroupScaleBenchmark(
     return ecmpHelper.resolveNextHops(in, portDescs);
   });
 
+  // Narrow width to the widest C(N, w) >= groups.
+  uint32_t effectiveWidth = ecmpGroupWidth;
+  while (effectiveWidth > 2 &&
+         utility::numDistinctEcmpGroups(portDescs.size(), effectiveWidth) <
+             ecmpGroups) {
+    --effectiveWidth;
+  }
+  CHECK_GE(
+      utility::numDistinctEcmpGroups(portDescs.size(), effectiveWidth),
+      ecmpGroups)
+      << "Cannot build " << ecmpGroups << " distinct groups from "
+      << portDescs.size() << " ports even at width 2";
+  if (effectiveWidth != ecmpGroupWidth) {
+    XLOG(WARNING) << "Narrowing ECMP group width " << ecmpGroupWidth << " -> "
+                  << effectiveWidth << " to fit " << ecmpGroups
+                  << " distinct groups on " << portDescs.size() << " ports";
+  }
+
   auto nhopSets = utility::generateEcmpGroupScale(
       std::vector<PortDescriptor>(portDescs.begin(), portDescs.end()),
       ecmpGroups,
-      ecmpGroupWidth /*max ecmp width*/,
-      ecmpGroupWidth /*min ecmp width*/);
+      effectiveWidth /*max ecmp width*/,
+      effectiveWidth /*min ecmp width*/);
   std::vector<RoutePrefixV6> prefixes;
   prefixes.reserve(ecmpGroups);
   for (auto i = 0; i < ecmpGroups; ++i) {

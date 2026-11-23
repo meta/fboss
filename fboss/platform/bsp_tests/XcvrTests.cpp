@@ -1,4 +1,6 @@
 #include <filesystem>
+
+#include <folly/String.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -42,7 +44,6 @@ TEST_F(XcvrTest, XcvrNames) {
   const auto& devices = *GetRuntimeConfig().devices();
   if (devices.empty()) {
     GTEST_SKIP() << "No devices found in runtime config";
-    return;
   }
 
   for (const auto& device : devices) {
@@ -69,7 +70,6 @@ TEST_F(XcvrTest, XcvrCreatesSysfsFiles) {
   const auto& devices = *GetRuntimeConfig().devices();
   if (devices.empty()) {
     GTEST_SKIP() << "No devices found in runtime config";
-    return;
   }
 
   // Convert devices to PciDeviceInfo for CdevUtils::findPciDirs

@@ -134,7 +134,6 @@ bool Jericho3Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::SAI_SET_TC_WITH_USER_DEFINED_TRAP_CPU_ACTION:
     case HwAsic::Feature::DRAM_DATAPATH_PACKET_ERROR_STATS:
     case HwAsic::Feature::EGRESS_POOL_AVAILABLE_SIZE_ATTRIBUTE_SUPPORTED:
-    case HwAsic::Feature::VENDOR_SWITCH_CONGESTION_MANAGEMENT_ERRORS:
     case HwAsic::Feature::ASIC_RESET_NOTIFICATIONS:
     case HwAsic::Feature::RX_SERDES_PARAMETERS:
     case HwAsic::Feature::BULK_CREATE_ECMP_MEMBER:
@@ -144,6 +143,8 @@ bool Jericho3Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::RX_PACKET_TYPE:
     case HwAsic::Feature::TEMPERATURE_MONITORING:
       return true;
+    case HwAsic::Feature::VENDOR_SWITCH_CONGESTION_MANAGEMENT_ERRORS:
+      return saiSdkAtLeast("12.2.0.0_dnx_odp");
     // Features not expected to work on SIM
     case HwAsic::Feature::SHARED_INGRESS_EGRESS_BUFFER_POOL:
     case HwAsic::Feature::BUFFER_POOL:
@@ -176,7 +177,9 @@ bool Jericho3Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::HSDK:
     case HwAsic::Feature::L3_EGRESS_MODE_AUTO_ENABLED:
     case HwAsic::Feature::INGRESS_FIELD_PROCESSOR_FLEX_COUNTER:
+    case HwAsic::Feature::PORT_MAC_FLUSH:
     case HwAsic::Feature::PENDING_L2_ENTRY:
+    case HwAsic::Feature::STATIC_FDB_EVICT_DYNAMIC:
     case HwAsic::Feature::EGRESS_QUEUE_FLEX_COUNTER:
     case HwAsic::Feature::INGRESS_L3_INTERFACE:
     case HwAsic::Feature::NON_UNICAST_HASH:
@@ -282,6 +285,8 @@ bool Jericho3Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::CUT_THROUGH_FORWARDING:
     case HwAsic::Feature::SRV6_MYSID_DISCARD_COUNTER:
     case HwAsic::Feature::SRV6_MYSID_RESOURCE_COUNTER:
+    case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
+    case HwAsic::Feature::SRV6_DECAP_TUNNEL:
     case HwAsic::Feature::DEVICE_WATERMARK_SUPPORT:
     case HwAsic::Feature::PBR_ACL:
     case HwAsic::Feature::ECN_PROBABILISTIC_MARKING:
@@ -289,11 +294,14 @@ bool Jericho3Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::SWITCH_CUSTOM_DROP_BITMAP_SUPPORT:
     case HwAsic::Feature::SWITCH_DROP_REASON_LIST_SUPPORT:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
+    case HwAsic::Feature::HIERARCHICAL_ECMP:
     case HwAsic::Feature::CBFC:
     case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:
     case HwAsic::Feature::PORT_DEBOUNCE:
     case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
+    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
+    case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:
     case HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS:
     case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
     case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:
@@ -303,6 +311,11 @@ bool Jericho3Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::CSIG:
     case HwAsic::Feature::ACL_ENTRY_OUT_PORT_QUALIFIER:
     case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
+    case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
+    case HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED:
+    case HwAsic::Feature::PORT_LATCH_STATUS:
+    case HwAsic::Feature::PCS_ERROR_COUNTERS:
+    case HwAsic::Feature::MIRROR_SESSION_POLICER:
       return false;
   }
   return false;

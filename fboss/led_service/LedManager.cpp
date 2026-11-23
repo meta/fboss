@@ -40,13 +40,16 @@ void LedManager::subscribeToFsdb() {
 }
 
 /*
- * LedManager destructor()
+ * stop
  *
- * Stop event base thread for Led Manager
+ * Remove the FSDB subscriptions, stop the event base thread and run any work
+ * still queued on the event base. Queued work calls the platform's virtual
+ * methods, so the owner must call this before destroying the object.
  */
-LedManager::~LedManager() {
+void LedManager::stop() {
   if (fsdbSwitchStateSubscriber_) {
     fsdbSwitchStateSubscriber_->removeStateSubscriptions();
+    fsdbSwitchStateSubscriber_.reset();
     XLOG(INFO) << "Removed LED manager subscription from FSDB";
   }
 
@@ -55,7 +58,18 @@ LedManager::~LedManager() {
   }
   if (ledManagerThread_) {
     ledManagerThread_->join();
+    ledManagerThread_.reset();
   }
+  eventBase_.reset();
+}
+
+/*
+ * LedManager destructor()
+ *
+ * Stop event base thread for Led Manager
+ */
+LedManager::~LedManager() {
+  stop();
   XLOG(INFO)
       << "Removed LED manager thread and deleting Led Manager object now";
 }

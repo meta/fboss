@@ -115,7 +115,7 @@
       {
         "sensorName": "SMB_TH5_TEMP",
         "overtempThreshold": 110.0,
-        "slidingWindowSize": 1
+        "slidingWindowSize": 3
       }
     ]
   },

@@ -11,6 +11,7 @@
 #include "fboss/cli/fboss2/CmdLocalOptions.h"
 
 #include <folly/Singleton.h>
+#include <folly/concurrency/AtomicSharedPtr.h>
 
 namespace {
 struct singleton_tag_type {};
@@ -20,7 +21,19 @@ namespace facebook::fboss {
 
 using facebook::fboss::CmdLocalOptions;
 static folly::Singleton<CmdLocalOptions, singleton_tag_type> cmdLocalOptions_{};
+namespace {
+folly::atomic_shared_ptr<CmdLocalOptions> invocationOverride{};
+}
+
+std::shared_ptr<CmdLocalOptions> CmdLocalOptions::exchangeInvocationOverride(
+    std::shared_ptr<CmdLocalOptions> instance) {
+  return invocationOverride.exchange(std::move(instance));
+}
+
 std::shared_ptr<CmdLocalOptions> CmdLocalOptions::getInstance() {
+  if (auto instance = invocationOverride.load()) {
+    return instance;
+  }
   return cmdLocalOptions_.try_get();
 }
 } // namespace facebook::fboss

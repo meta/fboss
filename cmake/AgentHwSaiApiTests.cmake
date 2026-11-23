@@ -27,6 +27,7 @@ add_executable(api_test
     fboss/agent/hw/sai/api/tests/NeighborApiTest.cpp
     fboss/agent/hw/sai/api/tests/NextHopApiTest.cpp
     fboss/agent/hw/sai/api/tests/NextHopGroupApiTest.cpp
+    fboss/agent/hw/sai/api/tests/PolicerApiTest.cpp
     fboss/agent/hw/sai/api/tests/PortApiTest.cpp
     fboss/agent/hw/sai/api/tests/QosMapApiTest.cpp
     fboss/agent/hw/sai/api/tests/QueueApiTest.cpp
@@ -40,6 +41,7 @@ add_executable(api_test
     fboss/agent/hw/sai/api/tests/TamApiTest.cpp
     fboss/agent/hw/sai/api/tests/Srv6ApiTest.cpp
     fboss/agent/hw/sai/api/tests/TunnelApiTest.cpp
+    fboss/agent/hw/sai/api/tests/TunnelMapApiTest.cpp
     fboss/agent/hw/sai/api/tests/UdfApiTest.cpp
     fboss/agent/hw/sai/api/tests/VirtualChannelApiTest.cpp
     fboss/agent/hw/sai/api/tests/VirtualRouterApiTest.cpp

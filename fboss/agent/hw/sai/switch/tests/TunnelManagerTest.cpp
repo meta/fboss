@@ -263,3 +263,16 @@ TEST_F(TunnelManagerTest, changeEncapTunnel) {
       SaiIpInIpTunnelTraits::Attributes::EncapSrcIp());
   EXPECT_EQ(encapSrcIp, folly::IPAddress("2401:db00::2"));
 }
+
+TEST_F(TunnelManagerTest, vxlanTunnelNotImplemented) {
+  auto swTunnel = makeTunnel("vxlanTunnel0", intf0.id);
+  swTunnel->setType(TunnelType::VXLAN);
+  try {
+    saiManagerTable->tunnelManager().addTunnel(swTunnel);
+    FAIL() << "Expected FbossError for VXLAN tunnel";
+  } catch (const FbossError& e) {
+    EXPECT_NE(
+        std::string(e.what()).find("VXLAN tunnel not implemented yet"),
+        std::string::npos);
+  }
+}

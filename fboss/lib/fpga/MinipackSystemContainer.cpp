@@ -43,6 +43,8 @@ MultiPimPlatformPimContainer::PimType MinipackSystemContainer::getPimType(
     int pim) const {
   static constexpr auto kMinipack16QPimVal = 0xA3000000;
   static constexpr auto kMinipack16OPimVal = 0xA5000000;
+  // a PIM that isn't answering reads 0, which no PIM type uses
+  static constexpr uint32_t kDeadPimVal = 0x0;
 
   static constexpr uint32_t kFacebookFpgaPimTypeBase = 0xFF000000;
   static constexpr uint32_t kFacebookFpgaPimTypeReg = 0x0;
@@ -57,14 +59,21 @@ MultiPimPlatformPimContainer::PimType MinipackSystemContainer::getPimType(
       return MultiPimPlatformPimContainer::PimType::MINIPACK_16Q;
     case kMinipack16OPimVal:
       return MultiPimPlatformPimContainer::PimType::MINIPACK_16O;
+    case kDeadPimVal:
     case kFacebookFpgaPimTypeBase:
-      throw FbossError(
+      throw PimTypeError(
+          pim,
+          curPimTypeReg,
+          PimTypeError::Reason::UNREADABLE,
           "Error in reading PIM Type from DOM FPGA, register value: ",
           curPimTypeReg,
           " for pim:",
           pim);
     default:
-      throw FbossError(
+      throw PimTypeError(
+          pim,
+          curPimTypeReg,
+          PimTypeError::Reason::UNRECOGNIZED,
           "Unrecognized pim type with register value:",
           curPimTypeReg,
           " for pim:",

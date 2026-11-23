@@ -770,4 +770,54 @@ TEST_F(FibInfoTest, GetNextHopSetIdRefCountsFromMySid) {
   EXPECT_EQ(refCounts[setId2], 2);
 }
 
+TEST_F(FibInfoTest, ResolveOverrideNextHopSetFromIdIf) {
+  auto makeNextHop = [](const std::string& ip, const std::string& ifName) {
+    NextHopThrift nh;
+    nh.address() = network::toBinaryAddress(folly::IPAddress(ip));
+    nh.address()->ifName() = ifName;
+    *nh.weight() = UCMP_DEFAULT_WEIGHT;
+    return nh;
+  };
+  auto idToNextHopMap = std::make_shared<IdToNextHopMap>();
+  idToNextHopMap->addNextHop(1, makeNextHop("10.0.0.1", "fboss1"));
+  idToNextHopMap->addNextHop(2, makeNextHop("10.0.0.2", "fboss2"));
+  const NextHopSetId overrideId =
+      nextHopIdTypeStart(NextHopIdType::OVERRIDE_SET);
+  const NextHopSetId danglingId = overrideId + 1;
+  auto overrideMap = std::make_shared<IdToNextHopIdSetMap>();
+  overrideMap->addNextHopIdSet(overrideId, {1, 2});
+  overrideMap->addNextHopIdSet(danglingId, {1, 3});
+  auto fibInfo = std::make_shared<FibInfo>();
+  fibInfo->setIdToNextHopMap(idToNextHopMap);
+  fibInfo->setOverrideIdToNextHopIdSetMap(overrideMap);
+
+  auto asSet = [](const std::optional<std::vector<NextHop>>& nhops) {
+    return nhops ? std::optional<RouteNextHopSet>(
+                       RouteNextHopSet(nhops->begin(), nhops->end()))
+                 : std::nullopt;
+  };
+  const RouteNextHopSet expected{
+      ResolvedNextHop(
+          folly::IPAddress("10.0.0.1"), InterfaceID(1), UCMP_DEFAULT_WEIGHT),
+      ResolvedNextHop(
+          folly::IPAddress("10.0.0.2"), InterfaceID(2), UCMP_DEFAULT_WEIGHT)};
+  EXPECT_EQ(
+      asSet(fibInfo->resolveOverrideNextHopSetFromIdIf(overrideId)), expected);
+  // Member 3 has no NextHop.
+  EXPECT_THROW(
+      fibInfo->resolveOverrideNextHopSetFromIdIf(danglingId), FbossError);
+  EXPECT_FALSE(fibInfo->resolveOverrideNextHopSetFromIdIf(overrideId + 2));
+
+  // Only the second switch's FibInfo carries the override map.
+  auto fibsInfoMap = std::make_shared<MultiSwitchFibInfoMap>();
+  fibsInfoMap->addNode("id=0", std::make_shared<FibInfo>());
+  fibsInfoMap->addNode("id=1", fibInfo);
+  EXPECT_EQ(
+      asSet(fibsInfoMap->resolveOverrideNextHopSetFromIdIf(overrideId)),
+      expected);
+  EXPECT_THROW(
+      fibsInfoMap->resolveOverrideNextHopSetFromIdIf(danglingId), FbossError);
+  EXPECT_FALSE(fibsInfoMap->resolveOverrideNextHopSetFromIdIf(overrideId + 2));
+}
+
 } // namespace facebook::fboss

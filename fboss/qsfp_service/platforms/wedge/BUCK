@@ -10,6 +10,8 @@ oncall("fboss_optics_phy")
 cpp_library(
     name = "wedge-platform-default",
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     exported_deps = [
         "//fboss/qsfp_service/platforms/wedge:wedge-platform-credo-0.7.2",  # @manual
     ],

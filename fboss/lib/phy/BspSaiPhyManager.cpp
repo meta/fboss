@@ -153,7 +153,7 @@ bool BspSaiPhyManager::initExternalPhyMap(bool warmboot) {
     // Mark the SAI adaptor as thread-safe to enable parallel XPHY
     // initialization. Gated to PAI 4.1+ (which installs the PAI lock-sync
     // callbacks); on PAI 4.0 PAI access is unprotected, so keep serial init.
-#if defined(SAI_BRCM_PAI_IMPL) && SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+#if defined(BRCM_PAI_SDK) && SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
     SaiApiLock::getInstance()->setAdaptorIsThreadSafe(true);
 #endif
   }

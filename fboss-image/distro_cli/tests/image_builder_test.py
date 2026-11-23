@@ -35,18 +35,53 @@ class TestImageBuilder(unittest.TestCase):
         # Use sandbox-safe temporary directory
         self._tempdir_ctx = enter_tempdir("image_builder_test_")
         self.temp_dir = self._tempdir_ctx.__enter__()
+        self.manifest.data["distribution_formats"] = {
+            kind: str(self.temp_dir / Path(destination).name)
+            for kind, destination in self.manifest.data["distribution_formats"].items()
+        }
 
         # Override artifact store directory for testing
         self._artifact_store_ctx = override_artifact_store_dir(self.temp_dir)
         self._artifact_store_ctx.__enter__()
 
         self.builder = ImageBuilder(self.manifest)
+        self.builder.image_builder_dir = self.temp_dir / "workspace"
+        self.builder.centos_template_dir = (
+            self.builder.image_builder_dir / "templates/centos-09.0"
+        )
+        self.builder.centos_template_dir.mkdir(parents=True)
+        self.builder.after_pkgs_install_file = (
+            self.builder.centos_template_dir / "after_pkgs_install_file.json"
+        )
+        self.builder.after_pkgs_execute_file = (
+            self.builder.centos_template_dir / "after_pkgs_execute_file.json"
+        )
+        kvm_patch = patch("distro_cli.builder.image_builder.validate_kvm_device")
+        kvm_patch.start()
+        self.addCleanup(kvm_patch.stop)
+        box_patch = patch(
+            "distro_cli.builder.image_builder.box_cache_dir",
+            return_value=self.temp_dir / "kiwi-boxes",
+        )
+        box_patch.start()
+        self.addCleanup(box_patch.stop)
+
+        # The base-image build refuses BIOS-booted hosts (T297984315).
+        # Pin UEFI here so these tests are hermetic on any host firmware;
+        # the gate itself is covered by host_boot_test.py and the two
+        # tests at the end of this file.
+        self._boot_patcher = patch(
+            "distro_cli.lib.host_boot.is_bios_boot", return_value=False
+        )
+        self._boot_patcher.start()
 
         # Create a temporary directory for kernel artifacts
         self.kernel_artifacts_dir = Path(tempfile.mkdtemp(prefix="kernel-artifacts-"))
 
     def tearDown(self):
         """Clean up test fixtures"""
+        self._boot_patcher.stop()
+
         # Clean up kernel artifacts directory
         if hasattr(self, "kernel_artifacts_dir") and self.kernel_artifacts_dir.exists():
             shutil.rmtree(self.kernel_artifacts_dir)
@@ -54,6 +89,14 @@ class TestImageBuilder(unittest.TestCase):
         # Exit context managers in reverse order
         self._artifact_store_ctx.__exit__(None, None, None)
         self._tempdir_ctx.__exit__(None, None, None)
+
+    def _create_outputs(self):
+        for ext in ("iso", "tar", "bin"):
+            (
+                self.builder.image_builder_dir
+                / "output"
+                / f"FBOSS-Distro-Image.x86_64-1.0.install.{ext}"
+            ).write_bytes(b"fixture")
 
     def test_builder_initialization(self):
         """Test that builder initializes correctly"""
@@ -238,6 +281,7 @@ class TestImageBuilder(unittest.TestCase):
             assert len(kernel_files) == 1, "Kernel artifact not staged correctly"
 
             captured_deps_dir = deps_dir
+            self._create_outputs()
             return 0
 
         mock_run_container.side_effect = capture_and_verify
@@ -273,6 +317,7 @@ class TestImageBuilder(unittest.TestCase):
             deps_dir = self.builder.image_builder_dir / "deps_staging"
             assert deps_dir.exists(), "deps_staging directory should exist during build"
             deps_checked = True
+            self._create_outputs()
             return 0
 
         mock_run_container.side_effect = capture_and_verify
@@ -305,6 +350,7 @@ class TestImageBuilder(unittest.TestCase):
             deps_dir = self.builder.image_builder_dir / "deps_staging"
             kernel_staged = deps_dir / "kernel" / "kernel-6.11.1.rpms.tar.zst"
             assert kernel_staged.exists(), "Kernel artifact not staged in deps_staging"
+            self._create_outputs()
             return 0
 
         mock_run_container.side_effect = capture_and_verify
@@ -315,6 +361,57 @@ class TestImageBuilder(unittest.TestCase):
 
         # Verify run_container was called
         mock_run_container.assert_called_once()
+
+    @patch("distro_cli.builder.image_builder.run_container")
+    @patch("distro_cli.builder.image_builder.build_fboss_builder_image")
+    def test_base_image_build_warns_on_bios_host_and_continues(
+        self, mock_build_image, mock_run_container
+    ):
+        """A BIOS-booted host warns; the caller accepts the cost and continues."""
+        from distro_cli.lib import host_boot
+
+        mock_run_container.return_value = 0
+        with (
+            patch.object(host_boot, "warn_bios_boot_host", return_value=True),
+            patch.object(self.builder, "_stage_component_artifacts"),
+            patch.object(self.builder, "_write_build_provenance"),
+            patch.object(self.builder, "_write_version_file"),
+            patch.object(self.builder, "_move_distro_file"),
+        ):
+            self.builder._build_base_image()
+
+        mock_build_image.assert_called_once()
+        mock_run_container.assert_called_once()
+
+    @patch("distro_cli.builder.image_builder.run_container")
+    @patch("distro_cli.builder.image_builder.build_fboss_builder_image")
+    def test_base_image_build_gate_runs_before_container(
+        self, mock_build_image, mock_run_container
+    ):
+        """The boot-mode gate runs before the builder image is built."""
+        from distro_cli.lib import host_boot
+
+        mock_run_container.return_value = 0
+        order = []
+
+        def record_gate():
+            order.append("gate")
+
+        def record_build_image():
+            order.append("build_image")
+
+        mock_build_image.side_effect = record_build_image
+
+        with (
+            patch.object(host_boot, "warn_bios_boot_host", record_gate),
+            patch.object(self.builder, "_stage_component_artifacts"),
+            patch.object(self.builder, "_write_build_provenance"),
+            patch.object(self.builder, "_write_version_file"),
+            patch.object(self.builder, "_move_distro_file"),
+        ):
+            self.builder._build_base_image()
+
+        self.assertEqual(order, ["gate", "build_image"])
 
 
 if __name__ == "__main__":

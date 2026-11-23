@@ -24,6 +24,34 @@ EXCLUDED_TEST_REGEXES = [
 ]
 CONTAINER_WORKDIR = "/var/FBOSS/fboss"
 
+# Defaults for --asan runs, applied unless already set in the environment.
+# Boost is linked into both libfolly.so and each test binary; ODR level 1
+# skips that same-size duplicate but still reports size mismatches.
+ASAN_ENV_DEFAULTS = {
+    "ASAN_OPTIONS": "detect_leaks=0:detect_odr_violation=1",
+    "ASAN_SYMBOLIZER_PATH": "/usr/local/llvm/bin/llvm-symbolizer",
+}
+# The Python interpreter is not ASAN-instrumented, so Python tests that load
+# ASAN-built extension modules need the runtime preloaded. CPython's own
+# allocations read as leaks, so leak detection is always off for them.
+ASAN_PYTHON_ENV = (
+    'LD_PRELOAD="$(c++ -print-file-name=libclang_rt.asan.so)" '
+    'ASAN_OPTIONS="${ASAN_OPTIONS:+$ASAN_OPTIONS:}detect_leaks=0"'
+)
+
+_asan = False
+
+
+def _python_test_shell(test_path: str, lib_path: str) -> str:
+    prefix = f"{ASAN_PYTHON_ENV} " if _asan else ""
+    return f"{prefix}LD_LIBRARY_PATH={lib_path}:/usr/local/lib64 python3 {test_path}"
+
+
+def _asan_docker_env_args() -> list[str]:
+    if not _asan:
+        return []
+    return [arg for k in ASAN_ENV_DEFAULTS for arg in ("-e", f"{k}={os.environ[k]}")]
+
 
 def _is_inside_container() -> bool:
     """Detect if running inside a Docker or Podman container."""
@@ -152,6 +180,11 @@ def parse_args():
         default=[],
         help="Test binary name to exclude. Can be specified multiple times.",
     )
+    parser.add_argument(
+        "--asan",
+        action="store_true",
+        help="The tarball is from a run-getdeps.py --asan build.",
+    )
 
     return parser.parse_args()
 
@@ -222,6 +255,7 @@ def run_test(test: str, output_dir: str) -> bool:
     cmd_args = [*_docker_cmd(), "run"]
     lib_path = os.path.join(output_dir, "lib")
     cmd_args.extend(["-e", f"LD_LIBRARY_PATH={lib_path}"])
+    cmd_args.extend(_asan_docker_env_args())
     # Mount fboss repository in container
     cmd_args.extend(["-v", f"{get_repo_path()}:{CONTAINER_WORKDIR}:z"])
     cmd_args.extend(["-v", f"{output_dir}:{output_dir}:z"])
@@ -232,13 +266,7 @@ def run_test(test: str, output_dir: str) -> bool:
     cmd_args.append(f"{FBOSS_IMAGE_NAME}:latest")
     test_path = os.path.join(output_dir, "bin", test)
     if is_python_dir_test(test_path):
-        cmd_args.extend(
-            [
-                "bash",
-                "-c",
-                f"LD_LIBRARY_PATH={lib_path}:/usr/local/lib64 python3 {test_path}",
-            ]
-        )
+        cmd_args.extend(["bash", "-c", _python_test_shell(test_path, lib_path)])
     else:
         cmd_args.append(test_path)
     cp = subprocess.run(cmd_args, check=False)
@@ -251,8 +279,7 @@ def run_test_local(test: str, output_dir: str) -> bool:
     test_path = os.path.join(output_dir, "bin", test)
     env = os.environ.copy()
     if is_python_dir_test(test_path):
-        env["LD_LIBRARY_PATH"] = f"{lib_path}:/usr/local/lib64"
-        cmd = ["python3", test_path]
+        cmd = ["bash", "-c", _python_test_shell(test_path, lib_path)]
     else:
         env["LD_LIBRARY_PATH"] = lib_path
         cmd = [test_path]
@@ -266,15 +293,10 @@ def run_test_exec(test: str, output_dir: str) -> bool:
     lib_path = os.path.join(output_dir, "lib")
     test_path = os.path.join(output_dir, "bin", test)
     cmd_args.extend(["-e", f"LD_LIBRARY_PATH={lib_path}"])
+    cmd_args.extend(_asan_docker_env_args())
     cmd_args.append(FBOSS_CONTAINER_NAME)
     if is_python_dir_test(test_path):
-        cmd_args.extend(
-            [
-                "bash",
-                "-c",
-                f"LD_LIBRARY_PATH={lib_path}:/usr/local/lib64 python3 {test_path}",
-            ]
-        )
+        cmd_args.extend(["bash", "-c", _python_test_shell(test_path, lib_path)])
     else:
         cmd_args.append(test_path)
     cp = subprocess.run(cmd_args, check=False)
@@ -282,7 +304,12 @@ def run_test_exec(test: str, output_dir: str) -> bool:
 
 
 def main():
+    global _asan
     args = parse_args()
+    _asan = args.asan
+    if _asan:
+        for name, value in ASAN_ENV_DEFAULTS.items():
+            os.environ.setdefault(name, value)
 
     inside_container = _is_inside_container()
     container_running = False

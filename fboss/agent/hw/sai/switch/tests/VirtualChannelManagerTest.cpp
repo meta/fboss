@@ -310,35 +310,45 @@ TEST_F(VirtualChannelManagerTest, unrelatedPortChangeLeavesSenderFields) {
       32);
 }
 
-TEST_F(VirtualChannelManagerTest, portCreateWithCbfcWritesNothing) {
-  // A port created with CBFC is a warm boot; hardware keeps the sender values.
+TEST_F(VirtualChannelManagerTest, portCreateWithCbfcProgramsSenderCreditSize) {
   auto swPort = makePortWithVcs(p0, {makeVc(2, 36)});
   swPort->setCbfcSenderCreditSize(56);
   saiManagerTable->portManager().addPort(swPort);
 
-  // Fake's default is the SAI header default; nothing was written.
   EXPECT_EQ(
       getPortAttr(swPort, SaiPortTraits::Attributes::CbfcSenderCreditSize{}),
-      128);
+      56);
 }
 
-TEST_F(VirtualChannelManagerTest, senderValueChangeOnCbfcPortWritesNothing) {
+TEST_F(VirtualChannelManagerTest, firstBindProgramsSenderCreditLimit) {
   auto swPort = makePort(p0);
   saiManagerTable->portManager().addPort(swPort);
   auto cbfcPort = swPort->clone();
   cbfcPort->setVirtualChannels(std::vector<state::PortVcFields>{makeVc(2, 36)});
-  cbfcPort->setCbfcSenderCreditSize(56);
+  cbfcPort->setCbfcSenderCreditLimit(8192);
   saiManagerTable->portManager().changePort(swPort, cbfcPort);
 
-  // StateUpdateValidator rejects this change; the manager must not write it.
-  auto changedPort = cbfcPort->clone();
-  changedPort->setCbfcSenderCreditSize(32);
-  saiManagerTable->portManager().changePort(cbfcPort, changedPort);
+  EXPECT_EQ(
+      getPortAttr(cbfcPort, SaiPortTraits::Attributes::CbfcSenderCreditLimit{}),
+      8192);
+}
+
+TEST_F(VirtualChannelManagerTest, removingCbfcLeavesSenderCreditLimit) {
+  auto swPort = makePortWithVcs(p0, {makeVc(2, 36)});
+  swPort->setCbfcSenderCreditLimit(8192);
+  saiManagerTable->portManager().addPort(swPort);
+
+  // brcm-sai stores the limit as port credit, where the SAI default of 0 would
+  // leave the port with none, so nothing is written to clear it.
+  auto plainPort = swPort->clone();
+  plainPort->setVirtualChannels(std::nullopt);
+  plainPort->setCbfcSenderCreditLimit(std::nullopt);
+  saiManagerTable->portManager().changePort(swPort, plainPort);
 
   EXPECT_EQ(
       getPortAttr(
-          changedPort, SaiPortTraits::Attributes::CbfcSenderCreditSize{}),
-      56);
+          plainPort, SaiPortTraits::Attributes::CbfcSenderCreditLimit{}),
+      8192);
 }
 
 TEST_F(VirtualChannelManagerTest, firstBindWritesZeroPacketOverhead) {
@@ -358,6 +368,72 @@ TEST_F(VirtualChannelManagerTest, firstBindWritesZeroPacketOverhead) {
   EXPECT_EQ(
       getPortAttr(
           cbfcPort, SaiPortTraits::Attributes::CbfcSenderPacketOverhead{}),
+      0);
+}
+
+TEST_F(VirtualChannelManagerTest, portCreateWithCbfcProgramsReceiverLimit) {
+  auto swPort = makePortWithVcs(p0, {makeVc(2, 36)});
+  swPort->setCbfcReceiverCreditLimit(4096);
+  saiManagerTable->portManager().addPort(swPort);
+
+  EXPECT_EQ(
+      getPortAttr(swPort, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
+  // Hardware applies the port limit when the receiver turns on, so it has to
+  // be there by then.
+  EXPECT_EQ(getVc(2).getPortReceiverCreditLimitAtReceiverEnable(), 4096);
+}
+
+TEST_F(VirtualChannelManagerTest, firstBindProgramsReceiverLimit) {
+  auto swPort = makePort(p0);
+  saiManagerTable->portManager().addPort(swPort);
+  auto cbfcPort = swPort->clone();
+  cbfcPort->setVirtualChannels(std::vector<state::PortVcFields>{makeVc(2, 36)});
+  cbfcPort->setCbfcReceiverCreditLimit(4096);
+  saiManagerTable->portManager().changePort(swPort, cbfcPort);
+
+  EXPECT_EQ(
+      getPortAttr(
+          cbfcPort, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
+  EXPECT_EQ(getVc(2).getPortReceiverCreditLimitAtReceiverEnable(), 4096);
+}
+
+TEST_F(VirtualChannelManagerTest, recreateProgramsReceiverLimit) {
+  auto swPort = makePortWithVcs(p0, {makeVc(2, 36)});
+  swPort->setCbfcReceiverCreditLimit(4096);
+  saiManagerTable->portManager().addPort(swPort);
+  auto originalKey = saiManagerTable->portManager()
+                         .getPortHandle(swPort->getID())
+                         ->port->adapterKey();
+
+  // A different lane count makes changePort delete and recreate the port.
+  auto recreatedPort = makePort(p0, cfg::PortSpeed::FIFTYG);
+  recreatedPort->setVirtualChannels(
+      std::vector<state::PortVcFields>{makeVc(2, 36)});
+  recreatedPort->setCbfcReceiverCreditLimit(4096);
+  saiManagerTable->portManager().changePort(swPort, recreatedPort);
+
+  ASSERT_NE(
+      saiManagerTable->portManager()
+          .getPortHandle(recreatedPort->getID())
+          ->port->adapterKey(),
+      originalKey);
+  EXPECT_EQ(
+      getPortAttr(
+          recreatedPort, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
+      4096);
+  EXPECT_EQ(getVc(2).getPortReceiverCreditLimitAtReceiverEnable(), 4096);
+}
+
+TEST_F(VirtualChannelManagerTest, portWithoutCbfcLeavesReceiverLimit) {
+  auto swPort = makePort(p0);
+  swPort->setCbfcReceiverCreditLimit(4096);
+  saiManagerTable->portManager().addPort(swPort);
+
+  // Fake's default; nothing was written.
+  EXPECT_EQ(
+      getPortAttr(swPort, SaiPortTraits::Attributes::CbfcReceiverCreditLimit{}),
       0);
 }
 

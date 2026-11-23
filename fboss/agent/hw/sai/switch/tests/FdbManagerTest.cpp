@@ -10,6 +10,7 @@
 #include "fboss/agent/hw/sai/switch/SaiBridgeManager.h"
 #include "fboss/agent/hw/sai/switch/SaiFdbManager.h"
 #include "fboss/agent/hw/sai/switch/SaiPortManager.h"
+#include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
 #include "fboss/agent/hw/sai/switch/SaiVlanManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
 #include "fboss/agent/state/MacEntry.h"
@@ -30,11 +31,12 @@ class FdbManagerTest : public ManagerTestBase {
   }
 
   void checkFdbEntry(sai_uint32_t metadata = 0) {
-    auto vlanHandle = saiManagerTable->vlanManager().getVlanHandle(VlanID(0));
+    auto vlanHandle =
+        saiManagerTable->vlanManager().getVlanHandle(VlanID(intf0.id));
     auto vlanId = vlanHandle->vlan->adapterKey();
     SaiFdbTraits::FdbEntry entry{1, vlanId, kMac()};
     auto portHandle = saiManagerTable->portManager().getPortHandle(
-        PortID(intf0.remoteHosts[0].id));
+        PortID(intf0.remoteHosts[0].port.id));
     auto expectedBridgePortId = portHandle->bridgePort->adapterKey();
     auto bridgePortId = saiApiTable->fdbApi().getAttribute(
         entry, SaiFdbTraits::Attributes::BridgePortId{});
@@ -63,6 +65,29 @@ class FdbManagerTest : public ManagerTestBase {
     applyNewState(newState);
   }
 
+  void createHwOnlyFdbEntry(
+      folly::MacAddress mac,
+      PortID port,
+      sai_fdb_entry_type_t type) {
+    sai_object_id_t bridgePortId = saiManagerTable->portManager()
+                                       .getPortHandle(port)
+                                       ->bridgePort->adapterKey();
+    sai_object_id_t switchId =
+        saiManagerTable->switchManager().getSwitchSaiId();
+    saiApiTable->fdbApi().create<SaiFdbTraits>(
+        SaiFdbTraits::FdbEntry{switchId, 0, mac},
+        SaiFdbTraits::CreateAttributes{type, bridgePortId, std::nullopt});
+  }
+
+  bool isInHw(folly::MacAddress mac) const {
+    for (const auto& [key, _] : FakeSai::getInstance()->fdbManager.map()) {
+      if (std::get<folly::MacAddress>(key) == mac) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   TestInterface intf0;
 
   static folly::MacAddress kMac() {
@@ -79,7 +104,7 @@ class FdbManagerTest : public ManagerTestBase {
     }
     return std::make_shared<MacEntry>(
         mac,
-        PortDescriptor(PortID(intf0.remoteHosts[0].id)),
+        PortDescriptor(PortID(intf0.remoteHosts[0].port.id)),
         std::optional<cfg::AclLookupClass>(metadata));
   }
   void updateOraAddMacEntry(
@@ -131,6 +156,20 @@ TEST_F(FdbManagerTest, doubleRemoveFdbEntry) {
   removeMacEntry();
   EXPECT_THROW(removeMacEntry(), FbossError);
 }
+
+TEST_F(FdbManagerTest, removeFdbEntryAfterPortVlanChange) {
+  addMacEntry();
+  auto newState = programmedState->clone();
+  newState->getPorts()
+      ->getNode(PortID(intf0.remoteHosts[0].port.id))
+      ->modify(&newState)
+      ->setIngressVlan(VlanID(testInterfaces[2].id));
+  applyNewState(newState);
+
+  removeMacEntry();
+  EXPECT_TRUE(FakeSai::getInstance()->fdbManager.map().empty());
+}
+
 TEST_F(FdbManagerTest, getL2EntriesTest) {
   addMacEntry();
   auto* fdbManager = &saiManagerTable->fdbManager();
@@ -145,4 +184,59 @@ TEST_F(FdbManagerTest, getL2EntriesTest) {
     }
   }
   EXPECT_TRUE(found);
+}
+
+TEST_F(FdbManagerTest, flushDynamicEntriesOnPort) {
+  const folly::MacAddress kDynamic{"02:00:00:00:00:01"};
+  const folly::MacAddress kStatic{"02:00:00:00:00:02"};
+  const folly::MacAddress kOtherPortDynamic{"02:00:00:00:00:03"};
+  auto port = PortID(intf0.remoteHosts[0].port.id);
+  auto otherPort = PortID(testInterfaces[2].remoteHosts[0].port.id);
+  createHwOnlyFdbEntry(kDynamic, port, SAI_FDB_ENTRY_TYPE_DYNAMIC);
+  createHwOnlyFdbEntry(kStatic, port, SAI_FDB_ENTRY_TYPE_STATIC);
+  createHwOnlyFdbEntry(
+      kOtherPortDynamic, otherPort, SAI_FDB_ENTRY_TYPE_DYNAMIC);
+
+  saiManagerTable->fdbManager().flushDynamicEntries(port);
+
+  EXPECT_FALSE(isInHw(kDynamic));
+  EXPECT_TRUE(isInHw(kStatic));
+  EXPECT_TRUE(isInHw(kOtherPortDynamic));
+}
+
+TEST_F(FdbManagerTest, macLimitErrorDisableFlushesDynamicEntries) {
+  const folly::MacAddress kDynamic{"02:00:00:00:00:01"};
+  const folly::MacAddress kStatic{"02:00:00:00:00:02"};
+  auto portId = PortID(intf0.remoteHosts[0].port.id);
+  createHwOnlyFdbEntry(kDynamic, portId, SAI_FDB_ENTRY_TYPE_DYNAMIC);
+  createHwOnlyFdbEntry(kStatic, portId, SAI_FDB_ENTRY_TYPE_STATIC);
+
+  auto newState = programmedState->clone();
+  auto port = newState->getPorts()->getNodeIf(portId)->modify(&newState);
+  port->setAdminState(cfg::PortState::DISABLED);
+  port->addError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
+  applyNewState(newState);
+
+  EXPECT_FALSE(isInHw(kDynamic));
+  EXPECT_TRUE(isInHw(kStatic));
+}
+
+TEST_F(FdbManagerTest, macLimitErrorDisableRemovesManagedDynamicEntries) {
+  addMacEntry();
+  ASSERT_TRUE(isInHw(kMac()));
+
+  // The error-disable update removes the port's MACs and disables the port
+  auto portId = PortID(intf0.remoteHosts[0].port.id);
+  auto newState = programmedState->clone();
+  newState->getVlans()
+      ->getNode(VlanID(intf0.id))
+      ->getMacTable()
+      ->modify(VlanID(intf0.id), &newState)
+      ->removeEntry(kMac());
+  auto port = newState->getPorts()->getNodeIf(portId)->modify(&newState);
+  port->setAdminState(cfg::PortState::DISABLED);
+  port->addError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
+  applyNewState(newState);
+
+  EXPECT_FALSE(isInHw(kMac()));
 }

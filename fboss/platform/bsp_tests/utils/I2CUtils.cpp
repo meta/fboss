@@ -16,7 +16,7 @@
 
 #include <fmt/format.h>
 #include <folly/FileUtil.h>
-#include <folly/Format.h>
+#include <folly/String.h>
 #include <folly/logging/xlog.h>
 
 #include "fboss/platform/bsp_tests/utils/CdevUtils.h"

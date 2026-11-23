@@ -545,6 +545,7 @@ echo "Enabling FBOSS systemd services..."
 systemctl enable sai-device-nodes.service ||
   echo "WARNING: sai-device-nodes.service not present; SAI kmods will not be loaded at boot"
 systemctl enable fboss_init.service
+systemctl enable fboss-firstboot-report.service
 systemctl enable local_rpm_repo.service
 systemctl enable platform_manager.service
 systemctl enable data_corral_service.service
@@ -571,7 +572,7 @@ fi
 
 # Fix NetworkManager connection profile permissions
 # NM ignores profiles that are world-readable
-chmod 600 /etc/NetworkManager/system-connections/eth0.nmconnection
+chmod 600 /etc/NetworkManager/system-connections/*.nmconnection
 
 # Done! Cleanup and install additional packages
 echo "Cleaning up /repos directory..."

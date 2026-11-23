@@ -8,6 +8,7 @@
  *
  */
 
+#include <folly/Demangle.h>
 #include <folly/IPAddress.h>
 #include "fboss/agent/packet/IPv6Hdr.h"
 #include "fboss/agent/packet/PTPHeader.h"
@@ -20,6 +21,7 @@
 #include "fboss/agent/test/utils/PacketSnooper.h"
 #include "fboss/agent/test/utils/PacketTestUtils.h"
 #include "fboss/agent/test/utils/TrapPacketUtils.h"
+#include "fboss/lib/fpga/MultiPimPlatformSystemContainer.h"
 
 namespace {} // namespace
 
@@ -45,7 +47,21 @@ class AgentHwPtpTcProvisionTests : public AgentHwTest {
   const folly::MacAddress kSrcMac = folly::MacAddress("aa:bb:cc:00:00:01");
 
   void SetUp() override {
-    AgentHwTest::SetUp();
+    try {
+      AgentHwTest::SetUp();
+    } catch (const PimTypeError& e) {
+      // A dead PIM fails platform init before any PTP code runs. Record it so
+      // the provision test runner can report it as a hardware fault.
+      RecordProperty(
+          "exception_type", folly::demangle(typeid(e)).toStdString());
+      RecordProperty("exception_message", e.what());
+      RecordProperty("exception_pim", e.getPim());
+      RecordProperty(
+          "exception_reason",
+          e.getReason() == PimTypeError::Reason::UNREADABLE ? "UNREADABLE"
+                                                            : "UNRECOGNIZED");
+      throw;
+    }
   }
 
   std::vector<ProductionFeature> getProductionFeaturesVerified()
@@ -196,7 +212,13 @@ class AgentHwPtpTcProvisionTests : public AgentHwTest {
     // expect two PTP packet, one trapped from inject port and one from dst port
     for (int i = 0; i < 2; i++) {
       auto pktBufOpt = snooper.waitForPacket(5);
-      EXPECT_TRUE(pktBufOpt.has_value());
+      if (!pktBufOpt.has_value()) {
+        ADD_FAILURE() << "Only " << i << " of 2 PTP packets trapped for "
+                      << "packet sent from " << getPortName(injectPortID)
+                      << " to " << getPortName(dstPortID);
+        // Already a failure; let the caller move on to the next port pair
+        return 0;
+      }
       auto pktBuf = *pktBufOpt.value().get();
       folly::io::Cursor pktCursor(&pktBuf);
       EXPECT_TRUE(utility::isPtpEventPacket(pktCursor));

@@ -48,6 +48,81 @@ class AgentHwAclStatCounterTypeTest : public AgentHwAclStatTest {
   }
 };
 
+class AgentHwAclStatExtendedLabelTest : public AgentHwAclStatTest {
+ public:
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    auto features = AgentHwAclStatTest::getProductionFeaturesVerified();
+    features.push_back(ProductionFeature::ACL_COUNTERS_EXTENDED_LABEL);
+    return features;
+  }
+
+ protected:
+  void addAclsWithStats(const std::vector<std::string>& statNames) {
+    auto& ensemble = *getAgentEnsemble();
+    auto newCfg = initialConfig(ensemble);
+    for (size_t i = 0; i < statNames.size(); ++i) {
+      auto aclName = "acl" + std::to_string(i);
+      addDscpAcl(&newCfg, aclName);
+      utility::addAclStat(
+          &newCfg,
+          aclName,
+          statNames[i],
+          utility::getAclCounterTypes(ensemble.getHwAsicTable()->getL3Asics()));
+    }
+    applyNewConfig(newCfg);
+  }
+
+  bool isStatProgrammed(const std::string& aclName, const std::string& stat) {
+    auto& ensemble = *getAgentEnsemble();
+    return ensemble.getHwAgentTestClient(SwitchID(0))
+        ->sync_isStatProgrammedInDefaultAclTable(
+            {aclName},
+            {stat},
+            utility::getAclCounterTypes(
+                ensemble.getHwAsicTable()->getL3Asics()));
+  }
+
+  int numAclStats() {
+    utility::AclStatCountInfo statCountInfo;
+    getAgentEnsemble()
+        ->getHwAgentTestClient(SwitchID(0))
+        ->sync_getDefaultAclTableStatCountInfo(statCountInfo);
+    return *statCountInfo.aclStatCount();
+  }
+
+  const std::string kLongStat{std::string(31, 's') + "-stat0"};
+};
+
+TEST_F(AgentHwAclStatExtendedLabelTest, AclStatCreateExtendedLabel) {
+  auto setup = [=, this]() { addAclsWithStats({kLongStat}); };
+  auto verify = [=, this]() {
+    EXPECT_TRUE(isStatProgrammed("acl0", kLongStat));
+  };
+  this->verifyAcrossWarmBoots(setup, verify);
+}
+
+TEST_F(AgentHwAclStatExtendedLabelTest, AclStatCreateSharedExtendedLabel) {
+  auto setup = [=, this]() { addAclsWithStats({kLongStat, kLongStat}); };
+  auto verify = [=, this]() {
+    EXPECT_EQ(numAclStats(), 1);
+    EXPECT_TRUE(isStatProgrammed("acl0", kLongStat));
+    EXPECT_TRUE(isStatProgrammed("acl1", kLongStat));
+  };
+  this->verifyAcrossWarmBoots(setup, verify);
+}
+
+TEST_F(AgentHwAclStatExtendedLabelTest, AclStatExtendedLabelsShareShortPrefix) {
+  auto otherStat = std::string(31, 's') + "-stat1";
+  auto setup = [=, this]() { addAclsWithStats({kLongStat, otherStat}); };
+  auto verify = [=, this]() {
+    EXPECT_EQ(numAclStats(), 2);
+    EXPECT_TRUE(isStatProgrammed("acl0", kLongStat));
+    EXPECT_TRUE(isStatProgrammed("acl1", otherStat));
+  };
+  this->verifyAcrossWarmBoots(setup, verify);
+}
+
 TEST_F(AgentHwAclStatTest, AclStatCreate) {
   auto setup = [=, this]() {
     const auto& ensemble = *getAgentEnsemble();

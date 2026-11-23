@@ -41,6 +41,7 @@
 #include "fboss/agent/AgentDirectoryUtil.h"
 #include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/agent/if/gen-cpp2/ctrl_types.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
 #include "fboss/cli/fboss2/session/ConfigFileManager.h"
 #include "fboss/cli/fboss2/session/FbossServiceUtil.h"
@@ -48,6 +49,7 @@
 #include "fboss/cli/fboss2/utils/CmdClientUtils.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/cli/fboss2/utils/PortMap.h"
+#include "fboss/lib/CommonFileUtils.h"
 
 #ifndef IS_OSS
 #include <configerator/structs/neteng/fboss/bgp/gen-cpp2/bgp_config_types.h>
@@ -83,19 +85,7 @@ std::string getHomeDirectory() {
   if (home == nullptr || std::string(home).empty()) {
     throw std::runtime_error("HOME environment variable not set");
   }
-  return std::string(home);
-}
-
-void ensureDirectoryExists(const std::string& dirPath) {
-  std::error_code ec;
-  fs::create_directories(dirPath, ec);
-  // create_directories returns false if the directory already exists, but
-  // that's not an error. Only throw if there's an actual error code set.
-  if (ec) {
-    throw std::runtime_error(
-        fmt::format(
-            "Failed to create directory {}: {}", dirPath, ec.message()));
-  }
+  return home;
 }
 
 // Maximum number of conflicts to report before truncating with "and more"
@@ -248,8 +238,7 @@ ConfigSession::ConfigSession(SessionInit init) {
   // getConfigDirectory() returns /etc/coop/agent, so we get the parent to get
   // /etc/coop
   AgentDirectoryUtil dirUtil;
-  std::string coopDir =
-      fs::path(dirUtil.getConfigDirectory()).parent_path().string();
+  std::string coopDir = parentDirectoryTree(dirUtil.getConfigDirectory());
 
   sessionConfigDir_ = homeDir + "/.fboss2";
   systemConfigDir_ = coopDir;
@@ -661,7 +650,7 @@ void ConfigSession::saveConfig(
     cli::ServiceType service,
     cli::ConfigActionLevel actionLevel) {
   const auto domain = getConfigDomain(service);
-  ensureDirectoryExists(fs::path(domain.desiredPath).parent_path().string());
+  createDir(parentDirectoryTree(domain.desiredPath));
   fileManagerFor(domain).validateWritable();
 
   // Serialize whichever typed config this service owns and stage it to that
@@ -696,7 +685,7 @@ void ConfigSession::saveConfig(
   }
 
   // May not exist yet if this session was constructed ReadOnly.
-  ensureDirectoryExists(sessionConfigDir_);
+  createDir(sessionConfigDir_);
 
   // Use folly::writeFileAtomic with sync to avoid race conditions when multiple
   // threads/processes write to the same session file. WITH_SYNC ensures data
@@ -844,7 +833,7 @@ void ConfigSession::loadMetadata() {
 void ConfigSession::saveMetadata() {
   std::string metadataPath = getMetadataPath();
   // May not exist yet if this session was constructed ReadOnly.
-  ensureDirectoryExists(sessionConfigDir_);
+  createDir(sessionConfigDir_);
 
   // Build Thrift metadata struct and serialize to JSON with symbolic enum names
   // Using PORTABLE format for human-readable enum names instead of integers
@@ -1003,8 +992,7 @@ void ConfigSession::loadConfig(cli::ServiceType service) {
     }
   } else {
     if (!readOnly_) {
-      ensureDirectoryExists(
-          fs::path(domain.desiredPath).parent_path().string());
+      createDir(parentDirectoryTree(domain.desiredPath));
     }
     const auto manager = fileManagerFor(domain);
     if (!readOnly_) {
@@ -1044,7 +1032,7 @@ void ConfigSession::loadConfig(cli::ServiceType service) {
     if (!readOnly_) {
       ensureDomainBaseline(domain, configJson);
       if (service == cli::ServiceType::AGENT) {
-        ensureDirectoryExists(sessionConfigDir_);
+        createDir(sessionConfigDir_);
         folly::writeFileAtomic(
             domain.sessionPath, configJson, 0644, folly::SyncType::WITH_SYNC);
       }
@@ -1111,7 +1099,7 @@ void ConfigSession::initializeSession(SessionInit init) {
 
     // Create only shared metadata. A service's staged config is materialized
     // when a config command first loads that service.
-    ensureDirectoryExists(sessionConfigDir_);
+    createDir(sessionConfigDir_);
     base_ = git_->getHead();
     saveMetadata();
   }
@@ -1120,7 +1108,7 @@ void ConfigSession::initializeSession(SessionInit init) {
 void ConfigSession::initializeGit() {
   // Initialize Git repository if it doesn't exist
   if (!git_->isRepository()) {
-    ensureDirectoryExists(getCliConfigDir());
+    createDir(getCliConfigDir());
     git_->init();
   }
 
@@ -1129,7 +1117,7 @@ void ConfigSession::initializeGit() {
   // This prevents two concurrent users from both seeing base_="" and silently
   // overwriting each other's commits.
   if (!git_->hasCommits()) {
-    ensureDirectoryExists(getCliConfigDir());
+    createDir(getCliConfigDir());
 
     // Seed an empty metadata file and include it in the initial commit so the
     // baseline shows up in `git log -- cli/cli_metadata.json`. No-arg
@@ -1175,7 +1163,7 @@ void ConfigSession::ensureDomainBaseline(
         "session before editing this service.");
   }
 
-  ensureDirectoryExists(fs::path(domain.desiredPath).parent_path().string());
+  createDir(parentDirectoryTree(domain.desiredPath));
   folly::writeFileAtomic(
       domain.desiredPath, currentContent, 0644, folly::SyncType::WITH_SYNC);
 
@@ -1225,7 +1213,7 @@ ConfigSession::CommitResult ConfigSession::commit(const HostInfo& hostInfo) {
         !fileAtRevisionOrEmpty(git_->getHead(), domain.gitRelPath).empty()) {
       continue;
     }
-    ensureDirectoryExists(fs::path(domain.desiredPath).parent_path().string());
+    createDir(parentDirectoryTree(domain.desiredPath));
     const auto manager = fileManagerFor(domain);
     manager.validateWritable();
     std::string currentContent;
@@ -1259,7 +1247,7 @@ ConfigSession::CommitResult ConfigSession::commit(const HostInfo& hostInfo) {
             Git::shortSha1(currentHead)));
   }
 
-  ensureDirectoryExists(getCliConfigDir());
+  createDir(getCliConfigDir());
 
   // Per-domain staged/changed analysis, applied uniformly to agent and BGP.
   // A domain is "staged" when a session edit exists; it is "pending" (needs
@@ -1285,7 +1273,7 @@ ConfigSession::CommitResult ConfigSession::commit(const HostInfo& hostInfo) {
       continue;
     }
     stagedDomains.push_back(domain);
-    ensureDirectoryExists(fs::path(domain.desiredPath).parent_path().string());
+    createDir(parentDirectoryTree(domain.desiredPath));
     auto manager = fileManagerFor(domain);
     manager.validateWritable();
     auto snapshot = manager.capture();
@@ -1565,7 +1553,7 @@ std::string ConfigSession::rollback(const HostInfo& hostInfo) {
 std::string ConfigSession::rollback(
     const HostInfo& hostInfo,
     const std::string& commitSha) {
-  ensureDirectoryExists(getCliConfigDir());
+  createDir(getCliConfigDir());
 
   // Resolve the commit SHA (in case it's a short SHA or ref)
   std::string resolvedSha = git_->resolveRef(commitSha);
@@ -1609,7 +1597,7 @@ std::string ConfigSession::rollback(
       continue;
     }
 
-    ensureDirectoryExists(fs::path(domain.desiredPath).parent_path().string());
+    createDir(parentDirectoryTree(domain.desiredPath));
     auto manager = fileManagerFor(domain);
     auto snapshot = manager.capture();
     manager.validateWritable();
@@ -1698,13 +1686,7 @@ std::string ConfigSession::rollback(
         folly::writeFileAtomic(
             metadataPath, oldMetadataData, 0644, folly::SyncType::WITH_SYNC);
       } else {
-        std::error_code error;
-        fs::remove(metadataPath, error);
-        if (error) {
-          throw std::runtime_error(
-              fmt::format(
-                  "Failed to remove {}: {}", metadataPath, error.message()));
-        }
+        removeFile(metadataPath);
       }
     } catch (const std::exception& restoreEx) {
       restoreErrors.emplace_back(restoreEx.what());

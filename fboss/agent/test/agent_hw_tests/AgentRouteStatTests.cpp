@@ -341,7 +341,10 @@ class AgentRouteStatExtendedLabelTest : public AgentRouteStatTest {
  protected:
   std::vector<ProductionFeature> getProductionFeaturesVerified()
       const override {
-    return {ProductionFeature::ROUTE_COUNTERS, ProductionFeature::SRV6_ENCAP};
+    return {
+        ProductionFeature::ROUTE_COUNTERS,
+        ProductionFeature::SRV6_ENCAP,
+        ProductionFeature::ROUTE_COUNTERS_EXTENDED_LABEL};
   }
 
   void setCmdLineFlagOverrides() const override {

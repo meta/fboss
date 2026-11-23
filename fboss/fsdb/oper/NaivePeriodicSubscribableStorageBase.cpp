@@ -108,6 +108,37 @@ NaivePeriodicSubscribableStorageBase::NaivePeriodicSubscribableStorageBase(
   fb303::ThreadCachedServiceData::get()->addStatExportType(
       serveSubNum_, fb303::SUM);
 
+  {
+    const auto numBuckets = serveBucketCount(
+        static_cast<uint32_t>(params_.serveTickInterval_.count()),
+        static_cast<uint32_t>(params_.subscriptionServeInterval_.count()));
+    if (numBuckets > 1 && params_.exportPerBucketServeMetrics_) {
+      const auto tickMs = params_.serveTickInterval_.count();
+      for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
+        // Keyed by cadence, not bucket index: the index means a different
+        // interval under a different tick, so a tick change would silently
+        // repoint an existing ODS series instead of starting a new one.
+        const auto cadenceMs = tickMs * static_cast<int64_t>(bucket + 1);
+        serveSubMsByBucket_.push_back(
+            fmt::format("{}.interval_{}ms", serveSubMs_, cadenceMs));
+        serveSubNumByBucket_.push_back(
+            fmt::format("{}.interval_{}ms", serveSubNum_, cadenceMs));
+        // addHistogram takes a bin width, not a count: a fixed width would give
+        // the slowest bucket 50x the bins of the fastest.
+        const int64_t maxMs = std::max<int64_t>(2 * cadenceMs, 1000);
+        fb303::ThreadCachedServiceData::get()->addHistogram(
+            serveSubMsByBucket_.back(),
+            std::max<int64_t>(maxMs / kServeHistogramBins, 1),
+            0,
+            maxMs);
+        fb303::ThreadCachedServiceData::get()->exportHistogram(
+            serveSubMsByBucket_.back(), 50, 95, 99);
+        fb303::ThreadCachedServiceData::get()->addStatExportType(
+            serveSubNumByBucket_.back(), fb303::SUM);
+      }
+    }
+  }
+
   if (FLAGS_serveHeartbeats) {
     heartbeatThread_ = std::make_unique<folly::ScopedEventBaseThread>(
         "SubscriptionHeartbeats");
@@ -317,16 +348,7 @@ void exportSubscriberStats(
       fb303::AVG);
 }
 
-void NaivePeriodicSubscribableStorageBase::exportServeMetrics(
-    std::chrono::steady_clock::time_point serveStartTime,
-    SubscriptionMetadataServer& metadata,
-    std::map<std::string, uint64_t>& lastServedPublisherRootUpdates,
-    std::chrono::milliseconds loopInterval) {
-  auto currentTimestamp =
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::system_clock::now().time_since_epoch())
-          .count();
-
+void NaivePeriodicSubscribableStorageBase::exportTickMetrics() {
   int64_t memUsage = getMemoryUsage(); // RSS
   fb303::ThreadCachedServiceData::get()->addStatValue(
       rss_, memUsage, fb303::AVG);
@@ -340,22 +362,50 @@ void NaivePeriodicSubscribableStorageBase::exportServeMetrics(
   fb303::ThreadCachedServiceData::get()->addStatValue(
       nPathStoreAllocs_, numPathStoreAllocs(), fb303::AVG);
 
+  if (params_.exportPerSubscriberMetrics_) {
+    std::map<FsdbClient, SubscriberStats> stats = subMgr().getSubscriberStats();
+    for (const auto& [key, stat] : stats) {
+      initExportedSubscriberStats(key);
+      exportSubscriberStats(subscriberPrefix_, key, stat);
+    }
+  }
+}
+
+void NaivePeriodicSubscribableStorageBase::exportServeMetrics(
+    std::chrono::steady_clock::time_point serveStartTime,
+    SubscriptionMetadataServer& metadata,
+    std::map<std::string, uint64_t>& lastServedPublisherRootUpdates,
+    std::chrono::milliseconds bucketInterval,
+    size_t bucket) {
+  auto currentTimestamp =
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::system_clock::now().time_since_epoch())
+          .count();
+
   auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - serveStartTime);
   if (elapsed.count() > 0) {
     // ignore idle cycles, only count busy ones
     fb303::ThreadCachedServiceData::get()->addHistogramValue(
         serveSubMs_, elapsed.count());
+    if (bucket < serveSubMsByBucket_.size()) {
+      fb303::ThreadCachedServiceData::get()->addHistogramValue(
+          serveSubMsByBucket_[bucket], elapsed.count());
+    }
   }
   // Surface slow serve cycles (>2x interval) for OSS vendors without fb303/ODS.
-  auto intervalMs = loopInterval.count();
+  auto intervalMs = bucketInterval.count();
   if (intervalMs > 0 && elapsed.count() > 2 * intervalMs) {
     XLOG_EVERY_MS(WARN, 5000)
         << "FSDB[" << metricPrefixOwned_ << "] slow serve: " << elapsed.count()
-        << "ms (interval=" << intervalMs << "ms)";
+        << "ms (bucket=" << bucket << " interval=" << intervalMs << "ms)";
   }
   fb303::ThreadCachedServiceData::get()->addStatValue(
       serveSubNum_, 1, fb303::SUM);
+  if (bucket < serveSubNumByBucket_.size()) {
+    fb303::ThreadCachedServiceData::get()->addStatValue(
+        serveSubNumByBucket_[bucket], 1, fb303::SUM);
+  }
 
   // for each publisher root that had updates served in this iteration,
   // export publish/serve times for last processed update
@@ -390,14 +440,6 @@ void NaivePeriodicSubscribableStorageBase::exportServeMetrics(
           fmt::format("{}.{}", publishTimePrefix_, it->second), publishTime);
       fb303::ThreadCachedServiceData::get()->addHistogramValue(
           fmt::format("{}.{}", subscribeTimePrefix_, it->second), serveTime);
-    }
-  }
-
-  if (params_.exportPerSubscriberMetrics_) {
-    std::map<FsdbClient, SubscriberStats> stats = subMgr().getSubscriberStats();
-    for (const auto& [key, stat] : stats) {
-      initExportedSubscriberStats(key);
-      exportSubscriberStats(subscriberPrefix_, key, stat);
     }
   }
 }

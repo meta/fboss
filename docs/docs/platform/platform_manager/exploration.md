@@ -26,7 +26,7 @@ on the platform based on the configuration file.
 
 ## Exploration Status and Errors
 
-Exploration status and errors can be found in [platform_manager_service.thrift](https://github.com/facebook/fboss/blob/main/fboss/platform/platform_manager/platform_manager_service.thrift) under `ExplorationStatus` and `ExplorationError`.
+Exploration status and errors can be found in [platform_manager_service.thrift](https://github.com/meta/fboss/blob/main/fboss/platform/platform_manager/platform_manager_service.thrift) under `ExplorationStatus` and `ExplorationError`.
 
 
 ## Querying Exploration Results

@@ -3,9 +3,10 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   thriftpath_test_cpp2
   fboss/fsdb/tests/thriftpath_test.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -24,7 +25,7 @@ target_link_libraries(fsdb_test_server
   fsdb_handler
   fsdb_oper_cpp2
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   thrift_service_utils
 )
 
@@ -46,7 +47,7 @@ target_link_libraries(fsdb_utils_benchmark
   fsdb_utils
   Folly::folly
   Folly::follybenchmark
-  FBThrift::thriftcpp2
+  thrift::rpc
   ${GTEST}
   ${LIBGMOCK}
   ${GFLAGS}
@@ -66,8 +67,8 @@ target_link_libraries(fsdb_test_clients
   fsdb_model
   common_utils
   Folly::folly
-  FBThrift::thriftcpp2
-  FBThrift::thriftprotocol
+  thrift::rpc
+  thrift::protocol
   ${GTEST}
 )
 
@@ -90,7 +91,7 @@ target_link_libraries(fsdb_pub_sub_tests
   common_utils
   thrift_service_client
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   ${GTEST}
   ${LIBGMOCK_LIBRARIES}
 )

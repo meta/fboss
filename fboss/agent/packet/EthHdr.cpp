@@ -39,6 +39,16 @@ EthHdr::EthHdr(Cursor& cursor) {
       etherType =
           (static_cast<uint16_t>(buf[2]) << 8) | static_cast<uint16_t>(buf[3]);
     }
+    // Look for a CSIG tag, after any VLAN tags.
+    if (etherType == static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_CSIG)) {
+      cursor.pull(buf, 4);
+      csigTag = CsigTag(
+          static_cast<uint16_t>(
+              (static_cast<uint16_t>(buf[0]) << 8) |
+              static_cast<uint16_t>(buf[1])));
+      etherType =
+          (static_cast<uint16_t>(buf[2]) << 8) | static_cast<uint16_t>(buf[3]);
+    }
   } catch (const std::out_of_range&) {
     throw HdrParseError("Ethernet header too small");
   }
@@ -59,6 +69,14 @@ string VlanTag::toString() const {
   return ss.str();
 }
 
+string CsigTag::toString() const {
+  stringstream ss;
+  ss << " signal type: " << static_cast<int>(signalType())
+     << " signal: " << std::hex << "0x" << static_cast<int>(signal())
+     << " link locator: 0x" << static_cast<int>(linkLocator());
+  return ss.str();
+}
+
 string EthHdr::toString() const {
   stringstream ss;
   ss << " Source : " << getSrcMac().toString()
@@ -69,6 +87,9 @@ string EthHdr::toString() const {
     ss << folly::to<std::string>("{", vlanTag, "} ");
   }
   ss << "}";
+  if (csigTag) {
+    ss << " CsigTag: {" << csigTag->toString() << "}";
+  }
   return ss.str();
 }
 

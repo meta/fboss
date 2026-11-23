@@ -19,6 +19,8 @@ namespace facebook::fboss {
 // CLI: `config srv6 my-sid <prefix> entry <fn> type adjacency|node|decap ...`
 // Upserts one MySID function entry under the configured locator prefix.
 struct CmdConfigSrv6MySidEntryTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigSrv6MySid;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     cmd.add_option(

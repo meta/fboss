@@ -9,17 +9,72 @@
  */
 
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
+#include <fmt/format.h>
 #include <folly/Conv.h>
 #include <folly/String.h>
+#include <cctype>
+#include <cstddef>
+#include <cstdint>
+#include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/PortMap.h"
 
 namespace facebook::fboss::utils {
+
+namespace {
+
+constexpr std::string_view kLoopbackPrefix = "loopback";
+
+// Resolves a loopback token against the conventional layout: an interface
+// named "fbossLoopback<N>" (Meta-style configs), else the virtual interface
+// at intfID kLoopbackIntfIdBase + N (bootstrap configs leave it unnamed).
+// The literal name "loopback<N>" is covered by the caller's ordinary
+// name lookup before this runs.
+cfg::Interface* findLoopbackInterface(const PortMap& portMap, int32_t index) {
+  if (cfg::Interface* named =
+          portMap.getInterfaceByName(loopbackVlanName(index))) {
+    return named;
+  }
+  cfg::Interface* byId =
+      portMap.getInterface(InterfaceID(kLoopbackIntfIdBase + index));
+  if (byId != nullptr && *byId->isVirtual()) {
+    return byId;
+  }
+  return nullptr;
+}
+
+} // namespace
+
+std::optional<int32_t> parseLoopbackIndex(const std::string& name) {
+  if (name.size() <= kLoopbackPrefix.size() ||
+      name.size() > kLoopbackPrefix.size() + 2) {
+    return std::nullopt;
+  }
+  for (size_t i = 0; i < kLoopbackPrefix.size(); ++i) {
+    if (std::tolower(static_cast<unsigned char>(name[i])) !=
+        kLoopbackPrefix[i]) {
+      return std::nullopt;
+    }
+  }
+  const std::string digits = name.substr(kLoopbackPrefix.size());
+  auto parsed = folly::tryTo<int32_t>(digits);
+  if (!parsed.hasValue() || parsed.value() < 0 ||
+      parsed.value() > kMaxLoopbackIndex) {
+    return std::nullopt;
+  }
+  return parsed.value();
+}
+
+std::string loopbackVlanName(int32_t index) {
+  return fmt::format("fbossLoopback{}", index);
+}
 
 InterfaceList::InterfaceList(std::vector<std::string> names, bool allowMissing)
     : names_(std::move(names)) {
@@ -46,13 +101,19 @@ InterfaceList::InterfaceList(std::vector<std::string> names, bool allowMissing)
       }
     } else {
       // If not found as a port, try as an interface name, then as an
-      // interface ID.
+      // interface ID, then as a loopback token against the conventional
+      // loopback layout.
       cfg::Interface* interface = portMap.getInterfaceByName(name);
       if (!interface) {
         // A purely-numeric name may be an interface ID.
         auto parsedInterfaceId = folly::tryTo<int32_t>(name);
         if (parsedInterfaceId.hasValue() && *parsedInterfaceId >= 0) {
           interface = portMap.getInterface(InterfaceID(*parsedInterfaceId));
+        }
+      }
+      if (!interface) {
+        if (auto loopbackIndex = parseLoopbackIndex(name)) {
+          interface = findLoopbackInterface(portMap, *loopbackIndex);
         }
       }
       if (interface) {

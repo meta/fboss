@@ -311,6 +311,41 @@ TEST(SwitchSettingsTest, applyL2AgeTimerSeconds) {
   EXPECT_EQ(l2AgeTimerSeconds, switchSettingsV1->getL2AgeTimerSeconds());
 }
 
+TEST(SwitchSettingsTest, applyMaxL2EntriesPerPort) {
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  addSwitchInfo(stateV0, cfg::SwitchType::NPU, kNpuSwitchIdBegin /* switchId*/);
+
+  cfg::SwitchConfig config;
+  config.switchSettings()->maxL2EntriesPerPort() = 100;
+  auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+  EXPECT_EQ(
+      std::optional<int32_t>(100),
+      utility::getFirstNodeIf(stateV1->getSwitchSettings())
+          ->getMaxL2EntriesPerPort());
+
+  config.switchSettings()->maxL2EntriesPerPort() = 200;
+  auto stateV2 = publishAndApplyConfig(stateV1, &config, platform.get());
+  ASSERT_NE(nullptr, stateV2);
+  EXPECT_EQ(
+      std::optional<int32_t>(200),
+      utility::getFirstNodeIf(stateV2->getSwitchSettings())
+          ->getMaxL2EntriesPerPort());
+
+  config.switchSettings()->maxL2EntriesPerPort().reset();
+  auto stateV3 = publishAndApplyConfig(stateV2, &config, platform.get());
+  ASSERT_NE(nullptr, stateV3);
+  EXPECT_FALSE(
+      utility::getFirstNodeIf(stateV3->getSwitchSettings())
+          ->getMaxL2EntriesPerPort()
+          .has_value());
+
+  config.switchSettings()->maxL2EntriesPerPort() = -1;
+  EXPECT_THROW(
+      publishAndApplyConfig(stateV3, &config, platform.get()), FbossError);
+}
+
 TEST(SwitchSettingsTest, applyMacAddrsToBlock) {
   auto platform = createMockPlatform();
   auto stateV0 = make_shared<SwitchState>();
@@ -965,14 +1000,14 @@ TEST(SwitchSettingsTest, applyDefaultVoqConfig) {
         if (!voqConfig->getAqms() || voqConfig->getAqms()->empty()) {
           continue;
         }
-        for (const auto& aqm : std::as_const(*voqConfig->getAqms())) {
-          auto thresholds = aqm->cref<switch_config_tags::detection>()
-                                ->cref<switch_config_tags::linear>()
-                                ->toThrift();
-          EXPECT_EQ(*thresholds.minimumLength(), minLength);
-          EXPECT_EQ(*thresholds.maximumLength(), maxLength);
-          return;
-        }
+        const auto& aqms = std::as_const(*voqConfig->getAqms());
+        const auto& aqm = *aqms.begin();
+        auto thresholds = aqm->cref<switch_config_tags::detection>()
+                              ->cref<switch_config_tags::linear>()
+                              ->toThrift();
+        EXPECT_EQ(*thresholds.minimumLength(), minLength);
+        EXPECT_EQ(*thresholds.maximumLength(), maxLength);
+        return;
       }
     }
     throw FbossError("Could not find queueId ", kEcnQueueId, " in config!");
@@ -1028,6 +1063,17 @@ TEST(SwitchSettingsTest, ecmpWidthGetterSetterRoundTrip) {
 
   settings->setEcmpWidth(std::nullopt);
   EXPECT_FALSE(settings->getEcmpWidth().has_value());
+}
+
+TEST(SwitchSettingsTest, maxL2EntriesPerPortGetterSetterRoundTrip) {
+  auto settings = make_shared<SwitchSettings>();
+  EXPECT_FALSE(settings->getMaxL2EntriesPerPort().has_value());
+
+  settings->setMaxL2EntriesPerPort(100);
+  EXPECT_EQ(std::optional<int32_t>(100), settings->getMaxL2EntriesPerPort());
+
+  settings->setMaxL2EntriesPerPort(std::nullopt);
+  EXPECT_FALSE(settings->getMaxL2EntriesPerPort().has_value());
 }
 
 TEST(SwitchSettingsTest, applyEcmpWidthFromGflag) {

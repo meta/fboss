@@ -12,6 +12,11 @@
 
 #include <folly/logging/xlog.h>
 
+#include <mutex>
+#include <stdexcept>
+#include <thread>
+
+#include "fboss/agent/FbossEventBase.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/TxPacket.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
@@ -121,4 +126,60 @@ TEST(TunInterfacesTest, StopProcessingSynchronizesWithEventBase) {
   sw->gracefulExit();
 
   EXPECT_TRUE(sw->isExiting());
+}
+
+namespace {
+class TunManagerProbeTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    platform_ = createMockPlatform();
+    sw_ = setupMockSwitchWithoutHW(
+        platform_.get(), nullptr, SwitchFlags::DEFAULT);
+    evbThread_ = std::thread([this] { evb_.loopForever(); });
+    evb_.waitUntilRunning();
+    tunMgr_ = std::make_unique<MockTunManager>(sw_.get(), &evb_);
+  }
+
+  void TearDown() override {
+    if (tunMgr_) {
+      tunMgr_->stopProcessing();
+      tunMgr_.reset();
+    }
+    evb_.terminateLoopSoon();
+    if (evbThread_.joinable()) {
+      evbThread_.join();
+    }
+  }
+
+  std::unique_ptr<MockPlatform> platform_;
+  std::unique_ptr<SwSwitch> sw_;
+  FbossEventBase evb_{"TunManagerProbeTest"};
+  std::thread evbThread_;
+  std::unique_ptr<MockTunManager> tunMgr_;
+};
+} // namespace
+
+/*
+ * probe() registers TunIntf read handlers on the TunManager EventBase. When
+ * it is called from another thread while that EventBase is looping (the
+ * agent init and config-applied paths), it must run there rather than on the
+ * calling thread.
+ */
+TEST_F(TunManagerProbeTest, ProbeRunsOnEventBaseThread) {
+  bool probedOnEventBaseThread = false;
+  EXPECT_CALL(*tunMgr_, doProbe(_))
+      .WillOnce([&](std::lock_guard<std::mutex>& /* lock */) {
+        probedOnEventBaseThread = evb_.inRunningEventBaseThread();
+      });
+
+  tunMgr_->probe();
+
+  EXPECT_TRUE(probedOnEventBaseThread);
+}
+
+TEST_F(TunManagerProbeTest, ProbeErrorReachesCaller) {
+  EXPECT_CALL(*tunMgr_, doProbe(_))
+      .WillOnce(::testing::Throw(std::runtime_error("probe failed")));
+
+  EXPECT_THROW(tunMgr_->probe(), std::runtime_error);
 }

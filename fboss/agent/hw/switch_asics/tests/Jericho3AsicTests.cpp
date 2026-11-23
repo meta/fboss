@@ -34,6 +34,32 @@ class Jericho3AsicTest : public ::testing::Test {
   std::unique_ptr<Jericho3Asic> asic_;
 };
 
+TEST_F(Jericho3AsicTest, cgmErrorsRequireSaiSdk12_2) {
+  cfg::SwitchInfo switchInfo;
+  switchInfo.switchType() = cfg::SwitchType::VOQ;
+  switchInfo.switchMac() = "02:00:00:00:0F:0B";
+  switchInfo.switchIndex() = 0;
+  const std::vector<std::pair<std::string, bool>> cases{
+      {"11.7.0.0_dnx_odp", false},
+      {"12.0.0.0_dnx_odp", false},
+      {"12.2.0.0_dnx_odp", true},
+      {"14.2.0.0_dnx_odp", true},
+      {"16.0_ea_dnx_odp", true},
+      {"sai", false}};
+  for (const auto& [version, expected] : cases) {
+    cfg::SdkVersion sdkVersion;
+    sdkVersion.saiSdk() = version;
+    Jericho3Asic asic(0, switchInfo, sdkVersion);
+    EXPECT_EQ(
+        asic.isSupported(
+            HwAsic::Feature::VENDOR_SWITCH_CONGESTION_MANAGEMENT_ERRORS),
+        expected)
+        << version;
+  }
+  EXPECT_FALSE(asic_->isSupported(
+      HwAsic::Feature::VENDOR_SWITCH_CONGESTION_MANAGEMENT_ERRORS));
+}
+
 // The group cap must never let the member table be oversubscribed:
 // groups * ecmp_width <= getMaxEcmpMembers(). Hyperport EDSW runs 2K wide
 // without 3q2q mode set, so a stage-keyed cap hands it 64 groups against a

@@ -1,10 +1,14 @@
 // Copyright 2004-present Facebook. All Rights Reserved.
 
 #include "fboss/util/test/QsfpUtilTest.h"
+#include <folly/FileUtil.h>
 #include <folly/Singleton.h>
 #include <folly/logging/xlog.h>
+#include <folly/testing/TestUtil.h>
+#include <gflags/gflags.h>
 #include <fstream>
 #include "common/init/Init.h"
+#include "fboss/lib/platforms/PlatformDescriptor.h"
 #include "fboss/util/wedge_qsfp_util.h"
 
 using namespace facebook::fboss;
@@ -151,6 +155,54 @@ TEST_F(QsfpUtilTest, CheckProcessName) {
     }
   }
   ASSERT_EQ(foundProcess, true);
+}
+
+namespace {
+void useQsfpConfig(const std::string& path) {
+  gflags::SetCommandLineOption("qsfp_config", path.c_str());
+  gflags::SetCommandLineOption("qsfp_config_current", path.c_str());
+}
+} // namespace
+
+TEST_F(QsfpUtilTest, PlatformDescriptorPathFromQsfpConfig) {
+  gflags::FlagSaver saver;
+  folly::test::TemporaryFile config;
+  folly::writeFile(
+      std::string(
+          R"({"defaultCommandLineArgs": {"platform_descriptor_config_path": "/qsfp/descriptors/"}})"),
+      config.path().c_str());
+  useQsfpConfig(config.path().string());
+  FLAGS_platform_descriptor_config_path = "";
+
+  initPlatformDescriptorPathFromQsfpConfig();
+
+  EXPECT_EQ(FLAGS_platform_descriptor_config_path, "/qsfp/descriptors/");
+}
+
+TEST_F(QsfpUtilTest, PlatformDescriptorPathFlagWinsOverQsfpConfig) {
+  gflags::FlagSaver saver;
+  folly::test::TemporaryFile config;
+  folly::writeFile(
+      std::string(
+          R"({"defaultCommandLineArgs": {"platform_descriptor_config_path": "/qsfp/descriptors/"}})"),
+      config.path().c_str());
+  useQsfpConfig(config.path().string());
+  FLAGS_platform_descriptor_config_path = "/explicit/";
+
+  initPlatformDescriptorPathFromQsfpConfig();
+
+  EXPECT_EQ(FLAGS_platform_descriptor_config_path, "/explicit/");
+}
+
+TEST_F(QsfpUtilTest, PlatformDescriptorPathWithoutQsfpConfig) {
+  gflags::FlagSaver saver;
+  folly::test::TemporaryDirectory dir;
+  useQsfpConfig((dir.path() / "missing.conf").string());
+  FLAGS_platform_descriptor_config_path = "";
+
+  initPlatformDescriptorPathFromQsfpConfig();
+
+  EXPECT_EQ(FLAGS_platform_descriptor_config_path, "");
 }
 
 } // namespace fboss

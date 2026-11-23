@@ -205,6 +205,34 @@ TEST(MPLSHdrTest, decapsulateV4MplsPacket) {
   EXPECT_TRUE(folly::IOBufEqualTo()(ioBuf, expectedIOBuf));
 }
 
+TEST(MPLSHdrTest, decapsulateCsigMplsPacket) {
+  auto ioBuf = PktUtil::parseHexData(
+      // dst mac, src mac vlan-type
+      "a4 4c 11 b7 c4 01 02 90 fb 55 a8 71 81 00"
+      // vlan tag, csig tag and mpls
+      "0f a7 99 00 ab c2 88 47"
+      // label
+      "00 06 71 5f"
+      // ip header
+      "45 00 00 54 20 a2 40 00 5f 01 b6 a2 0a 2e 18 05"
+      "0a 2e 18 04");
+
+  auto ethType = utility::decapsulateMplsPacket(&ioBuf);
+  EXPECT_EQ(ethType.value(), ETHERTYPE::ETHERTYPE_IPV4);
+
+  // label popped, csig tag kept, ether type fixed to v4
+  auto expectedIOBuf = PktUtil::parseHexData(
+      // dst mac, src mac vlan-type
+      "a4 4c 11 b7 c4 01 02 90 fb 55 a8 71 81 00"
+      // vlan tag, csig tag and v4
+      "0f a7 99 00 ab c2 08 00"
+      // ip header
+      "45 00 00 54 20 a2 40 00 5f 01 b6 a2 0a 2e 18 05"
+      "0a 2e 18 04");
+
+  EXPECT_TRUE(folly::IOBufEqualTo()(ioBuf, expectedIOBuf));
+}
+
 TEST(MPLSHdrTest, decrementTTL) {
   MPLSHdr hdr{MPLSHdr::Label{103, 4, true, 79}};
   EXPECT_EQ(MPLSHdr::Label::kSizeBytes, hdr.size());

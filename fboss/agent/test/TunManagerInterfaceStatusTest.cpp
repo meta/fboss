@@ -13,20 +13,27 @@
  * @brief Friend declarations granting these tests access to
  * TunManager::getInterfaceStatus, which is private.
  */
-#define TUNMANAGER_INTERFACE_STATUS_FRIEND_TESTS                           \
-  friend class TunManagerInterfaceStatusTest;                              \
-  FRIEND_TEST(TunManagerInterfaceStatusTest, PortInterface);               \
-  FRIEND_TEST(TunManagerInterfaceStatusTest, AggregateUpWhenMinLinksMet);  \
-  FRIEND_TEST(                                                             \
-      TunManagerInterfaceStatusTest, AggregateUpWithOneMemberForwarding);  \
-  FRIEND_TEST(                                                             \
-      TunManagerInterfaceStatusTest, AggregateDownWhenNoMemberForwarding); \
-  FRIEND_TEST(TunManagerInterfaceStatusTest, AggregateDownWhenBelowMinLinks);
+#define TUNMANAGER_INTERFACE_STATUS_FRIEND_TESTS                              \
+  friend class TunManagerInterfaceStatusTest;                                 \
+  FRIEND_TEST(TunManagerInterfaceStatusTest, PortInterface);                  \
+  FRIEND_TEST(TunManagerInterfaceStatusTest, AggregateUpWhenMinLinksMet);     \
+  FRIEND_TEST(                                                                \
+      TunManagerInterfaceStatusTest, AggregateUpWithOneMemberForwarding);     \
+  FRIEND_TEST(                                                                \
+      TunManagerInterfaceStatusTest, AggregateDownWhenNoMemberForwarding);    \
+  FRIEND_TEST(TunManagerInterfaceStatusTest, AggregateDownWhenBelowMinLinks); \
+  FRIEND_TEST(TunManagerInterfaceStatusTest, PlaceholderVlanZeroIsInert);
 
+#include <folly/ScopeGuard.h>
+#include <folly/logging/LoggerDB.h>
+#include <folly/logging/test/TestLogHandler.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
 #include <optional>
+#include <string>
+#include <vector>
 
 #include "fboss/agent/TunManager.h"
 #include "fboss/agent/state/AggregatePort.h"
@@ -81,6 +88,32 @@ class TunManagerInterfaceStatusTest : public ::testing::Test {
     return it != status.end() && it->second;
   }
 
+  std::shared_ptr<SwitchState> withMemberPortInMissingVlan(
+      const std::shared_ptr<SwitchState>& state,
+      VlanID vlanID) {
+    EXPECT_EQ(state->getVlans()->getNodeIf(vlanID), nullptr);
+    auto newState = state->clone();
+    auto port =
+        newState->getPorts()->getNodeIf(memberPorts_[0])->modify(&newState);
+    port->addVlan(vlanID, false, false);
+    EXPECT_NE(port->getVlans().find(vlanID), port->getVlans().end());
+    return newState;
+  }
+
+  std::vector<std::string> interfaceStatusErrors(
+      const std::shared_ptr<SwitchState>& state) {
+    auto handler = std::make_shared<folly::TestLogHandler>();
+    auto* category =
+        folly::LoggerDB::get().getCategory("fboss.agent.TunManager");
+    const auto previousHandlers = category->getHandlers();
+    category->addHandler(handler);
+    SCOPE_EXIT {
+      category->replaceHandlers(previousHandlers);
+    };
+    TunManager::getInterfaceStatus(state);
+    return handler->getMessageValues();
+  }
+
   SwSwitch* sw_{nullptr};
   std::unique_ptr<HwTestHandle> handle_{nullptr};
   std::vector<PortID> memberPorts_;
@@ -121,6 +154,25 @@ TEST_F(TunManagerInterfaceStatusTest, AggregateUpWithOneMemberForwarding) {
 
 TEST_F(TunManagerInterfaceStatusTest, AggregateDownWhenNoMemberForwarding) {
   EXPECT_FALSE(aggregateInterfaceUp(withForwarding({})));
+}
+
+TEST_F(TunManagerInterfaceStatusTest, PlaceholderVlanZeroIsInert) {
+  auto state = bringAllPortsUp(sw_->getState());
+  auto newState = withMemberPortInMissingVlan(state, VlanID(0));
+
+  EXPECT_THAT(interfaceStatusErrors(newState), ::testing::IsEmpty());
+  EXPECT_EQ(
+      TunManager::getInterfaceStatus(state),
+      TunManager::getInterfaceStatus(newState));
+}
+
+TEST_F(TunManagerInterfaceStatusTest, MissingNonzeroVlanStillLogged) {
+  auto state = bringAllPortsUp(sw_->getState());
+  auto newState = withMemberPortInMissingVlan(state, VlanID(4000));
+
+  EXPECT_THAT(
+      interfaceStatusErrors(newState),
+      ::testing::ElementsAre(::testing::HasSubstr("Vlan 4000")));
 }
 
 TEST_F(TunManagerInterfaceStatusTest, AggregateDownWhenBelowMinLinks) {

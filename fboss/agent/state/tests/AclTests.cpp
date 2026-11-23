@@ -1714,6 +1714,190 @@ TEST(Acl, DstIpV6WordValidation) {
     config.acls()[0].dstIpV6Word3() = 0x12345678;
     EXPECT_THROW(applyConfig(&config), FbossError);
   }
+
+  {
+    auto config = makeConfig();
+    config.acls()[0].dstIpV6Word3() = 0xFFFFFFFF;
+    auto acl = applyConfig(&config)->getAcl("acl0");
+    ASSERT_NE(nullptr, acl);
+    EXPECT_EQ(acl->getDstIpV6Word3(), 0xFFFFFFFF);
+  }
+
+  for (int64_t word : {int64_t{-1}, int64_t{0x100000000}}) {
+    auto config = makeConfig();
+    config.acls()[0].dstIpV6Word3() = word;
+    EXPECT_THROW(applyConfig(&config), FbossError);
+
+    config = makeConfig();
+    config.acls()[0].dstIpV6Word2() = word;
+    EXPECT_THROW(applyConfig(&config), FbossError);
+  }
+}
+
+TEST(Acl, DstIpWithMaskValidation) {
+  FLAGS_enable_acl_table_group = false;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  registerPort(stateV0, PortID(1), "port1", scope());
+
+  auto makeConfig = [](const std::string& ip, const std::string& mask) {
+    cfg::SwitchConfig config;
+    config.ports()->resize(1);
+    preparedMockPortConfig(config.ports()[0], 1);
+    config.acls()->resize(1);
+    config.acls()[0].name() = "acl0";
+    config.acls()[0].actionType() = cfg::AclActionType::DENY;
+    cfg::AclIpMatch match;
+    match.ip() = ip;
+    match.mask() = mask;
+    config.acls()[0].dstIpWithMask() = match;
+    return config;
+  };
+
+  auto applyConfig = [&](cfg::SwitchConfig* config) {
+    return publishAndApplyConfig(stateV0, config, platform.get());
+  };
+
+  auto expectValid = [&](const std::string& ip,
+                         const std::string& mask,
+                         cfg::AclTableQualifier qualifier) {
+    SCOPED_TRACE(ip + " " + mask);
+    auto config = makeConfig(ip, mask);
+    auto stateV1 = applyConfig(&config);
+    auto acl = stateV1->getAcl("acl0");
+    ASSERT_NE(nullptr, acl);
+    auto expected =
+        std::make_pair(folly::IPAddress(ip), folly::IPAddress(mask));
+    EXPECT_EQ(acl->getDstIpWithMask(), expected);
+    EXPECT_FALSE(acl->getDstIp().first);
+    EXPECT_TRUE(acl->hasMatcher());
+    EXPECT_EQ(
+        acl->getRequiredAclTableQualifiers(),
+        std::set<cfg::AclTableQualifier>{qualifier});
+  };
+
+  // Non-contiguous masks are valid.
+  expectValid(
+      "::4a1c:1230:0:0", "::efff:fffc:0:0", cfg::AclTableQualifier::DST_IPV6);
+  expectValid("10.32.5.0", "255.240.15.0", cfg::AclTableQualifier::DST_IPV4);
+
+  auto expectInvalid = [&](cfg::SwitchConfig config) {
+    EXPECT_THROW(applyConfig(&config), FbossError);
+  };
+
+  // ip sets bits outside mask.
+  expectInvalid(makeConfig("::5a1c:1230:0:0", "::efff:fffc:0:0"));
+  expectInvalid(makeConfig("10.32.5.1", "255.240.15.0"));
+  // Address family mismatch.
+  expectInvalid(makeConfig("10.32.5.0", "::efff:fffc:0:0"));
+  // Zero mask.
+  expectInvalid(makeConfig("::", "::"));
+  // Unparsable address.
+  expectInvalid(makeConfig("10.32.5.0/24", "255.240.15.0"));
+  // Cannot be combined with dstIp or DST IPv6 word qualifiers.
+  {
+    auto config = makeConfig("::4a1c:1230:0:0", "::efff:fffc:0:0");
+    config.acls()[0].dstIp() = "1234:5678:9abc:def0::1/128";
+    expectInvalid(config);
+  }
+  {
+    auto config = makeConfig("::4a1c:1230:0:0", "::efff:fffc:0:0");
+    config.acls()[0].dstIpV6Word3() = 0x12345678;
+    expectInvalid(config);
+  }
+  {
+    auto config = makeConfig("::4a1c:1230:0:0", "::efff:fffc:0:0");
+    config.acls()[0].dstIpV6Word2() = 0x9abcdef0;
+    expectInvalid(config);
+  }
+}
+TEST(Acl, DstIpV6WordWithMaskValidation) {
+  FLAGS_enable_acl_table_group = false;
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  registerPort(stateV0, PortID(1), "port1", scope());
+
+  auto makeWordMatch = [](int64_t value, int64_t mask) {
+    cfg::AclIpV6WordMatch match;
+    match.value() = value;
+    match.mask() = mask;
+    return match;
+  };
+
+  auto makeConfig = [](std::optional<cfg::AclIpV6WordMatch> word1,
+                       std::optional<cfg::AclIpV6WordMatch> word0) {
+    cfg::SwitchConfig config;
+    config.ports()->resize(1);
+    preparedMockPortConfig(config.ports()[0], 1);
+    config.acls()->resize(1);
+    config.acls()[0].name() = "acl0";
+    config.acls()[0].actionType() = cfg::AclActionType::DENY;
+    if (word1) {
+      config.acls()[0].dstIpV6Word1WithMask() = *word1;
+    }
+    if (word0) {
+      config.acls()[0].dstIpV6Word0WithMask() = *word0;
+    }
+    return config;
+  };
+
+  auto applyConfig = [&](cfg::SwitchConfig* config) {
+    return publishAndApplyConfig(stateV0, config, platform.get());
+  };
+
+  {
+    // Mask ::efff:fffc:0:0 lies entirely in word1. word3/word2 may be
+    // combined with word1/word0 since they match disjoint bits.
+    auto config = makeConfig(
+        makeWordMatch(0x4a1c1230, 0xeffffffc), makeWordMatch(0x1, 0xffff));
+    config.acls()[0].dstIpV6Word3() = 0x12345678;
+    auto stateV1 = applyConfig(&config);
+    auto acl = stateV1->getAcl("acl0");
+    ASSERT_NE(nullptr, acl);
+    EXPECT_EQ(
+        acl->getDstIpV6Word1WithMask(),
+        std::make_pair(uint32_t{0x4a1c1230}, uint32_t{0xeffffffc}));
+    EXPECT_EQ(
+        acl->getDstIpV6Word0WithMask(),
+        std::make_pair(uint32_t{0x1}, uint32_t{0xffff}));
+    EXPECT_EQ(acl->getDstIpV6Word3(), 0x12345678);
+    EXPECT_TRUE(acl->hasMatcher());
+    EXPECT_EQ(
+        acl->getRequiredAclTableQualifiers(),
+        (std::set<cfg::AclTableQualifier>{
+            cfg::AclTableQualifier::DST_IPV6_WORD3,
+            cfg::AclTableQualifier::DST_IPV6_WORD1,
+            cfg::AclTableQualifier::DST_IPV6_WORD0}));
+  }
+
+  auto expectInvalid = [&](cfg::SwitchConfig config) {
+    EXPECT_THROW(applyConfig(&config), FbossError);
+  };
+
+  // value sets bits outside mask.
+  expectInvalid(
+      makeConfig(makeWordMatch(0x5a1c1230, 0xeffffffc), std::nullopt));
+  expectInvalid(makeConfig(std::nullopt, makeWordMatch(0x10001, 0xffff)));
+  // Zero mask.
+  expectInvalid(makeConfig(makeWordMatch(0, 0), std::nullopt));
+  // Not 32-bit.
+  expectInvalid(makeConfig(makeWordMatch(0, 0x1ffffffff), std::nullopt));
+  expectInvalid(makeConfig(std::nullopt, makeWordMatch(-1, 0xffffffff)));
+  // Cannot be combined with dstIp or dstIpWithMask.
+  {
+    auto config =
+        makeConfig(makeWordMatch(0x4a1c1230, 0xeffffffc), std::nullopt);
+    config.acls()[0].dstIp() = "1234:5678:9abc:def0::1/128";
+    expectInvalid(config);
+  }
+  {
+    auto config = makeConfig(std::nullopt, makeWordMatch(0x1, 0xffff));
+    cfg::AclIpMatch match;
+    match.ip() = "::4a1c:1230:0:0";
+    match.mask() = "::efff:fffc:0:0";
+    config.acls()[0].dstIpWithMask() = match;
+    expectInvalid(config);
+  }
 }
 
 namespace {

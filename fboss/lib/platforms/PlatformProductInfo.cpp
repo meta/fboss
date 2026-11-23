@@ -84,9 +84,11 @@ void PlatformProductInfo::initMode() {
       type_ = *descriptorPlatformType;
       return;
     }
-    // TODO(T288776433): Guard descriptor lookup with the
-    // platform_descriptor_registry feature scope before making it
-    // authoritative.
+    XLOG(WARNING) << "No platform descriptor file under "
+                  << FLAGS_platform_descriptor_config_path
+                  << " can match product '" << getProductName()
+                  << "' and mode '" << FLAGS_mode
+                  << "'; falling back to legacy platform detection";
   }
   if (FLAGS_mode.empty()) {
     auto modelName = getProductName();
@@ -128,8 +130,8 @@ void PlatformProductInfo::initMode() {
       type_ = PlatformType::PLATFORM_MINIPACK3BTA;
     } else if (
         modelName.find("Montblanc") == 0 || modelName.find("MONTBLANC") == 0 ||
-        modelName.find("Montblancm") == 0 ||
-        modelName.find("MONTBLANCM") == 0 ||
+        modelName.find("Minipack3M") == 0 ||
+        modelName.find("MINIPACK3M") == 0 ||
         modelName.find("MINIPACK3_CHASSIS_BUNDLE") == 0 ||
         modelName.find("MINIPACK3") == 0 ||
         modelName.find("MINIPACK3-48V-ORV3") == 0) {
@@ -219,6 +221,12 @@ void PlatformProductInfo::initMode() {
         modelName.find("R4063-F9001-01") == 0) {
       type_ = PlatformType::PLATFORM_TAHAN800BC;
     } else if (
+        modelName.find("Icecube800banw") == 0 ||
+        modelName.find("ICECUBE800BANW") == 0 ||
+        modelName.find("ASY-92647-101") == 0 ||
+        modelName.find("EFT-7060XE7-64PRS-RV3-L") == 0) {
+      type_ = PlatformType::PLATFORM_ICECUBE800BANW;
+    } else if (
         modelName.find("ICECUBE") == 0 || modelName.find("ICECUBEM") == 0) {
       type_ = PlatformType::PLATFORM_ICECUBE800BC;
     } else if (modelName.find("ICETEA") == 0) {
@@ -230,20 +238,9 @@ void PlatformProductInfo::initMode() {
     } else if (modelName.find("LEH800BCLS") == 0) {
       type_ = PlatformType::PLATFORM_LEH800BCLS;
     } else if (
-        modelName.find("Icecube800banw") == 0 ||
-        modelName.find("ICECUBE800BANW") == 0 ||
-        modelName.find("ASY-92647-101") == 0 ||
-        modelName.find("EFT-7060XE7-64PRS-RV3-L") == 0) {
-      type_ = PlatformType::PLATFORM_ICECUBE800BANW;
-    } else if (modelName.find("J4Sim") == 0 || modelName.find("J4SIM") == 0) {
-      type_ = PlatformType::PLATFORM_J4SIM;
-    } else if (
         modelName.find("Blackwolf800banw") == 0 ||
         modelName.find("BLACKWOLF800BANW") == 0) {
       type_ = PlatformType::PLATFORM_BLACKWOLF800BANW;
-    } else if (
-        modelName.find("Saintpaul") == 0 || modelName.find("SAINTPAUL") == 0) {
-      type_ = PlatformType::PLATFORM_SAINTPAUL;
     } else {
       throw FbossError("invalid model name " + modelName);
     }
@@ -289,7 +286,7 @@ void PlatformProductInfo::initMode() {
     } else if (FLAGS_mode == "wedge400c_fabric") {
       type_ = PlatformType::PLATFORM_WEDGE400C_FABRIC;
     } else if (
-        FLAGS_mode == "montblanc" || FLAGS_mode == "montblancm" ||
+        FLAGS_mode == "montblanc" || FLAGS_mode == "minipack3m" ||
         FLAGS_mode == "minipack3ba" || FLAGS_mode == "minipack3bam") {
       type_ = PlatformType::PLATFORM_MONTBLANC;
     } else if (FLAGS_mode == "icecube800bc" || FLAGS_mode == "icecube800bcm") {
@@ -308,12 +305,10 @@ void PlatformProductInfo::initMode() {
       type_ = PlatformType::PLATFORM_YANGRA;
     } else if (FLAGS_mode == "minipack3bta") {
       type_ = PlatformType::PLATFORM_MINIPACK3BTA;
-    } else if (FLAGS_mode == "minipack3n") {
+    } else if (FLAGS_mode == "minipack3n" || FLAGS_mode == "minipack3nm") {
       type_ = PlatformType::PLATFORM_MINIPACK3N;
     } else if (FLAGS_mode == "tahansb800bc" || FLAGS_mode == "tahansb800bcm") {
       type_ = PlatformType::PLATFORM_TAHANSB800BC;
-    } else if (FLAGS_mode == "j4sim") {
-      type_ = PlatformType::PLATFORM_J4SIM;
     } else if (
         FLAGS_mode == "ladakh800bcls" || FLAGS_mode == "ladakh800bclsm") {
       type_ = PlatformType::PLATFORM_LADAKH800BCLS;
@@ -325,8 +320,6 @@ void PlatformProductInfo::initMode() {
       type_ = PlatformType::PLATFORM_BLACKWOLF800BANW;
     } else if (FLAGS_mode == "yangra2") {
       type_ = PlatformType::PLATFORM_YANGRA2;
-    } else if (FLAGS_mode == "saintpaul") {
-      type_ = PlatformType::PLATFORM_SAINTPAUL;
     } else {
       throw std::runtime_error("invalid mode " + FLAGS_mode);
     }

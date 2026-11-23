@@ -26,6 +26,7 @@ target_link_libraries(hw_transceiver_utils
   Folly::folly
   fboss_error
   platform_mapping
+  port_test_utils
   switch_config_cpp2
   transceiver_cpp2
   transceiver_manager
@@ -60,7 +61,7 @@ set(QSFP_HW_TEST_DEPS
   port_test_utils
   ${GTEST}
   ${LIBGMOCK_LIBRARIES}
-  FBThrift::thriftcpp2
+  thrift::rpc
   fb303::fb303
   fboss_init
   qsfp_production_features_cpp2

@@ -67,6 +67,11 @@ void parseTunnelConfigArgs(
     std::string& tunnelId,
     std::map<std::string, std::string>& attrs);
 
+// Shell completion for the grammar parseTunnelConfigArgs() accepts.
+std::vector<std::string> completeTunnelConfigArgs(
+    const std::vector<std::string>& typed,
+    const std::unordered_set<std::string>& allowedAttrs);
+
 /*
  * Find-or-create the tunnel with id `tunnelId` in `swConfig`, stamp it with
  * `tunnelType`, write each attribute from `attrs` onto it, and return one

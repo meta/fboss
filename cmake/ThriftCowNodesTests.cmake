@@ -3,9 +3,10 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   thrift_cow_test_cpp2
   fboss/thrift_cow/nodes/tests/test.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -29,7 +30,7 @@ target_link_libraries(thrift_node_tests
     fsdb_oper_cpp2
     fsdb_model_cpp2
     state
-    FBThrift::thriftcpp2
+    thrift::rpc
     ${GTEST}
     ${LIBGMOCK_LIBRARIES}
 )

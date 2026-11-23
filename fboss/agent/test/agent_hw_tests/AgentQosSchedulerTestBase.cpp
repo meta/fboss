@@ -10,8 +10,8 @@
 
 #include "fboss/agent/test/agent_hw_tests/AgentQosSchedulerTestBase.h"
 
-#include "fboss/agent/test/agent_hw_tests/AgentTestAddressConstants.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestEcmpConstants.h"
+#include "fboss/agent/test/utils/AgentTestAddressConstants.h"
+#include "fboss/agent/test/utils/AgentTestEcmpConstants.h"
 #include "fboss/agent/test/utils/QosTestUtils.h"
 
 namespace {

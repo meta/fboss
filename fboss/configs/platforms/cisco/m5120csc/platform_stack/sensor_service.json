@@ -442,40 +442,6 @@
           "compute": "@/1000"
         },
         {
-          "name": "SMB_NP_HBM_VDDS_K0INT",
-          "sysfsPath": "/run/devmap/sensors/SMB_PMBUS0_TPS544C26_0X71/temp1_input",
-          "type": 3,
-          "thresholds": {
-            "upperCriticalVal": 110,
-            "maxAlarmVal": 105
-          },
-          "compute": "@/1000-40"
-        },
-        {
-          "name": "SMB_P12_NPU0_3",
-          "sysfsPath": "/run/devmap/sensors/SMB_PMBUS0_TPS544C26_0X71/in1_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 14.4,
-            "maxAlarmVal": 13.2,
-            "minAlarmVal": 10.2,
-            "lowerCriticalVal": 9.6
-          },
-          "compute": "(@/32+8000)/1000"
-        },
-        {
-          "name": "SMB_NP_HBM_VDDS",
-          "sysfsPath": "/run/devmap/sensors/SMB_PMBUS0_TPS544C26_0X71/in2_input",
-          "type": 1,
-          "thresholds": {
-            "upperCriticalVal": 0.9,
-            "maxAlarmVal": 0.825,
-            "minAlarmVal": 0.638,
-            "lowerCriticalVal": 0.6
-          },
-          "compute": "(@/160+125)/1000"
-        },
-        {
           "name": "SMB_U1_ADC1_A_DIE",
           "sysfsPath": "/run/devmap/sensors/SMB_LTC2979_0X5E/temp1_input",
           "type": 3,

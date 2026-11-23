@@ -16,7 +16,6 @@
 #include "fboss/agent/hw/sai/api/ArsApi.h"
 #include "fboss/agent/hw/sai/api/MplsApi.h"
 #include "fboss/agent/hw/sai/api/SystemPortApi.h"
-#include "fboss/agent/hw/sai/api/TamApi.h"
 #include "fboss/agent/hw/sai/api/VirtualRouterApi.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 
@@ -219,14 +218,13 @@ const std::set<sai_api_t>& GenericSaiYangraPlatform::getSupportedApiList()
     const {
   static auto apis = getDefaultSwitchAsicSupportedApis();
   apis.erase(facebook::fboss::MplsApi::ApiType);
-  apis.erase(facebook::fboss::TamApi::ApiType);
   apis.erase(facebook::fboss::SystemPortApi::ApiType);
   return apis;
 }
 
 std::string GenericSaiYangraPlatform::getHwConfig() {
   std::string xml_filename =
-      *config()->thrift.platform()->chip().value().get_asic().config();
+      *config()->thrift.platform()->chip().value().asic()->config();
   std::string base_filename =
       xml_filename.substr(0, xml_filename.find(".xml") + 4);
   std::ifstream xml_file(base_filename);

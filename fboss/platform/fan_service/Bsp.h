@@ -8,6 +8,8 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
+#include <string>
 
 #include <folly/io/async/EventBase.h>
 
@@ -22,6 +24,13 @@ namespace facebook::fboss::platform::fan_service {
 // fb303 counter name for tracking when thrift fallback is used for sensor data
 inline constexpr auto kFsdbSensorDataThriftFallback =
     "fsdb_sensor_data_thrift_fallback";
+
+// The optic type a transceiver's thermal table is keyed on. A missing or
+// UNKNOWN media code maps to unknownFallback; a media code with no optic type
+// maps to nullopt and the transceiver is ignored.
+std::optional<std::string> getOpticTypeFromMediaCode(
+    std::optional<facebook::fboss::MediaInterfaceCode> mediaInterfaceCode,
+    const std::string& unknownFallback);
 
 class Bsp {
  public:

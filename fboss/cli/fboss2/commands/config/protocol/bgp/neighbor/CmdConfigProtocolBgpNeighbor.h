@@ -64,6 +64,8 @@ std::vector<std::string> bgpNeighborAttributeNames();
 // a one-entry change rather than a new command class. Mirrors
 // CmdConfigProtocolBgpGlobal.
 struct CmdConfigProtocolBgpNeighborTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigProtocolBgp;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     // positionals_at_end: once the first positional (the neighbor address,

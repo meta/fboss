@@ -82,7 +82,6 @@ enum class ObjectArgTypeId : uint8_t {
   OBJECT_ARG_TYPE_ID_SYSTEM_PORT_LIST,
   OBJECT_ARG_TYPE_ID_MIRROR_LIST,
   OBJECT_ARG_TYPE_LINK_DIRECTION,
-  OBJECT_ARG_TYPE_FAN_PWM,
   OBJECT_ARG_TYPE_MTU,
   OBJECT_ARG_TYPE_ID_INTERFACE_LIST,
   OBJECT_ARG_TYPE_ID_REVISION_LIST,
@@ -346,6 +345,8 @@ const std::string getPrettyElapsedTime(const int64_t& start_time);
 
 std::string getUserInfo();
 std::string getUnixname();
+
+std::string formatUsageLine(const CmdLogInfo& cmdLogInfo);
 
 void setLogLevel(const std::string& logLevelStr);
 void logUsage(const CmdLogInfo& cmdLogInfo);

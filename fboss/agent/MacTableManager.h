@@ -11,9 +11,14 @@
 
 #include "fboss/agent/L2Entry.h"
 
+#include <memory>
+#include <optional>
+
 namespace facebook::fboss {
 
+class Port;
 class SwSwitch;
+class SwitchState;
 
 class MacTableManager {
  public:
@@ -28,6 +33,11 @@ class MacTableManager {
   // Forbidden copy constructor and assignment operator
   MacTableManager(MacTableManager const&) = delete;
   MacTableManager& operator=(MacTableManager const&) = delete;
+
+  static std::shared_ptr<SwitchState> learnMac(
+      SwSwitch* sw,
+      const std::shared_ptr<SwitchState>& state,
+      const L2Entry& l2Entry);
 
   SwSwitch* sw_{nullptr};
 };

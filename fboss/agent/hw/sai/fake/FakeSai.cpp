@@ -43,6 +43,7 @@ void FakeSai::clear() {
   fs->isolationGroupManager.clearWithMembers();
   fs->neighborManager.clear();
   fs->mirrorManager.clear();
+  fs->policerManager.clear();
   fs->nextHopManager.clear();
   fs->nextHopGroupManager.clearWithMembers();
   fs->portManager.clear();
@@ -68,6 +69,8 @@ void FakeSai::clear() {
   fs->tamCollectorManager.clear();
   fs->tunnelManager.clear();
   fs->tunnelTermManager.clear();
+  fs->tunnelMapManager.clear();
+  fs->tunnelMapEntryManager.clear();
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
   fs->srv6SidListManager.clear();
   fs->mySidEntryManager.clear();
@@ -185,6 +188,11 @@ sai_status_t sai_api_query(sai_api_t sai_api_id, void** api_method_table) {
     case SAI_API_HOSTIF:
       facebook::fboss::populate_hostif_api(
           (sai_hostif_api_t**)api_method_table);
+      res = SAI_STATUS_SUCCESS;
+      break;
+    case SAI_API_POLICER:
+      facebook::fboss::populate_policer_api(
+          (sai_policer_api_t**)api_method_table);
       res = SAI_STATUS_SUCCESS;
       break;
     case SAI_API_ISOLATION_GROUP:

@@ -51,11 +51,50 @@
     }
   },
   "variants": {
+    "benchmark": {
+      "platform_mapping_name": "ladakh800bcls_test_fixture",
+      "asic_config_params": {
+        "config_gen_type": "BENCHMARK"
+      }
+    },
     "rack": {
       "platform_mapping_name": "ladakh800bcls_rack"
     },
+    "rack_mmu_lossless": {
+      "platform_mapping_name": "ladakh800bcls_rack",
+      "asic_config_params": {
+        "mmu_lossless": true
+      }
+    },
+    "osfp_tray": {
+      "platform_mapping_name": "ladakh800bcls_osfp_tray"
+    },
+    "osfp_tray_mmu_lossless": {
+      "platform_mapping_name": "ladakh800bcls_osfp_tray",
+      "asic_config_params": {
+        "mmu_lossless": true
+      }
+    },
+    "rack_postevt": {
+      "platform_mapping_name": "ladakh800bcls_rack_postevt"
+    },
+    "rack_postevt_mmu_lossless": {
+      "platform_mapping_name": "ladakh800bcls_rack_postevt",
+      "asic_config_params": {
+        "mmu_lossless": true
+      }
+    },
     "test_fixture": {
-      "platform_mapping_name": "ladakh800bcls_test_fixture"
+      "platform_mapping_name": "ladakh800bcls_test_fixture",
+      "asic_config_params": {
+        "config_gen_type": "HW_TEST"
+      },
+      "features": {
+        "enable_uncached_port_stats": true
+      }
+    },
+    "test_fixture_postevt": {
+      "platform_mapping_name": "ladakh800bcls_test_fixture_postevt"
     }
   }
 }

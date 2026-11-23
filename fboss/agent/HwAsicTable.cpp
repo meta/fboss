@@ -17,7 +17,7 @@ HwAsicTable::HwAsicTable(
       try {
         switchInfo.switchMac() = getLocalMacAddress().toString();
       } catch (const std::exception&) {
-        // Expected when fake bcm tests run without config
+        // Expected when tests run without config
         switchInfo.switchMac() = folly::MacAddress().toString();
       }
     }

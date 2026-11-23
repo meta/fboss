@@ -9,7 +9,6 @@
  */
 #include "fboss/agent/packet/PTPHeader.h"
 #include <folly/io/IOBuf.h>
-#include <sstream>
 #include "fboss/agent/FbossError.h"
 
 namespace facebook::fboss {

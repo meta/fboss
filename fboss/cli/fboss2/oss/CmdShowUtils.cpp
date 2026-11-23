@@ -18,7 +18,6 @@
 #include <utility>
 
 #include "fboss/agent/AddressUtil.h"
-#include "fboss/cli/fboss2/CmdLocalOptions.h"
 #include "fboss/cli/fboss2/commands/show/bgp/CmdShowUtils.h"
 #include "fboss/cli/fboss2/oss/NetTools.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
@@ -77,41 +76,21 @@ const std::string printExtCommunities(
       continue;
     }
 
-    const auto& extCommunity = communityUnion.get_two_byte_asn();
+    const auto& extCommunity = communityUnion.two_byte_asn().value();
     if (folly::copy(extCommunity.type().value()) ==
         static_cast<int>(TBgpTwoByteAsnExtCommType::LINK_BANDWIDTH_TYPE)) {
       if (folly::copy(extCommunity.sub_type().value()) ==
           static_cast<int>(
               TBgpTwoByteAsnExtCommSubType::LINK_BANDWIDTH_SUB_TYPE)) {
-        auto decodeLbwExtComm = CmdLocalOptions::getInstance()->getLocalOption(
-            "show_bgp_neighbors", kGar);
-        if (decodeLbwExtComm.empty()) {
-          decodeLbwExtComm = CmdLocalOptions::getInstance()->getLocalOption(
-              "show_bgp_table", kGar);
-        }
-        if (decodeLbwExtComm == "true") {
-          commStrs.emplace_back(
-              fmt::format(
-                  "LBW{}:AS({}):RawValue({}):LbwValue({})",
-                  ((folly::copy(extCommunity.type().value()) & 0x40) == 0)
-                      ? "(T)"
-                      : "",
-                  folly::copy(extCommunity.asn().value()),
-                  folly::copy(extCommunity.value().value()),
-                  utils::formatBandwidth(translateLinkBandwidthValue(
-                      folly::copy(extCommunity.value().value())))));
-        } else {
-          commStrs.emplace_back(
-              fmt::format(
-                  "LBW{}:AS({}):RawValue({}):LbwValue({})",
-                  ((folly::copy(extCommunity.type().value()) & 0x40) == 0)
-                      ? "(T)"
-                      : "",
-                  folly::copy(extCommunity.asn().value()),
-                  folly::copy(extCommunity.value().value()),
-                  utils::formatBandwidth(translateLinkBandwidthValue(
-                      folly::copy(extCommunity.value().value())))));
-        }
+        commStrs.emplace_back(
+            fmt::format(
+                "LBW{}:AS({}):RawValue({}):LbwValue({})",
+                ((folly::copy(extCommunity.type().value()) & 0x40) == 0) ? "(T)"
+                                                                         : "",
+                folly::copy(extCommunity.asn().value()),
+                folly::copy(extCommunity.value().value()),
+                utils::formatBandwidth(translateLinkBandwidthValue(
+                    folly::copy(extCommunity.value().value())))));
       } else {
         commStrs.emplace_back(
             fmt::format(
@@ -197,6 +176,7 @@ void printBgpNeighborsOutput(
             << " ago" << std::endl;
         out << "  Last reset reason: " << *neighbor.last_reset_reason()
             << std::endl;
+        printLastBgpNotifications(neighbor, out);
       }
     } else {
       out << "  BGP state is " << enumNameSafe(peerState) << std::endl;
@@ -218,6 +198,7 @@ void printBgpNeighborsOutput(
         out << std::endl;
         out << "  Last reset reason: " << *neighbor.last_reset_reason()
             << std::endl;
+        printLastBgpNotifications(neighbor, out);
       }
     }
 

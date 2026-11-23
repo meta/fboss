@@ -20,6 +20,7 @@
 #include "fboss/lib/platforms/gen-cpp2/platform_descriptor_types.h"
 
 DECLARE_string(platform_descriptor_config_path);
+DECLARE_bool(hwrev_state1_substate1_respin0);
 
 namespace facebook::fboss {
 
@@ -36,6 +37,12 @@ class PlatformDescriptorRegistry {
       std::string_view productName,
       std::string_view mode) const;
   std::optional<std::string> loadPlatformMapping(PlatformType type) const;
+  // Returns the SDK yaml shipped beside the selected descriptor's
+  // platform_mapping.json (asic_config_idx<switchIndex>.yaml if present,
+  // else asic_config.yaml); nullopt when the directory carries no yaml.
+  std::optional<std::string> loadAsicConfigYaml(
+      PlatformType type,
+      std::optional<int16_t> switchIndex = std::nullopt) const;
   cfg::PlatformMapping loadPlatformMappingFromRaw(
       PlatformType type,
       const cfg::PlatformConfig& platformConfig) const;

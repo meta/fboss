@@ -12,6 +12,7 @@
 #include "fboss/led_service/Leh800bclsLedManager.h"
 #include "fboss/led_service/M4052ACTMLedManager.h"
 #include "fboss/led_service/M4061clscLedManager.h"
+#include "fboss/led_service/M4061nhpLedManager.h"
 #include "fboss/led_service/M4062nhpLedManager.h"
 #include "fboss/led_service/Meru800bfaLedManager.h"
 #include "fboss/led_service/Meru800biaLedManager.h"
@@ -82,6 +83,8 @@ std::unique_ptr<LedManager> createLedManager() {
     return std::make_unique<Icecube800bcLedManager>();
   } else if (mode == PlatformType::PLATFORM_M4052ACTM) {
     return std::make_unique<M4052ACTMLedManager>();
+  } else if (mode == PlatformType::PLATFORM_M4061NHP) {
+    return std::make_unique<M4061nhpLedManager>();
   } else if (mode == PlatformType::PLATFORM_M4062NHP) {
     return std::make_unique<M4062nhpLedManager>();
   } else if (mode == PlatformType::PLATFORM_M4061CLSC) {

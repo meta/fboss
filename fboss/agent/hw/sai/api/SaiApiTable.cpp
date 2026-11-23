@@ -151,6 +151,10 @@ const NeighborApi& SaiApiTable::neighborApi() const {
   return getApi<NeighborApi>();
 }
 
+const PolicerApi& SaiApiTable::policerApi() const {
+  return getApi<PolicerApi>();
+}
+
 const PortApi& SaiApiTable::portApi() const {
   return getApi<PortApi>();
 }

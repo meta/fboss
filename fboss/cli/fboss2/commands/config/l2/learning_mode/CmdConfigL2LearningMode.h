@@ -31,6 +31,8 @@ class L2LearningModeArg : public utils::BaseObjectArgType<std::string> {
 };
 
 struct CmdConfigL2LearningModeTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigL2;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     cmd.add_option(

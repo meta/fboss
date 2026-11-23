@@ -1,7 +1,0 @@
-# Container-local sudo policy for the netadmin machine. Grants nothing on
-# the host: this file is only read by sudo running inside the machine.
-# netadmin may escape to a root shell; the wrapper-minted attribution
-# (LOGIN_IDENTITY + session vars) is preserved across it.
-Defaults!/bin/bash env_keep += "LOGIN_IDENTITY SESSION_SSHD_PID SESSION_ANCESTORS FBOSS_BOOT_ID"
-netadmin ALL=(root) NOPASSWD: /bin/bash
-netadmin ALL=(root) NOPASSWD: /bin/bash *

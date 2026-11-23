@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/delete/tunnel/ip_in_ip/encap/CmdDeleteTunnelIpInIpEncap.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -77,5 +78,11 @@ void CmdDeleteTunnelIpInIpEncap::printOutput(const RetType& logMsg) {
 // Explicit template instantiation
 template void
 CmdHandler<CmdDeleteTunnelIpInIpEncap, CmdDeleteTunnelIpInIpEncapTraits>::run();
+
+std::vector<std::string> CmdDeleteTunnelIpInIpEncapTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completeAttrList(
+      typed, kResettableAttrsDisplay, /* minObjects */ 1);
+}
 
 } // namespace facebook::fboss

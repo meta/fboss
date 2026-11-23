@@ -342,8 +342,7 @@ std::optional<std::string> PlatformExplorer::getPmUnitNameFromSlot(
     if ((platformConfig_.platformName().value() == "MERU800BFA" ||
          platformConfig_.platformName().value() == "MERU800BIA" ||
          platformConfig_.platformName().value() == "ICECUBE800BANW" ||
-         platformConfig_.platformName().value() == "BLACKWOLF800BANW" ||
-         platformConfig_.platformName().value() == "SAINTPAUL") &&
+         platformConfig_.platformName().value() == "BLACKWOLF800BANW") &&
         (!(idpromConfig.busName()->starts_with("INCOMING")) &&
          *idpromConfig.address() == "0x50")) {
       // ICECUBE800BANW has SMB at root level, others have SCM
@@ -1220,8 +1219,7 @@ void PlatformExplorer::genHumanReadableEeproms() {
   // See: https://github.com/facebookexternal/fboss.bsp.arista/pull/31/files
   if ((platformConfig_.platformName().value() == "MERU800BFA" ||
        platformConfig_.platformName().value() == "MERU800BIA" ||
-       platformConfig_.platformName().value() == "BLACKWOLF800BANW" ||
-       platformConfig_.platformName().value() == "SAINTPAUL") &&
+       platformConfig_.platformName().value() == "BLACKWOLF800BANW") &&
       std::filesystem::exists("/run/devmap/eeproms/MERU_SCM_EEPROM")) {
     writeEepromContent("/[IDPROM]", "/run/devmap/eeproms/MERU_SCM_EEPROM");
   }

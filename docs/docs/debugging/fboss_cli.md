@@ -980,7 +980,6 @@ fboss2 set <subcommand> [options]
 | `interface` | Set Interface information |
 | `port` | Set Port information |
 | `debug` | Set debug level |
-| `fanhold` | Set fan hold PWM |
 
 ### set interface
 
@@ -1004,14 +1003,6 @@ Set debug level for logging.
 
 ```bash
 fboss2 set debug [options]
-```
-
-### set fanhold
-
-Set fan hold PWM value.
-
-```bash
-fboss2 set fanhold <value>
 ```
 
 ---
@@ -1284,7 +1275,7 @@ fboss2-dev config session commit
 
 | Command | Description |
 |---------|-------------|
-| `show config running` | Show the current in-memory configuration of the agent |
+| `show config running agent`, `show config running bgp` | Show the current in-memory configuration of the agent or BGP daemon |
 | `config session diff` | Show pending changes (session vs live, session vs revision, or revision vs revision) |
 | `config session commit` | Apply staged changes to all affected services |
 | `config session rebase` | Reapply uncommitted changes on top of current startup config |

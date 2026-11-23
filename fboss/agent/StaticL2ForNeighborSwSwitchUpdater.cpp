@@ -10,13 +10,71 @@
 
 #include "fboss/agent/StaticL2ForNeighborSwSwitchUpdater.h"
 
+#include <tuple>
+
 #include "fboss/agent/MacTableUtils.h"
+#include "fboss/agent/NeighborUpdater.h"
 #include "fboss/agent/SwSwitch.h"
+#include "fboss/agent/SwitchStats.h"
+#include "fboss/agent/Utils.h"
 #include "fboss/agent/state/ArpEntry.h"
+#include "fboss/agent/state/ArpTable.h"
 #include "fboss/agent/state/NdpEntry.h"
+#include "fboss/agent/state/NdpTable.h"
+#include "fboss/agent/state/Port.h"
+#include "fboss/agent/state/StateDelta.h"
 #include "fboss/agent/state/SwitchState.h"
 
 namespace facebook::fboss {
+
+namespace {
+
+std::vector<folly::IPAddress> reachableNeighborsWithMac(
+    const std::shared_ptr<SwitchState>& state,
+    VlanID vlan,
+    folly::MacAddress mac) {
+  std::vector<folly::IPAddress> ips;
+  auto collect = [&](const auto& nbrTable) {
+    for (const auto& [ip, nbr] : std::as_const(*nbrTable)) {
+      if (nbr->isReachable() && nbr->getMac() == mac) {
+        ips.emplace_back(nbr->getIP());
+      }
+    }
+  };
+  collect(getNeighborTableForVlan<ArpTable>(state, vlan));
+  collect(getNeighborTableForVlan<NdpTable>(state, vlan));
+  return ips;
+}
+
+// Whether re-adding `mac` (state -> newState) stays within the per-port MAC
+// limit and passes the resource accountant. The dry run must start from the
+// applied state, which is what the accountant's counts reflect.
+bool reAddFitsLimits(
+    SwSwitch* sw,
+    const std::shared_ptr<SwitchState>& state,
+    const std::shared_ptr<SwitchState>& newState,
+    VlanID vlan,
+    folly::MacAddress mac) {
+  const auto port = newState->getVlans()
+                        ->getNode(vlan)
+                        ->getMacTable()
+                        ->getNode(mac.toString())
+                        ->getPort();
+  if (port.isPhysicalPort()) {
+    if (const auto portNode = state->getPorts()->getNodeIf(port.phyPortID())) {
+      const auto limit = MacTableUtils::getMaxL2EntriesPerPort(
+          state, portNode, *sw->getScopeResolver());
+      if (limit &&
+          MacTableUtils::exceedsMacLimit(state, port, vlan, mac, *limit)) {
+        return false;
+      }
+    }
+  }
+  return sw->isValidStateUpdateDryRun(
+      StateDelta(sw->getState(), newState), sw->stats());
+}
+
+} // namespace
 
 StaticL2ForNeighborSwSwitchUpdater::StaticL2ForNeighborSwSwitchUpdater(
     SwSwitch* sw)
@@ -131,8 +189,32 @@ void StaticL2ForNeighborSwSwitchUpdater::ensureMacEntryIfNeighborExists(
     VlanID vlan,
     const std::shared_ptr<MacEntry>& macEntry) {
   auto mac = macEntry->getMac();
-  auto ensureMac = [mac, vlan](const std::shared_ptr<SwitchState>& state) {
-    return MacTableUtils::updateOrAddStaticEntryIfNbrExists(state, vlan, mac);
+  // This update is not HW failure protected, so a re-add that the resource
+  // accountant rejects would be fatal. If the MAC doesn't fit, flush the
+  // neighbors that use it instead: the neighbor cache re-resolves them and
+  // re-adds the MAC through its own update, which applies the limits.
+  auto ensureMac =
+      [sw = sw_, mac, vlan](const std::shared_ptr<SwitchState>& state)
+      -> std::shared_ptr<SwitchState> {
+    auto newState =
+        MacTableUtils::updateOrAddStaticEntryIfNbrExists(state, vlan, mac);
+    if (newState == state) {
+      return nullptr;
+    }
+    if (reAddFitsLimits(sw, state, newState, vlan, mac)) {
+      return newState;
+    }
+    XLOG_EVERY_MS(ERR, 5000)
+        << "Not re-adding static MAC " << mac << " on VLAN " << vlan
+        << ", flushing its neighbors to re-resolve";
+    sw->stats()->neighborStaticMacReaddRejected();
+    for (const auto& ip : reachableNeighborsWithMac(state, vlan, mac)) {
+      // Not waited on: the flush runs on the neighbor cache thread and may
+      // block on this (the update) thread.
+      std::ignore = sw->getNeighborUpdater()->flushEntryForIntf(
+          static_cast<InterfaceID>(vlan), ip);
+    }
+    return nullptr;
   };
   sw_->updateState(
       "ensure static MAC for nbr: " + macEntry->str(), std::move(ensureMac));

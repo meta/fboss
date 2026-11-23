@@ -21,12 +21,13 @@ struct GpioInfoResult {
 
 class GpioUtils {
  public:
-  // Run gpiodetect command and parse the results
+  // List GPIO chips via libgpiod, like the gpiodetect CLI
   // If label is provided, only return devices with matching label
   static std::vector<GpioDetectResult> gpiodetect(
       const std::string& label = "");
 
-  // Run gpioinfo command for a specific GPIO device and parse the results
+  // List the lines of a GPIO chip via libgpiod, like the gpioinfo CLI.
+  // Unnamed lines are reported as "unnamed".
   static std::vector<GpioInfoResult> gpioinfo(const std::string& name);
 
   // Get the value of a specific GPIO line

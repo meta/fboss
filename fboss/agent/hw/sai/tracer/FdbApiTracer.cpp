@@ -23,6 +23,12 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _FdbEntryMap{
     SAI_ATTR_MAP(Fdb, BridgePortId),
     SAI_ATTR_MAP(Fdb, Metadata),
 };
+
+// NOLINTNEXTLINE(facebook-avoid-non-const-global-variables)
+std::map<int32_t, std::pair<std::string, std::size_t>> _FdbFlushMap{
+    SAI_ATTR_MAP(FdbFlush, BridgePortId),
+    SAI_ATTR_MAP(FdbFlush, EntryType),
+};
 } // namespace
 
 namespace facebook::fboss {
@@ -65,6 +71,17 @@ sai_status_t wrap_get_fdb_entry_attribute(
       fdb_entry, attr_count, attr_list);
 }
 
+sai_status_t wrap_flush_fdb_entries(
+    sai_object_id_t switch_id,
+    uint32_t attr_count,
+    const sai_attribute_t* attr_list) {
+  auto rv = SaiTracer::getInstance()->fdbApi_->flush_fdb_entries(
+      switch_id, attr_count, attr_list);
+
+  SaiTracer::getInstance()->logFdbFlushFn(switch_id, attr_count, attr_list, rv);
+  return rv;
+}
+
 sai_fdb_api_t* wrappedFdbApi() {
   static sai_fdb_api_t fdbWrappers;
 
@@ -72,10 +89,12 @@ sai_fdb_api_t* wrappedFdbApi() {
   fdbWrappers.remove_fdb_entry = &wrap_remove_fdb_entry;
   fdbWrappers.set_fdb_entry_attribute = &wrap_set_fdb_entry_attribute;
   fdbWrappers.get_fdb_entry_attribute = &wrap_get_fdb_entry_attribute;
+  fdbWrappers.flush_fdb_entries = &wrap_flush_fdb_entries;
 
   return &fdbWrappers;
 }
 
 SET_SAI_ATTRIBUTES(FdbEntry)
+SET_SAI_ATTRIBUTES(FdbFlush)
 
 } // namespace facebook::fboss

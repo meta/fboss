@@ -347,20 +347,12 @@ struct SaiPortTraits {
         SaiObjectIdDefault>;
     // CBFC S_P_CL, the cap on credits the sender may hold across all of the
     // port's virtual channels. Range 0..2^20-1.
-    //
-    // Deliberately NOT in CreateAttributes. brcm-sai 16.0_ea_odp rejects a GET
-    // of this attribute with INVALID PARAMETER, and SaiStore::reload() reads
-    // back every attribute in the tuple for every port at init -- so including
-    // it aborts the HW agent on boot, on every port, even with no CBFC
-    // configured. Set it directly through the port api instead.
     using CbfcSenderCreditLimit = SaiAttribute<
         EnumType,
         SAI_PORT_ATTR_CBFC_SENDER_CREDIT_LIMIT,
         sai_uint32_t,
         SaiIntDefault<sai_uint32_t>>;
     // Bytes per credit the sender charges; must suit the peer's receiver.
-    // Kept out of CreateAttributes for the same reason as
-    // CbfcSenderCreditLimit.
     using CbfcSenderCreditSize = SaiAttribute<
         EnumType,
         SAI_PORT_ATTR_CBFC_SENDER_CREDIT_SIZE,
@@ -722,6 +714,18 @@ struct SaiPortTraits {
         sai_uint8_t,
         AttributeCsigLinkLocatorWrapper,
         SaiIntDefault<sai_uint8_t>>;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    using IntDelete = SaiAttribute<
+        EnumType,
+        SAI_PORT_ATTR_INT_DELETE,
+        bool,
+        SaiBoolDefaultFalse>;
+    using IntMetadata = SaiAttribute<
+        EnumType,
+        SAI_PORT_ATTR_INT_METADATA,
+        sai_uint16_t,
+        SaiIntDefault<sai_uint16_t>>;
+#endif
     // Read-only counts of how many times a link up/down debounce was
     // retriggered by an additional flap while a debounce timeout was already
     // active.
@@ -739,6 +743,16 @@ struct SaiPortTraits {
         sai_uint64_t,
         AttributeLinkDownDebounceRetriggerCount,
         SaiIntDefault<sai_uint64_t>>;
+    // CBFC receiver credit limit: the input buffer headroom pool shared by
+    // every lossless VC on the port. Hardware applies it when the first VC on
+    // the port enables CBFC_RECEIVER_ENABLE, so it must be written before that.
+    struct AttributeCbfcReceiverCreditLimit {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using CbfcReceiverCreditLimit = SaiExtensionAttribute<
+        sai_uint32_t,
+        AttributeCbfcReceiverCreditLimit,
+        SaiIntDefault<sai_uint32_t>>;
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
     // UEC Link Layer Retry per-port controls (UE Spec 1.0.2 section 5.1).
     // Mode local/remote enable LLR receive/transmit (section 5.1.3); the
@@ -823,7 +837,7 @@ struct SaiPortTraits {
       Attributes::Speed,
       std::optional<Attributes::AdminState>,
       std::optional<Attributes::FecMode>,
-#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0) && !defined(SAI_BRCM_PAI_IMPL)
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0) && !defined(BRCM_PAI_SDK)
       std::optional<Attributes::UseExtendedFec>,
       std::optional<Attributes::ExtendedFecMode>,
 #endif
@@ -869,6 +883,12 @@ struct SaiPortTraits {
 #if defined(SAI_CBFC_SUPPORTED)
       std::optional<Attributes::QosTcToVcMap>,
       std::optional<Attributes::QosQueueToVcMap>,
+      // In this order: brcm-sai recomputes the credit limit on a credit size
+      // or packet overhead set, so the limit must be written after both.
+      std::optional<Attributes::CbfcSenderCreditSize>,
+      std::optional<Attributes::CbfcSenderPacketOverhead>,
+      std::optional<Attributes::CbfcSenderCreditLimit>,
+      std::optional<Attributes::CbfcReceiverCreditLimit>,
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 9, 0)
       std::optional<Attributes::InterFrameGap>,
@@ -930,7 +950,13 @@ struct SaiPortTraits {
       std::optional<Attributes::IsolationGroup>,
       std::optional<Attributes::Metadata>,
       std::optional<Attributes::CsigTagAction>,
-      std::optional<Attributes::CsigLinkLocator>>;
+      std::optional<Attributes::CsigLinkLocator>
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      ,
+      std::optional<Attributes::IntDelete>,
+      std::optional<Attributes::IntMetadata>
+#endif
+      >;
   static constexpr std::array<sai_stat_id_t, 16> CounterIdsToRead = {
       SAI_PORT_STAT_IF_IN_OCTETS,
       SAI_PORT_STAT_IF_IN_UCAST_PKTS,
@@ -1033,6 +1059,9 @@ struct SaiPortTraits {
   static const std::vector<sai_stat_id_t>& pfcXoffTotalDurationStats();
   static const std::vector<sai_stat_id_t>& linkDownDebounceRetriggerStats();
   static const std::vector<sai_stat_id_t>& linkUpDebounceRetriggerStats();
+  // PCS errored blocks followed by PCS BER, in that order. Vendor extension;
+  // empty unless the SDK declares both.
+  static const std::vector<sai_stat_id_t>& pcsErrorStats();
   // Broadcom LLR stat extensions. Unlike llrStats() above these are not
   // standard SAI 1.18 enums, so the list is vendor-defined and empty everywhere
   // except a Broadcom SDK new enough to declare them.
@@ -1151,6 +1180,10 @@ SAI_ATTRIBUTE_NAME(Port, RxLaneSquelchEnable);
 SAI_ATTRIBUTE_NAME(Port, LinkScanMode);
 SAI_ATTRIBUTE_NAME(Port, CsigTagAction);
 SAI_ATTRIBUTE_NAME(Port, CsigLinkLocator);
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+SAI_ATTRIBUTE_NAME(Port, IntDelete);
+SAI_ATTRIBUTE_NAME(Port, IntMetadata);
+#endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
 SAI_ATTRIBUTE_NAME(Port, PfcTcDldInterval);
 SAI_ATTRIBUTE_NAME(Port, PfcTcDlrInterval);
@@ -1193,6 +1226,7 @@ SAI_ATTRIBUTE_NAME(Port, LinkUpDebouncePeriodMs)
 SAI_ATTRIBUTE_NAME(Port, LinkDownDebouncePeriodMs)
 SAI_ATTRIBUTE_NAME(Port, LinkUpDebounceRetriggerCount)
 SAI_ATTRIBUTE_NAME(Port, LinkDownDebounceRetriggerCount)
+SAI_ATTRIBUTE_NAME(Port, CbfcReceiverCreditLimit)
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
 SAI_ATTRIBUTE_NAME(Port, ExtOperStatusLatch)
 #endif
@@ -1702,7 +1736,7 @@ struct SaiPortSerdesTraits {
       ,
       std::optional<Attributes::CustomCollection>
 #endif
-#if defined(BRCM_SAI_SDK_GTE_13_0)
+#if defined(BRCM_SAI_SDK_GTE_13_0) || defined(BRCM_PAI_SDK)
       ,
       std::optional<Attributes::RxReach>
 #endif

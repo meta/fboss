@@ -95,7 +95,7 @@ folly::coro::Task<void> applyPatchesUntilMin(
     if (msg.getType() != SubscriberMessage::Type::chunk) {
       continue;
     }
-    auto chunk = msg.get_chunk();
+    auto chunk = msg.chunk().as_const().value();
     for (auto& [key, patches] : *chunk.patchGroups()) {
       for (auto& patch : patches) {
         EXPECT_EQ(tgtStorage.patch(std::move(patch)), std::nullopt);
@@ -549,7 +549,7 @@ TYPED_TEST(SubscribableStorageTests, SubscribePatch) {
   auto element = folly::coro::blockingWait(
       folly::coro::timeout(consumeOne(generator), std::chrono::seconds(5)));
   auto msg = std::move(element.val);
-  auto patchGroups = *msg.get_chunk().patchGroups();
+  auto patchGroups = *msg.chunk().as_const()->patchGroups();
   EXPECT_EQ(patchGroups.size(), 1);
   auto patches = patchGroups.begin()->second;
   EXPECT_EQ(patches.size(), 1);
@@ -567,7 +567,7 @@ TYPED_TEST(SubscribableStorageTests, SubscribePatch) {
   element = folly::coro::blockingWait(
       folly::coro::timeout(consumeOne(generator), std::chrono::seconds(5)));
   msg = std::move(element.val);
-  patchGroups = *msg.get_chunk().patchGroups();
+  patchGroups = *msg.chunk().as_const()->patchGroups();
   EXPECT_EQ(patchGroups.size(), 1);
   patches = patchGroups.begin()->second;
   EXPECT_EQ(patches.size(), 1);
@@ -605,7 +605,7 @@ TYPED_TEST(SubscribableStorageTests, SubscribePatchUpdate) {
   auto element = folly::coro::blockingWait(
       folly::coro::timeout(consumeOne(generator), std::chrono::seconds(1)));
   auto msg = std::move(element.val);
-  auto patchGroups = *msg.get_chunk().patchGroups();
+  auto patchGroups = *msg.chunk().as_const()->patchGroups();
   EXPECT_EQ(patchGroups.size(), 1);
   auto patches = patchGroups.begin()->second;
   EXPECT_EQ(patches.size(), 1);
@@ -621,7 +621,7 @@ TYPED_TEST(SubscribableStorageTests, SubscribePatchUpdate) {
   element = folly::coro::blockingWait(
       folly::coro::timeout(consumeOne(generator), std::chrono::seconds(1)));
   msg = std::move(element.val);
-  patchGroups = *msg.get_chunk().patchGroups();
+  patchGroups = *msg.chunk().as_const()->patchGroups();
   EXPECT_EQ(patchGroups.size(), 1);
   patches = patchGroups.begin()->second;
   EXPECT_EQ(patches.size(), 1);
@@ -704,7 +704,7 @@ TYPED_TEST(SubscribableStorageTests, SubscribePatchMulti) {
   auto element = folly::coro::blockingWait(
       folly::coro::timeout(consumeOne(generator), std::chrono::seconds(1)));
   auto msg = std::move(element.val);
-  auto patchGroups = *msg.get_chunk().patchGroups();
+  auto patchGroups = *msg.chunk().as_const()->patchGroups();
   EXPECT_EQ(patchGroups.size(), 1);
   EXPECT_EQ(patchGroups.begin()->first, 1);
   auto patches = patchGroups.begin()->second;
@@ -728,7 +728,7 @@ TYPED_TEST(SubscribableStorageTests, SubscribePatchMulti) {
   element = folly::coro::blockingWait(
       folly::coro::timeout(consumeOne(generator), std::chrono::seconds(1)));
   msg = std::move(element.val);
-  patchGroups = *msg.get_chunk().patchGroups();
+  patchGroups = *msg.chunk().as_const()->patchGroups();
 
   EXPECT_EQ(patchGroups.size(), 2);
   for (auto& [key, patchGroup] : patchGroups) {
@@ -846,7 +846,7 @@ TEST(
   auto element = folly::coro::blockingWait(
       folly::coro::timeout(consumeOne(generator), std::chrono::seconds(5)));
   auto msg = std::move(element.val);
-  auto patchGroups = *msg.get_chunk().patchGroups();
+  auto patchGroups = *msg.chunk().as_const()->patchGroups();
 
   // Each subscribed key resolves exactly once (both are served in one chunk).
   EXPECT_EQ(patchGroups.size(), 2);
@@ -854,6 +854,142 @@ TEST(
   EXPECT_EQ(patchGroups.at(2).size(), 1);
   // One resolved child subscription per key (would be 3 on double resolution).
   EXPECT_EQ(storage.numSubscriptions(), 2);
+}
+
+namespace {
+RawOperPath makeRawPath(std::vector<std::string> tokens) {
+  RawOperPath path;
+  path.path() = std::move(tokens);
+  return path;
+}
+
+// Publisher root is registered but unconfirmed; subscriptions are created but
+// no serve cycle has run, so they are still pending registration.
+class CowSubscriptionManagerPendingAddTest : public ::testing::Test {
+ protected:
+  CowSubscriptionManagerPendingAddTest()
+      : storage_(
+            initializeTestStruct(),
+            NaivePeriodicSubscribableStorageBase::StorageParams(
+                std::chrono::milliseconds(50),
+                std::chrono::seconds(5),
+                /*trackMetadata=*/true,
+                "fsdb",
+                /*convertToIDPaths=*/true)) {
+    const auto& path1 = root_.stringToStruct()["test1"].max();
+    const auto& path2 = root_.stringToStruct()["test2"].max();
+    tokens1_ = path1.tokens();
+    tokens2_ = path2.tokens();
+    idTokens2_ = path2.idTokens();
+    storage_.registerPublisher(
+        tokens1_.begin(),
+        tokens1_.end(),
+        /*skipThriftStreamLivenessCheck=*/true);
+  }
+
+  std::optional<std::string> publisherRoot() {
+    return storage_.publisherRootOf(tokens2_);
+  }
+
+  std::optional<FsdbErrorCode> addRawKey2(const SubscriptionIdentifier& id) {
+    return storage_.addPatchPaths(
+        id, {{2, makeRawPath(idTokens2_)}}, publisherRoot());
+  }
+
+  void publishBothAndServe() {
+    EXPECT_EQ(
+        storage_.set_encoded(
+            tokens1_.begin(), tokens1_.end(), makeConfirmedI32(111)),
+        std::nullopt);
+    EXPECT_EQ(
+        storage_.set_encoded(
+            tokens2_.begin(), tokens2_.end(), makeConfirmedI32(222)),
+        std::nullopt);
+    storage_.serveOnce();
+  }
+
+  SubscriberChunk consumeChunk(
+      SubscriptionStreamReader<
+          SubscriptionServeQueueElement<SubscriberMessage>>& reader) {
+    auto element = folly::coro::blockingWait(
+        folly::coro::timeout(
+            consumeOne(reader.generator_), std::chrono::seconds(5)));
+    return element.val.move_chunk();
+  }
+
+  thriftpath::RootThriftPath<TestStruct> root_;
+  DoubleResolveStorage storage_;
+  SubscriptionIdentifier id_{SubscriberId(kSubscriber), /*uid=*/42};
+  std::vector<std::string> tokens1_;
+  std::vector<std::string> tokens2_;
+  std::vector<std::string> idTokens2_;
+};
+} // namespace
+
+// Paths added right after subscribe, before the first serve cycle, are
+// accepted and delivered in the initial sync.
+TEST_F(CowSubscriptionManagerPendingAddTest, AddPathsBeforeRegistration) {
+  auto reader = storage_.subscribe_patch(
+      SubscriptionIdentifier(id_), {{1, makeRawPath(tokens1_)}});
+
+  ASSERT_EQ(addRawKey2(id_), std::nullopt);
+
+  publishBothAndServe();
+  auto patchGroups = *consumeChunk(reader).patchGroups();
+  EXPECT_EQ(patchGroups.size(), 2);
+  EXPECT_EQ(patchGroups.at(1).size(), 1);
+  EXPECT_EQ(patchGroups.at(2).size(), 1);
+  EXPECT_EQ(storage_.numSubscriptions(), 2);
+}
+
+// Extended variant: the stream revision passed with a pending add is echoed in
+// the served patch metadata.
+TEST_F(CowSubscriptionManagerPendingAddTest, AddExtPathsBeforeRegistration) {
+  constexpr StreamRevision kStreamRevision = 2;
+  auto reader = storage_.subscribe_patch_extended(
+      SubscriptionIdentifier(id_),
+      {{1,
+        ext_path_builder::raw("stringToStruct")
+            .raw("test1")
+            .raw("max")
+            .get()}});
+
+  ASSERT_EQ(
+      storage_.add_extended_patch_subscription_path(
+          SubscriptionIdentifier(id_),
+          2,
+          ext_path_builder::raw("stringToStruct").raw("test2").raw("max").get(),
+          kStreamRevision),
+      std::nullopt);
+
+  publishBothAndServe();
+  auto patchGroups = *consumeChunk(reader).patchGroups();
+  EXPECT_EQ(patchGroups.size(), 2);
+  for (const auto& [key, patches] : patchGroups) {
+    ASSERT_EQ(patches.size(), 1) << "key " << key;
+    EXPECT_EQ(patches.front().metadata()->streamRevision(), kStreamRevision)
+        << "key " << key;
+  }
+  EXPECT_EQ(storage_.numSubscriptions(), 2);
+}
+
+// Pending subscriptions get the same validation as live ones.
+TEST_F(CowSubscriptionManagerPendingAddTest, PendingAddRejections) {
+  auto reader = storage_.subscribe_patch(
+      SubscriptionIdentifier(id_), {{1, makeRawPath(tokens1_)}});
+
+  // Key 1 already belongs to the subscription.
+  EXPECT_EQ(
+      storage_.addPatchPaths(
+          id_, {{1, makeRawPath(idTokens2_)}}, publisherRoot()),
+      FsdbErrorCode::ID_ALREADY_EXISTS);
+  EXPECT_EQ(
+      storage_.addPatchPaths(id_, {{2, makeRawPath(idTokens2_)}}, "wrongRoot"),
+      FsdbErrorCode::INVALID_REQUEST);
+  EXPECT_EQ(
+      addRawKey2(
+          SubscriptionIdentifier(SubscriberId(kSubscriber), /*uid=*/999)),
+      FsdbErrorCode::ID_NOT_FOUND);
 }
 
 TYPED_TEST(SubscribableStorageTests, AddPatchSubscriptionPath) {
@@ -878,7 +1014,7 @@ TYPED_TEST(SubscribableStorageTests, AddPatchSubscriptionPath) {
   auto element = folly::coro::blockingWait(
       folly::coro::timeout(consumeOne(generator), std::chrono::seconds(5)));
   auto msg = std::move(element.val);
-  auto patchGroups = *msg.get_chunk().patchGroups();
+  auto patchGroups = *msg.chunk().as_const()->patchGroups();
   EXPECT_EQ(patchGroups.size(), 1);
   EXPECT_EQ(patchGroups.begin()->first, 1);
 
@@ -895,7 +1031,7 @@ TYPED_TEST(SubscribableStorageTests, AddPatchSubscriptionPath) {
   element = folly::coro::blockingWait(
       folly::coro::timeout(consumeOne(generator), std::chrono::seconds(5)));
   msg = std::move(element.val);
-  patchGroups = *msg.get_chunk().patchGroups();
+  patchGroups = *msg.chunk().as_const()->patchGroups();
   ASSERT_TRUE(patchGroups.contains(2));
   auto patches = patchGroups.at(2);
   EXPECT_EQ(patches.size(), 1);
@@ -913,7 +1049,7 @@ TYPED_TEST(SubscribableStorageTests, AddPatchSubscriptionPath) {
   element = folly::coro::blockingWait(
       folly::coro::timeout(consumeOne(generator), std::chrono::seconds(5)));
   msg = std::move(element.val);
-  patchGroups = *msg.get_chunk().patchGroups();
+  patchGroups = *msg.chunk().as_const()->patchGroups();
   ASSERT_TRUE(patchGroups.contains(2));
   patch = patchGroups.at(2).front();
   auto newVal = *patch.patch()->val_ref();
@@ -1046,7 +1182,8 @@ TYPED_TEST(SubscribableStorageTests, AddPatchSubscriptionPathMultipleKeys) {
         folly::coro::timeout(consumeOne(generator), std::chrono::seconds(5)));
     auto msg = std::move(element.val);
     if (msg.getType() == SubscriberMessage::Type::chunk) {
-      for (auto& [key, patches] : *msg.get_chunk().patchGroups()) {
+      for (auto& [key, patches] :
+           *msg.chunk().as_const().value().patchGroups()) {
         patchCountByKey[key] += patches.size();
       }
     }
@@ -1120,7 +1257,8 @@ TYPED_TEST(
         folly::coro::timeout(consumeOne(generator), std::chrono::seconds(5)));
     auto msg = std::move(element.val);
     if (msg.getType() == SubscriberMessage::Type::chunk) {
-      for (auto& [key, patches] : *msg.get_chunk().patchGroups()) {
+      for (auto& [key, patches] :
+           *msg.chunk().as_const().value().patchGroups()) {
         patchCountByKey[key] += patches.size();
       }
     }
@@ -1896,7 +2034,7 @@ CO_TYPED_TEST(SubscribableStorageTests, SubscribeExtendedPatchSimple) {
     auto element = co_await folly::coro::timeout(
         consumeOne(generator), std::chrono::seconds(5));
     auto msg = std::move(element.val);
-    auto chunk = msg.get_chunk();
+    auto chunk = msg.chunk().as_const().value();
 
     EXPECT_EQ(
         chunk.patchGroups()->size(), 1); // single path -> single patchGroup
@@ -2053,7 +2191,7 @@ CO_TYPED_TEST(SubscribableStorageTests, SubscribeExtendedPatchMultipleChanges) {
     auto element = co_await folly::coro::timeout(
         consumeOne(generator), std::chrono::seconds(5));
     auto msg = std::move(element.val);
-    auto chunk = msg.get_chunk();
+    auto chunk = msg.chunk().as_const().value();
 
     EXPECT_EQ(
         chunk.patchGroups()->size(), 1); // single path -> single patchGroup
@@ -2278,7 +2416,7 @@ TYPED_TEST(SubscribableStorageTests, AddExtendedPatchSubscriptionPath) {
   auto element = folly::coro::blockingWait(
       folly::coro::timeout(consumeOne(generator), std::chrono::seconds(5)));
   auto msg = std::move(element.val);
-  EXPECT_GE(msg.get_chunk().patchGroups()->size(), 1);
+  EXPECT_GE(msg.chunk().as_const().value().patchGroups()->size(), 1);
 
   // Add a second extended path to the live subscription
   const auto& extPath2 =
@@ -2297,7 +2435,7 @@ TYPED_TEST(SubscribableStorageTests, AddExtendedPatchSubscriptionPath) {
   element = folly::coro::blockingWait(
       folly::coro::timeout(consumeOne(generator), std::chrono::seconds(5)));
   msg = std::move(element.val);
-  auto& patchGroups = *msg.get_chunk().patchGroups();
+  auto& patchGroups = *msg.chunk().as_const()->patchGroups();
   ASSERT_TRUE(patchGroups.contains(2));
 
   // negative: unknown identifier
@@ -2407,7 +2545,7 @@ TYPED_TEST(
         folly::coro::timeout(consumeOne(generator), std::chrono::seconds(5)));
     auto msg = std::move(element.val);
     bool hasKey2 = msg.getType() == SubscriberMessage::Type::chunk &&
-        msg.get_chunk().patchGroups()->count(2);
+        msg.chunk().as_const().value().patchGroups()->count(2);
     ASSERT_EVENTUALLY_TRUE(hasKey2);
   });
 }
@@ -2550,6 +2688,16 @@ TEST(SubscribableStorageServeInterval, ClampReasonNamesTheRuleThatFired) {
   EXPECT_EQ(
       describeServeIntervalClamp(2000, 10000, 10000),
       "serve tick not configured");
+}
+
+// The serve loop bills each bucket against tick * (bucket + 1); if that drifts
+// from serveBucketIndex, slow buckets get reported as slow serves.
+TEST(SubscribableStorageServeInterval, BucketCadenceRoundTrips) {
+  constexpr uint32_t kTickMs = 20;
+  for (size_t bucket = 0; bucket < kMaxServeBuckets; ++bucket) {
+    const auto intervalMs = kTickMs * static_cast<uint32_t>(bucket + 1);
+    EXPECT_EQ(serveBucketIndex(intervalMs, kTickMs), bucket);
+  }
 }
 
 // An interval is only honored for stats path subscriptions, but requesting one
@@ -2856,7 +3004,7 @@ TEST(SubscribableStorageServeInterval, AddedPathsReachEveryBucket) {
         folly::coro::timeout(consumeOne(extGen), std::chrono::seconds(5)));
     auto msg = std::move(element.val);
     const bool hasKey = msg.getType() == SubscriberMessage::Type::chunk &&
-        msg.get_chunk().patchGroups()->count(1);
+        msg.chunk().as_const().value().patchGroups()->count(1);
     ASSERT_EVENTUALLY_TRUE(hasKey);
   });
 }

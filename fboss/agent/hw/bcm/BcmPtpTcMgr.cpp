@@ -38,8 +38,6 @@ int BcmPtpTcMgr::getTsBitModeArg(cfg::AsicType asicType) {
           asicType,
           " not supported yet, please only use TH or TH3");
   }
-
-  return -1;
 }
 
 void BcmPtpTcMgr::enablePortTimesyncConfig(

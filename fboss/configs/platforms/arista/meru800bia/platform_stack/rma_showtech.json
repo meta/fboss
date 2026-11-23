@@ -4,9 +4,12 @@
   ],
   "i2cDumpDevices": [
     "/run/devmap/cplds/FAN_CPLD",
-    "/run/devmap/sensors/SMB_ISL68226_J3",
-    "/run/devmap/sensors/SMB_ISL68226_OPTICS",
-    "/run/devmap/sensors/SMB_RAA228926_J3"
+    "/run/devmap/cplds/MERU800BIA_SMB_CPLD",
+    "/run/devmap/sensors/FAN_TMP75",
+    "/run/devmap/sensors/SMB_MAX6581",
+    "/run/devmap/sensors/SMB_MGMT_TMP75",
+    "/run/devmap/sensors/SMB_TMP75_FRONT",
+    "/run/devmap/sensors/SMB_TMP75_REAR"
   ],
   "psus": [
     "/run/devmap/sensors/PSU1_PMBUS",
@@ -69,6 +72,12 @@
   ],
   "pems": [],
   "fanspinners": [],
+  "regDumpDevices": [
+    "/run/devmap/sensors/CPU_MPS_PMBUS",
+    "/run/devmap/sensors/SMB_ISL68226_J3",
+    "/run/devmap/sensors/SMB_ISL68226_OPTICS",
+    "/run/devmap/sensors/SMB_RAA228926_J3"
+  ],
   "scPowerGood": {
     "gpioAttribute": {
       "path": "/run/devmap/gpiochips/SMB_PCA",

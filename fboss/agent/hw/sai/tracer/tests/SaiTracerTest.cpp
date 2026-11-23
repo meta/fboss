@@ -9,27 +9,31 @@
  */
 
 #include "fboss/agent/hw/sai/tracer/SaiTracer.h"
+#include "fboss/agent/hw/sai/tracer/FdbApiTracer.h"
+#include "fboss/agent/hw/sai/tracer/PolicerApiTracer.h"
+#include "fboss/agent/hw/sai/tracer/PortApiTracer.h"
+#include "fboss/agent/hw/sai/tracer/SwitchApiTracer.h"
+#include "fboss/agent/hw/sai/tracer/TamApiTracer.h"
 
+#include "fboss/agent/hw/sai/fake/FakeSai.h"
+#include "fboss/agent/hw/sai/fake/FakeSaiTam.h"
+
+#include <array>
+#include <limits>
+
+#include <folly/FileUtil.h>
 #include <folly/Singleton.h>
+#include <folly/testing/TestUtil.h>
 #include <gtest/gtest.h>
 
 extern "C" {
 #include <sai.h>
 }
 
-#include <folly/IPAddress.h>
 #include "fboss/agent/hw/sai/api/SaiVersion.h"
 
-// Provide stub implementation of fromSaiIpAddress for sai_ip6_t
-// This is needed because the sai_tracer library is built with
-// undefined_symbols=True and the test binary doesn't link against address_util
-namespace facebook::fboss {
-folly::IPAddressV6 fromSaiIpAddress(const sai_ip6_t& ip6) {
-  return folly::IPAddressV6::fromBinary(folly::ByteRange(ip6, 16));
-}
-} // namespace facebook::fboss
-
 DECLARE_bool(enable_replayer);
+DECLARE_bool(log_variable_name);
 DECLARE_string(sai_log);
 
 namespace facebook::fboss {
@@ -749,6 +753,255 @@ TEST_F(SaiTracerTest, IsolationGroupObjectTypesAreRegistered) {
     EXPECT_FALSE(tracer->logCreateFn("create_fn", &oid, 0, 1, &attr, objectType)
                      .empty());
   }
+
+  tracer.reset();
+  folly::SingletonVault::singleton()->destroyInstances();
+  folly::SingletonVault::singleton()->reenableInstances();
+  FLAGS_enable_replayer = false;
+}
+
+TEST_F(SaiTracerTest, PolicerObjectTypeAndRatesAreRegistered) {
+  folly::SingletonVault::singleton()->destroyInstances();
+  folly::SingletonVault::singleton()->reenableInstances();
+  FLAGS_enable_replayer = true;
+  FLAGS_sai_log = "/dev/null";
+  auto tracer = getTracer();
+  ASSERT_NE(tracer, nullptr);
+
+  sai_object_id_t oid = 1000;
+  sai_attribute_t attrs[3]{};
+  attrs[0].id = SAI_POLICER_ATTR_CIR;
+  attrs[0].value.u64 = oid;
+  attrs[1].id = SAI_POLICER_ATTR_CBS;
+  attrs[1].value.u64 = uint64_t{1} << 40;
+  attrs[2].id = SAI_POLICER_ATTR_PBS;
+  attrs[2].value.u64 = 0;
+  auto [declaration, varName] =
+      tracer->declareVariable(&oid, SAI_OBJECT_TYPE_POLICER);
+  EXPECT_FALSE(declaration.empty());
+  EXPECT_FALSE(varName.empty());
+  EXPECT_FALSE(
+      tracer
+          ->logCreateFn(
+              "create_policer", &oid, 0, 3, attrs, SAI_OBJECT_TYPE_POLICER)
+          .empty());
+  std::vector<std::string> lines;
+  setPolicerAttributes(attrs, 3, lines, SAI_STATUS_SUCCESS);
+  std::vector<std::string> expected{
+      "// Cir",
+      "s_a[0].value.u64=1000",
+      "// Cbs",
+      "s_a[1].value.u64=1099511627776",
+      "// Pbs",
+      "s_a[2].value.u64=0"};
+  EXPECT_EQ(lines, expected);
+
+  tracer.reset();
+  folly::SingletonVault::singleton()->destroyInstances();
+  folly::SingletonVault::singleton()->reenableInstances();
+  FLAGS_enable_replayer = false;
+}
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+class SaiCsigTracerTest : public SaiTracerTest {
+ protected:
+  void SetUp() override {
+    folly::SingletonVault::singleton()->destroyInstances();
+    folly::SingletonVault::singleton()->reenableInstances();
+    FLAGS_enable_replayer = true;
+    FLAGS_enable_get_attr_log = true;
+    FLAGS_log_variable_name = true;
+    FLAGS_sai_log = replayLog_.path().string();
+    auto tracer = getTracer();
+    ASSERT_NE(tracer, nullptr);
+    populate_tam_api(&tracer->tamApi_);
+    tracer->logApiQuery(SAI_API_TAM, "tam_api");
+    // The fake adapter starts object IDs at zero, which SAI reserves for null.
+    FakeSai::getInstance()->tamIntManager.create();
+  }
+
+  void TearDown() override {
+    folly::SingletonVault::singleton()->destroyInstances();
+    folly::SingletonVault::singleton()->reenableInstances();
+    FLAGS_enable_replayer = false;
+    FLAGS_enable_get_attr_log = false;
+    FLAGS_log_variable_name = false;
+  }
+
+  sai_object_id_t createTamInt() {
+    std::array<sai_attribute_t, 6> attrs{};
+    attrs[0].id = SAI_TAM_INT_ATTR_TYPE;
+    attrs[0].value.s32 = SAI_TAM_INT_TYPE_CSIG_COMPACT;
+    attrs[1].id = SAI_TAM_INT_ATTR_DEVICE_ID;
+    attrs[1].value.u32 = 0;
+    attrs[2].id = SAI_TAM_INT_ATTR_INT_PRESENCE_TYPE;
+    attrs[2].value.s32 = SAI_TAM_INT_PRESENCE_TYPE_ETH_TYPE;
+    attrs[3].id = SAI_TAM_INT_ATTR_INLINE;
+    attrs[3].value.booldata = true;
+    attrs[4].id = SAI_TAM_INT_ATTR_ETH_TYPE_CODE_POINT;
+    attrs[4].value.u16 = 0x9900;
+    attrs[5].id = SAI_TAM_INT_ATTR_CSIG_SIGNAL_TYPE;
+    attrs[5].value.s32 = SAI_CSIG_SIGNAL_TYPE_ABW;
+    sai_object_id_t id{SAI_NULL_OBJECT_ID};
+    EXPECT_EQ(
+        wrappedTamApi()->create_tam_int(&id, 0, attrs.size(), attrs.data()),
+        SAI_STATUS_SUCCESS);
+    return id;
+  }
+
+  std::string readTrace() {
+    folly::SingletonVault::singleton()->destroyInstances();
+    folly::SingletonVault::singleton()->reenableInstances();
+    std::string trace;
+    EXPECT_TRUE(folly::readFile(replayLog_.path().c_str(), trace));
+    return trace;
+  }
+
+ private:
+  folly::test::TemporaryFile replayLog_;
+};
+
+TEST_F(SaiCsigTracerTest, TamIntOperationsUseReplayIds) {
+  const auto id = createTamInt();
+  EXPECT_EQ(getTracer()->getVariable(id), "tamInt_0");
+  sai_attribute_t attr{};
+  attr.id = SAI_TAM_INT_ATTR_BW_TIME_INTERVAL;
+  attr.value.u32 = 512;
+  EXPECT_EQ(
+      wrappedTamApi()->set_tam_int_attribute(id, &attr), SAI_STATUS_SUCCESS);
+  attr.value.u32 = 0;
+  EXPECT_EQ(
+      wrappedTamApi()->get_tam_int_attribute(id, 1, &attr), SAI_STATUS_SUCCESS);
+  EXPECT_EQ(attr.value.u32, 512);
+  EXPECT_EQ(wrappedTamApi()->remove_tam_int(id), SAI_STATUS_SUCCESS);
+  EXPECT_NE(getTracer()->getVariable(id), "tamInt_0");
+  const auto trace = readTrace();
+  for (const auto* operation :
+       {"tam_api->create_tam_int(&tamInt_0",
+        "tam_api->set_tam_int_attribute(tamInt_0",
+        "tam_api->get_tam_int_attribute(tamInt_0",
+        "tam_api->remove_tam_int(tamInt_0"}) {
+    EXPECT_NE(trace.find(operation), std::string::npos) << operation;
+  }
+}
+
+TEST_F(SaiCsigTracerTest, TamBindingReferencesReplayedIntObject) {
+  auto id = createTamInt();
+  sai_attribute_t attr{};
+  attr.id = SAI_TAM_ATTR_INT_OBJECTS_LIST;
+  attr.value.objlist = {1, &id};
+  std::vector<std::string> lines;
+  setTamAttributes(&attr, 1, lines, SAI_STATUS_SUCCESS);
+  const std::vector<std::string> expected{
+      "// IntObjectList",
+      "s_a[0].value.objlist.count=1",
+      "s_a[0].value.objlist.list=(sai_object_id_t*)(list_0)",
+      "s_a[0].value.objlist.list[0]=tamInt_0"};
+  EXPECT_EQ(lines, expected);
+}
+
+TEST_F(SaiCsigTracerTest, QuantizationListsPreserveValues) {
+  auto tracer = getTracer();
+  const auto ids =
+      tracer->listFuncMap_.find(TYPE_INDEX(std::vector<sai_uint16_t>));
+  const auto ranges =
+      tracer->listFuncMap_.find(TYPE_INDEX(std::vector<sai_u64_range_t>));
+  ASSERT_NE(ids, tracer->listFuncMap_.end());
+  ASSERT_NE(ranges, tracer->listFuncMap_.end());
+  std::array<sai_uint16_t, 2> bandIds{7, 3};
+  std::array<sai_u64_range_t, 2> bandRanges{
+      {{0, 1ULL << 32},
+       {(1ULL << 32) + 1, std::numeric_limits<sai_uint64_t>::max()}}};
+  std::array<sai_attribute_t, 2> attrs{};
+  attrs[0].value.u16list = {bandIds.size(), bandIds.data()};
+  attrs[1].value.u64rangelist = {bandRanges.size(), bandRanges.data()};
+  std::vector<std::string> lines;
+  ids->second(attrs.data(), 0, 0, lines, true);
+  ranges->second(attrs.data(), 1, 1, lines, true);
+  const std::vector<std::string> expected{
+      "s_a[0].value.u16list.count=2",
+      "s_a[0].value.u16list.list=(sai_uint16_t*)(list_0)",
+      "s_a[0].value.u16list.list[0]=7",
+      "s_a[0].value.u16list.list[1]=3",
+      "s_a[1].value.u64rangelist.count=2",
+      "s_a[1].value.u64rangelist.list=(sai_u64_range_t*)(list_1)",
+      "s_a[1].value.u64rangelist.list[0].min=0ULL",
+      "s_a[1].value.u64rangelist.list[0].max=4294967296ULL",
+      "s_a[1].value.u64rangelist.list[1].min=4294967297ULL",
+      "s_a[1].value.u64rangelist.list[1].max=18446744073709551615ULL"};
+  EXPECT_EQ(lines, expected);
+
+  attrs[0].value.u16list = {0, nullptr};
+  attrs[1].value.u64rangelist = {2, nullptr};
+  lines.clear();
+  ids->second(attrs.data(), 0, 0, lines, true);
+  ranges->second(attrs.data(), 1, 1, lines, false);
+  const std::vector<std::string> empty{
+      "s_a[0].value.u16list.count=0",
+      "s_a[0].value.u16list.list=NULL",
+      "s_a[1].value.u64rangelist.count=2",
+      "s_a[1].value.u64rangelist.list=NULL"};
+  EXPECT_EQ(lines, empty);
+}
+
+TEST_F(SaiCsigTracerTest, StandardCsigPortAndSwitchAttributesAreSerialized) {
+  std::array<sai_attribute_t, 2> ports{};
+  ports[0].id = SAI_PORT_ATTR_INT_DELETE;
+  ports[0].value.booldata = true;
+  ports[1].id = SAI_PORT_ATTR_INT_METADATA;
+  ports[1].value.u16 = 0x1234;
+  std::vector<std::string> lines;
+  setPortAttributes(ports.data(), ports.size(), lines, SAI_STATUS_SUCCESS);
+  const std::vector<std::string> expectedPorts{
+      "// IntDelete",
+      "s_a[0].value.booldata=true",
+      "// IntMetadata",
+      "s_a[1].value.u16=4660"};
+  EXPECT_EQ(lines, expectedPorts);
+
+  std::array<sai_uint32_t, 2> intervals{1000, 2000};
+  std::array<sai_attribute_t, 2> switches{};
+  switches[0].id = SAI_SWITCH_ATTR_MAX_CSIG_TIMERS;
+  switches[0].value.u8 = 2;
+  switches[1].id = SAI_SWITCH_ATTR_CSIG_BW_TIME_INTERVAL_IN_USEC;
+  switches[1].value.u32list = {intervals.size(), intervals.data()};
+  lines.clear();
+  setSwitchAttributes(
+      switches.data(), switches.size(), lines, SAI_STATUS_SUCCESS);
+  const std::vector<std::string> expectedSwitches{
+      "// MaxCsigTimers",
+      "s_a[0].value.u8=2",
+      "// CsigBwTimeIntervalInUsec",
+      "s_a[1].value.u32list.count=2",
+      "s_a[1].value.u32list.list=(sai_uint32_t*)(list_0)",
+      "s_a[1].value.u32list.list[0]=1000",
+      "s_a[1].value.u32list.list[1]=2000"};
+  EXPECT_EQ(lines, expectedSwitches);
+}
+#endif
+
+TEST_F(SaiTracerTest, FdbFlushIsTraced) {
+  EXPECT_NE(wrappedFdbApi()->flush_fdb_entries, nullptr);
+
+  folly::SingletonVault::singleton()->destroyInstances();
+  folly::SingletonVault::singleton()->reenableInstances();
+
+  FLAGS_enable_replayer = true;
+  FLAGS_sai_log = "/dev/null";
+
+  auto tracer = getTracer();
+  if (!tracer) {
+    FLAGS_enable_replayer = false;
+    return;
+  }
+
+  sai_attribute_t attrs[2]{};
+  attrs[0].id = SAI_FDB_FLUSH_ATTR_BRIDGE_PORT_ID;
+  attrs[0].value.oid = 24;
+  attrs[1].id = SAI_FDB_FLUSH_ATTR_ENTRY_TYPE;
+  attrs[1].value.s32 = SAI_FDB_FLUSH_ENTRY_TYPE_DYNAMIC;
+
+  EXPECT_NO_THROW(tracer->logFdbFlushFn(1, 2, attrs, SAI_STATUS_SUCCESS));
 
   tracer.reset();
   folly::SingletonVault::singleton()->destroyInstances();

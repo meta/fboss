@@ -11,7 +11,7 @@
 #include "fboss/agent/test/AgentHwTest.h"
 
 #include "fboss/agent/packet/PktFactory.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestAddressConstants.h"
+#include "fboss/agent/test/utils/AgentTestAddressConstants.h"
 #include "fboss/lib/CommonUtils.h"
 
 #include "fboss/agent/test/gen-cpp2/production_features_types.h"

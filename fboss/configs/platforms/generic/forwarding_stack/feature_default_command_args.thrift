@@ -19,13 +19,17 @@ struct FeatureEnableConditions {
   // Values must be PlatformType enum names from lib/if/fboss_common.thrift,
   // for example "PLATFORM_WEDGE800BACT".
   3: optional FeatureConditionValues platforms;
+  // Human-readable rationale for this enablement condition. This field is
+  // informational and does not affect command-argument resolution.
+  4: optional string comment;
 }
 
 struct FeatureDefaultCommandArgs {
   1: map<string, string> args = {};
   // When absent, this feature is explicit-only and is not automatically
-  // enabled. When present, at least one condition must be configured.
-  2: optional FeatureEnableConditions autoEnableWhen;
+  // enabled. Each list entry is an alternative; the feature is automatically
+  // enabled when any entry matches. The list and every entry must be nonempty.
+  2: optional list<FeatureEnableConditions> autoEnableWhen;
 }
 
 struct FeatureDefaultCommandArgsConfig {

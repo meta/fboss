@@ -23,6 +23,7 @@
 
 #include <fmt/format.h>
 #include <folly/FileUtil.h>
+#include "fboss/lib/CommonFileUtils.h"
 
 namespace fs = std::filesystem;
 
@@ -177,12 +178,7 @@ std::vector<std::string> ConfigFileManager::apply(
       if (state.type == FileType::MISSING) {
         return;
       }
-      std::error_code error;
-      fs::remove(path, error);
-      if (error) {
-        throw std::runtime_error(
-            fmt::format("Failed to remove {}: {}", path, error.message()));
-      }
+      removeFile(path);
       changed.push_back(path);
     };
     remove(paths_.desired, snapshot.desired_);
@@ -233,15 +229,9 @@ std::vector<std::string> ConfigFileManager::restore(
                            const std::string& path, const FileState& state) {
     try {
       switch (state.type) {
-        case FileType::MISSING: {
-          std::error_code error;
-          fs::remove(path, error);
-          if (error) {
-            throw std::runtime_error(
-                fmt::format("Failed to remove {}: {}", path, error.message()));
-          }
+        case FileType::MISSING:
+          removeFile(path);
           return;
-        }
         case FileType::REGULAR:
           writeRegular(path, state.data);
           return;

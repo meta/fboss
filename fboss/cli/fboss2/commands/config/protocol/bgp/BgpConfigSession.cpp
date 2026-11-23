@@ -22,6 +22,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include "fboss/lib/CommonFileUtils.h"
 #include "folly/json/dynamic.h"
 
 namespace fs = std::filesystem;
@@ -56,9 +57,7 @@ BgpConfigSession::BgpConfigSession() {
   }
 
   fs::path configDir = fs::path(homeDir) / ".fboss2";
-  if (!fs::exists(configDir)) {
-    fs::create_directories(configDir);
-  }
+  createDir(configDir.string());
 
   sessionConfigPath_ = (configDir / "bgp_config.json").string();
   bgpConfig_ = getDefaultBgpConfig();
@@ -147,9 +146,7 @@ void BgpConfigSession::clearSession() {
     return;
   }
 
-  if (fs::exists(sessionConfigPath_)) {
-    fs::remove(sessionConfigPath_);
-  }
+  removeFile(sessionConfigPath_);
   bgpConfig_ = getDefaultBgpConfig();
   configLoaded_ = false;
 }

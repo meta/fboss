@@ -11,6 +11,8 @@
 
 #include "fboss/agent/hw/sai/fake/FakeManager.h"
 
+#include <optional>
+
 extern "C" {
 #include <sai.h>
 }
@@ -49,6 +51,15 @@ class FakeVirtualChannel {
   void setCbfcSenderEnable(bool enable) {
     cbfcSenderEnable_ = enable;
   }
+  // The port's receiver credit limit when this VC last turned its receiver on,
+  // the point at which hardware applies the port limit.
+  std::optional<sai_uint32_t> getPortReceiverCreditLimitAtReceiverEnable()
+      const {
+    return portReceiverCreditLimitAtReceiverEnable_;
+  }
+  void setPortReceiverCreditLimitAtReceiverEnable(sai_uint32_t limit) {
+    portReceiverCreditLimitAtReceiverEnable_ = limit;
+  }
 
   sai_object_id_t id{};
 
@@ -62,6 +73,7 @@ class FakeVirtualChannel {
   sai_object_id_t cbfcSenderCreditProfile_{SAI_NULL_OBJECT_ID};
   bool cbfcReceiverEnable_{false};
   bool cbfcSenderEnable_{false};
+  std::optional<sai_uint32_t> portReceiverCreditLimitAtReceiverEnable_;
 };
 
 class FakeCbfcCreditProfile {

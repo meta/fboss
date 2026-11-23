@@ -11,6 +11,7 @@
 #include "fboss/agent/hw/sai/switch/SaiMirrorManager.h"
 #include "fboss/agent/hw/sai/switch/SaiPortManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
+#include "fboss/agent/hw/switch_asics/FakeAsic.h"
 #include "fboss/agent/state/Mirror.h"
 #include "fboss/agent/types.h"
 
@@ -272,4 +273,58 @@ TEST_F(MirrorManagerTest, portMirroringAndSampling) {
       portHandle->port->adapterKey(),
       SaiPortTraits::Attributes::IngressSampleMirrorSession{});
   EXPECT_EQ(gotSampleMirrorSaiIdList[0], mirrorHandle->adapterKey());
+}
+
+TEST(MirrorPolicerCapabilityTest, enabledOnlyOnSupportedAsics) {
+  for (auto type :
+       {cfg::AsicType::ASIC_TYPE_FAKE,
+        cfg::AsicType::ASIC_TYPE_FAKE_NO_WARMBOOT,
+        cfg::AsicType::ASIC_TYPE_MOCK,
+        cfg::AsicType::ASIC_TYPE_EBRO,
+        cfg::AsicType::ASIC_TYPE_YUBA,
+        cfg::AsicType::ASIC_TYPE_P200,
+        cfg::AsicType::ASIC_TYPE_G202X,
+        cfg::AsicType::ASIC_TYPE_CHENAB,
+        cfg::AsicType::ASIC_TYPE_CHENAB2,
+        cfg::AsicType::ASIC_TYPE_JERICHO2,
+        cfg::AsicType::ASIC_TYPE_JERICHO3,
+        cfg::AsicType::ASIC_TYPE_JERICHO4,
+        cfg::AsicType::ASIC_TYPE_QUMRAN4D,
+        cfg::AsicType::ASIC_TYPE_RAMON,
+        cfg::AsicType::ASIC_TYPE_RAMON3,
+        cfg::AsicType::ASIC_TYPE_ELBERT_8DD,
+        cfg::AsicType::ASIC_TYPE_AGERA3,
+        cfg::AsicType::ASIC_TYPE_TOMAHAWK,
+        cfg::AsicType::ASIC_TYPE_TOMAHAWK3,
+        cfg::AsicType::ASIC_TYPE_TOMAHAWK4,
+        cfg::AsicType::ASIC_TYPE_TOMAHAWK5,
+        cfg::AsicType::ASIC_TYPE_TOMAHAWK6,
+        cfg::AsicType::ASIC_TYPE_TOMAHAWKULTRA1}) {
+    cfg::SwitchInfo info;
+    info.asicType() = type;
+    info.switchType() = cfg::SwitchType::NPU;
+    if (type == cfg::AsicType::ASIC_TYPE_JERICHO2 ||
+        type == cfg::AsicType::ASIC_TYPE_JERICHO3 ||
+        type == cfg::AsicType::ASIC_TYPE_JERICHO4 ||
+        type == cfg::AsicType::ASIC_TYPE_QUMRAN4D) {
+      info.switchType() = cfg::SwitchType::VOQ;
+    } else if (
+        type == cfg::AsicType::ASIC_TYPE_RAMON ||
+        type == cfg::AsicType::ASIC_TYPE_RAMON3) {
+      info.switchType() = cfg::SwitchType::FABRIC;
+    } else if (
+        type == cfg::AsicType::ASIC_TYPE_ELBERT_8DD ||
+        type == cfg::AsicType::ASIC_TYPE_AGERA3) {
+      info.switchType() = cfg::SwitchType::PHY;
+    }
+    info.switchMac() = "00:11:22:33:44:55";
+    auto asic = HwAsic::makeAsic(
+        0, info, std::nullopt, HwAsic::FabricNodeRole::SINGLE_STAGE_L1);
+    EXPECT_EQ(
+        asic->isSupported(HwAsic::Feature::MIRROR_SESSION_POLICER),
+        type == cfg::AsicType::ASIC_TYPE_FAKE ||
+            type == cfg::AsicType::ASIC_TYPE_FAKE_NO_WARMBOOT ||
+            type == cfg::AsicType::ASIC_TYPE_EBRO)
+        << asic->getAsicTypeStr();
+  }
 }

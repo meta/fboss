@@ -61,7 +61,6 @@ class Interface : public ThriftStructNode<Interface, state::InterfaceFields> {
   using Addresses = std::map<folly::IPAddress, uint8_t>;
   Interface(
       InterfaceID id,
-      RouterID router,
       std::optional<VlanID> vlan,
       folly::StringPiece name,
       folly::MacAddress mac,
@@ -73,7 +72,6 @@ class Interface : public ThriftStructNode<Interface, state::InterfaceFields> {
       std::optional<LivenessStatus> remoteIntfLivenessStatus = std::nullopt,
       cfg::Scope scope = cfg::Scope::LOCAL) {
     set<switch_state_tags::interfaceId>(id);
-    setRouterID(router);
     if (vlan) {
       setVlanID(*vlan);
     }
@@ -92,12 +90,6 @@ class Interface : public ThriftStructNode<Interface, state::InterfaceFields> {
   }
   std::optional<SystemPortID> getSystemPortID() const;
 
-  RouterID getRouterID() const {
-    return RouterID(get<switch_state_tags::routerId>()->cref());
-  }
-  void setRouterID(RouterID id) {
-    set<switch_state_tags::routerId>(id);
-  }
   cfg::InterfaceType getType() const {
     return get<switch_state_tags::type>()->cref();
   }
@@ -457,6 +449,18 @@ class Interface : public ThriftStructNode<Interface, state::InterfaceFields> {
     } else {
       ref<switch_state_tags::remoteIntfLivenessStatus>().reset();
     }
+  }
+
+  // VRF of a remote interface; VRF 0 when not set
+  RouterID getRemoteIntfRouterID() const {
+    if (auto vrf = cref<switch_state_tags::remoteIntfRouterId>()) {
+      return RouterID(vrf->cref());
+    }
+    return RouterID(0);
+  }
+
+  void setRemoteIntfRouterID(RouterID vrf) {
+    set<switch_state_tags::remoteIntfRouterId>(vrf);
   }
 
   void setScope(const cfg::Scope& scope) {

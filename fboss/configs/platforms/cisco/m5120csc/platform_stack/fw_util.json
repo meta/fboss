@@ -1,0 +1,270 @@
+{
+  "fwConfigs": {
+    "iob_fpga": {
+      "preUpgrade": [
+        {
+          "commandType": "gpioset",
+          "gpiosetArgs": {
+            "gpioChip": "IOB",
+            "gpioChipValue": "1",
+            "gpioChipPin": "38"
+          }
+        }
+      ],
+      "upgrade": [
+        {
+          "commandType": "flashrom",
+          "flashromArgs": {
+            "spi_layout": "1000000:19FFFFF primary\n1A00000:1CFFFFF CPLDS\n1FC0000:1FC0FFF p_meta",
+            "programmer_type": "linux_spi:dev=",
+            "programmer": "/run/devmap/flashes/IOB_SPI_MASTER",
+            "flashromExtraArgs": [
+              "-i",
+              "primary",
+              "-i",
+              "CPLDS",
+              "-i",
+              "p_meta",
+              "--noverify-all"
+            ],
+            "chip": [
+              "MT25QU256",
+              "N25Q256..1E",
+              "IS25WP256"
+            ]
+          }
+        }
+      ],
+      "postUpgrade": [
+        {
+          "commandType": "gpioset",
+          "gpiosetArgs": {
+            "gpioChip": "IOB",
+            "gpioChipValue": "0",
+            "gpioChipPin": "38"
+          }
+        }
+      ],
+      "verify": {
+        "commandType": "flashrom",
+        "flashromArgs": {
+          "spi_layout": "1000000:19FFFFF primary\n1A00000:1CFFFFF CPLDS\n1FC0000:1FC0FFF p_meta",
+          "programmer_type": "linux_spi:dev=",
+          "programmer": "/run/devmap/flashes/IOB_SPI_MASTER",
+          "flashromExtraArgs": [
+            "-i",
+            "primary",
+            "-i",
+            "CPLDS",
+            "-i",
+            "p_meta",
+            "--noverify-all"
+          ],
+          "chip": [
+            "MT25QU256",
+            "N25Q256..1E",
+            "IS25WP256"
+          ]
+        }
+      },
+      "read": {
+        "commandType": "flashrom",
+        "flashromArgs": {
+          "spi_layout": "1000000:19FFFFF primary\n1A00000:1CFFFFF CPLDS\n1FC0000:1FC0FFF p_meta",
+          "programmer_type": "linux_spi:dev=",
+          "programmer": "/run/devmap/flashes/IOB_SPI_MASTER",
+          "flashromExtraArgs": [
+            "-i",
+            "primary",
+            "-i",
+            "CPLDS",
+            "-i",
+            "p_meta",
+            "--noverify-all"
+          ],
+          "chip": [
+            "MT25QU256",
+            "N25Q256..1E",
+            "IS25WP256"
+          ]
+        }
+      },
+      "version": {
+        "versionType": "sysfs",
+        "path": "/run/devmap/fpgas/SMB_IOB_INFO_ROM/fw_ver"
+      },
+      "priority": 1,
+      "desiredVersion": "1.1"
+    },
+    "scm_fpga": {
+      "upgrade": [
+        {
+          "commandType": "flashrom",
+          "flashromArgs": {
+            "spi_layout": "800000:BFFFFF primary\nFF0000:FFFFFF p_meta\n000000:000FFF dir",
+            "programmer_type": "linux_spi:dev=",
+            "programmer": "/run/devmap/flashes/SCM_SPI_MASTER",
+            "flashromExtraArgs": [
+              "-i",
+              "primary",
+              "-i",
+              "p_meta",
+              "-i",
+              "dir",
+              "--noverify-all"
+            ],
+            "chip": [
+              "MT25QL128",
+              "N25Q128..3E",
+              "W25Q128.V",
+              "W25Q128.V..M",
+              "MX25L12835F/MX25L12873F"
+            ]
+          }
+        }
+      ],
+      "verify": {
+        "commandType": "flashrom",
+        "flashromArgs": {
+          "spi_layout": "800000:BFFFFF primary\nFF0000:FFFFFF p_meta\n000000:000FFF dir",
+          "programmer_type": "linux_spi:dev=",
+          "programmer": "/run/devmap/flashes/SCM_SPI_MASTER",
+          "flashromExtraArgs": [
+            "-i",
+            "primary",
+            "-i",
+            "p_meta",
+            "-i",
+            "dir",
+            "--noverify-all"
+          ],
+          "chip": [
+            "MT25QL128",
+            "N25Q128..3E",
+            "W25Q128.V",
+            "W25Q128.V..M",
+            "MX25L12835F/MX25L12873F"
+          ]
+        }
+      },
+      "read": {
+        "commandType": "flashrom",
+        "flashromArgs": {
+          "spi_layout": "800000:BFFFFF primary\nFF0000:FFFFFF p_meta\n000000:000FFF dir",
+          "programmer_type": "linux_spi:dev=",
+          "programmer": "/run/devmap/flashes/SCM_SPI_MASTER",
+          "flashromExtraArgs": [
+            "-i",
+            "primary",
+            "-i",
+            "p_meta",
+            "-i",
+            "dir",
+            "--noverify-all"
+          ],
+          "chip": [
+            "MT25QL128",
+            "N25Q128..3E",
+            "W25Q128.V",
+            "W25Q128.V..M",
+            "MX25L12835F/MX25L12873F"
+          ]
+        }
+      },
+      "version": {
+        "versionType": "sysfs",
+        "path": "/run/devmap/fpgas/SCM_INFO_ROM/fw_ver"
+      },
+      "priority": 2,
+      "desiredVersion": "1.4"
+    },
+    "fcb_fpga": {
+      "verify": {
+        "commandType": "flashrom",
+        "flashromArgs": {
+          "spi_layout": "800000:BFFFFF primary\nFF0000:FFFFFF p_meta\n000000:000FFF dir",
+          "programmer_type": "linux_spi:dev=",
+          "programmer": "/run/devmap/flashes/SCM_FCB_SPI_MASTER",
+          "flashromExtraArgs": [
+            "-i",
+            "primary",
+            "-i",
+            "p_meta",
+            "-i",
+            "dir",
+            "--noverify-all"
+          ],
+          "chip": [
+            "MT25QL128",
+            "N25Q128..3E",
+            "W25Q128.V",
+            "W25Q128.V..M",
+            "MX25L12835F/MX25L12873F"
+          ]
+        }
+      },
+      "read": {
+        "commandType": "flashrom",
+        "flashromArgs": {
+          "spi_layout": "800000:BFFFFF primary\nFF0000:FFFFFF p_meta\n000000:000FFF dir",
+          "programmer_type": "linux_spi:dev=",
+          "programmer": "/run/devmap/flashes/SCM_FCB_SPI_MASTER",
+          "flashromExtraArgs": [
+            "-i",
+            "primary",
+            "-i",
+            "p_meta",
+            "-i",
+            "dir",
+            "--noverify-all"
+          ],
+          "chip": [
+            "MT25QL128",
+            "N25Q128..3E",
+            "W25Q128.V",
+            "W25Q128.V..M",
+            "MX25L12835F/MX25L12873F"
+          ]
+        }
+      },
+      "version": {
+        "versionType": "sysfs",
+        "path": "/run/devmap/fpgas/SCM_FCB_INFO_ROM/fw_ver"
+      },
+      "priority": 2,
+      "desiredVersion": "1.10"
+    },
+    "bios": {
+      "verify": {
+        "commandType": "flashrom",
+        "flashromArgs": {
+          "spi_layout": "00000000:01FFFFFF full",
+          "programmer_type": "linux_spi:dev=",
+          "programmer": "/run/devmap/flashes/SCM_BIOS_SPI_MASTER,spispeed=512",
+          "flashromExtraArgs": [
+            "-i",
+            "full"
+          ]
+        }
+      },
+      "read": {
+        "commandType": "flashrom",
+        "flashromArgs": {
+          "spi_layout": "00000000:01FFFFFF full",
+          "programmer_type": "linux_spi:dev=",
+          "programmer": "/run/devmap/flashes/SCM_BIOS_SPI_MASTER,spispeed=512",
+          "flashromExtraArgs": [
+            "-i",
+            "full"
+          ]
+        }
+      },
+      "version": {
+        "versionType": "sysfs",
+        "path": "/sys/devices/virtual/dmi/id/bios_version"
+      },
+      "priority": 3,
+      "desiredVersion": "1.5"
+    }
+  }
+}

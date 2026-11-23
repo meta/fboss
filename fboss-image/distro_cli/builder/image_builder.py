@@ -8,15 +8,20 @@
 """Image Builder - handles building FBOSS images from manifests."""
 
 import hashlib
+import ipaddress
 import logging
 import os
 import shutil
+import socket
+import stat
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
 from typing import ClassVar
+from urllib.parse import urlsplit
 
 from distro_cli.builder.component import ComponentBuilder
-from distro_cli.lib import version_file
+from distro_cli.lib import host_boot, version_file
 from distro_cli.lib.artifact import ArtifactStore, find_artifact_in_dir
 from distro_cli.lib.constants import FBOSS_BUILDER_IMAGE, IMAGE_COMPONENTS
 from distro_cli.lib.docker.container import run_container
@@ -43,6 +48,91 @@ COMPONENT_ARTIFACT_PATTERNS = {
     "bsps": "bsp-*.tar",
     "other_dependencies": "*.rpm",
 }
+
+
+KVM_DEVICE = Path("/dev/kvm")
+# PXE/USB and ONIE build concurrently, each in its own KIWI build VM.
+BOX_VMS = 2
+PROXY_VARIABLES = (
+    "http_proxy",
+    "https_proxy",
+    "no_proxy",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "NO_PROXY",
+)
+
+
+def guest_proxy_environment(environ: Mapping[str, str]) -> dict[str, str]:  # noqa: C901
+    """Resolve HTTP proxies before crossing into the guest's DNS namespace.
+
+    Preserve TLS proxy hostnames for certificate verification. Literal addresses
+    and no_proxy remain unchanged; resolve both IPv4 and IPv6 proxy addresses.
+    """
+    result = {key: environ[key] for key in PROXY_VARIABLES if key in environ}
+    addresses: dict[str, str] = {}
+    for key, value in result.items():
+        if key.lower() == "no_proxy" or not value:
+            continue
+        try:
+            proxy = urlsplit(value)
+            if proxy.scheme != "http":
+                continue
+            hostname, port = proxy.hostname, proxy.port
+        except ValueError:
+            raise BuildError(f"Invalid {key} HTTP proxy URL for KIWI guest") from None
+        if not hostname:
+            raise BuildError(f"Missing {key} HTTP proxy hostname for KIWI guest")
+        try:
+            ipaddress.ip_address(hostname)
+        except ValueError:
+            pass
+        else:
+            continue
+        if hostname not in addresses:
+            try:
+                # OSS build tool: honor launcher NSS/hosts aliases, not Meta service discovery.
+                # ast-grep-ignore: python/python-dns-deps
+                candidates = socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
+                address = ipaddress.ip_address(candidates[0][4][0])
+                addresses[hostname] = (
+                    f"[{address}]" if address.version == 6 else str(address)
+                )
+            except OSError:
+                raise BuildError(
+                    f"Cannot resolve {key} proxy hostname {hostname} for KIWI guest"
+                ) from None
+        userinfo, separator, _ = proxy.netloc.rpartition("@")
+        authority = userinfo + separator + addresses[hostname]
+        if port is not None:
+            authority += f":{port}"
+        result[key] = proxy._replace(netloc=authority).geturl()
+    return result
+
+
+def box_memory_gb() -> int:
+    """Guest RAM per build VM: a quarter of host memory, within 8-16 GiB.
+
+    Guest RAM is backed by /dev/shm and its page cache eventually fills it, so
+    both VMs together stay within half of the host.
+    """
+    host_gb = os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") // 2**30
+    return max(8, min(16, host_gb // 4))
+
+
+def box_cache_dir() -> Path:
+    """Persistent download cache for the KIWI build box, reused across runs."""
+    return Path.home() / ".cache" / "fboss-image" / "kiwi-boxes"
+
+
+def validate_kvm_device(device: Path = KVM_DEVICE) -> None:
+    """Host type check; KVM API/VM creation is checked inside the container."""
+    try:
+        mode = device.stat().st_mode
+    except OSError as error:
+        raise BuildError(f"KVM isolation requires {device}: {error}") from error
+    if not stat.S_ISCHR(mode):
+        raise BuildError(f"KVM device {device} is not a character device")
 
 
 def _disambiguate_names(
@@ -371,16 +461,30 @@ class ImageBuilder:
 
         logger.info(f"Using image builder: {self.image_builder_dir}")
 
+        # T297984315: warn on BIOS-booted hosts; the caller accepts
+        # the cost and continues. Returns False (no warning) on UEFI.
+        host_boot.warn_bios_boot_host()
+
+        validate_kvm_device()
         build_fboss_builder_image()
 
+        # The workspace is mounted read-only; only these are writable.
+        output_dir = self.output_dir or self.image_builder_dir / "output"
+        logs_dir = self.image_builder_dir / "logs"
+        boxes_dir = box_cache_dir()
+        for directory in (output_dir, logs_dir, boxes_dir):
+            directory.mkdir(parents=True, exist_ok=True)
         volumes = {
-            self.image_builder_dir: Path("/image_builder"),
-            Path("/dev"): Path("/dev"),
+            output_dir: Path("/image_builder/output"),
+            logs_dir: Path("/image_builder/logs"),
+            boxes_dir: Path("/var/cache/kiwi-boxes"),
         }
 
-        if self.output_dir:
-            self.output_dir.mkdir(parents=True, exist_ok=True)
-            volumes[self.output_dir] = Path("/image_builder/output")
+        # An interrupted run leaves staging behind; linking over it would fall
+        # back to copy2 through the old hardlink and overwrite a stored artifact.
+        deps_tmpdir = self.image_builder_dir / "deps_staging"
+        if deps_tmpdir.exists():
+            shutil.rmtree(deps_tmpdir)
 
         self._stage_component_artifacts()
         self._write_build_provenance()
@@ -401,12 +505,9 @@ class ImageBuilder:
         if self.kiwi_ng_debug:
             command.append("--debug")
 
-        image_build_hooks = self.manifest.data.get("image_build_hooks")
-        try:
-            Path.unlink(self.after_pkgs_install_file)  # Best effort
-            Path.unlink(self.after_pkgs_execute_file)
-        except FileNotFoundError:
-            pass
+        image_build_hooks = self.manifest.data.get("image_build_hooks") or {}
+        self.after_pkgs_install_file.unlink(missing_ok=True)
+        self.after_pkgs_execute_file.unlink(missing_ok=True)
 
         # Helper function to process hook files
         def process_hook_file(hook_key: str, target_file: Path, cmd_flag: str):
@@ -442,13 +543,25 @@ class ImageBuilder:
             "--after-pkgs-execute-file",
         )
 
+        memory_gb = box_memory_gb()
+
         # Run the build script inside fboss_builder container
         try:
             exit_code = run_container(
                 image=FBOSS_BUILDER_IMAGE,
                 command=command,
                 volumes=volumes,
-                privileged=True,
+                read_only_volumes={self.image_builder_dir: Path("/image_builder")},
+                # KIWI runs in a KVM guest; pass only /dev/kvm, never /dev.
+                devices={KVM_DEVICE: KVM_DEVICE},
+                # virtiofsd requires MKNOD, omitted by Podman's default caps.
+                cap_add=["MKNOD"],
+                # QEMU backs each guest's RAM with /dev/shm.
+                shm_size=f"{BOX_VMS * memory_gb + 2}g",
+                env={
+                    **guest_proxy_environment(os.environ),
+                    "FBOSS_BOX_MEMORY_GB": str(memory_gb),
+                },
             )
 
             if exit_code != 0:
@@ -462,7 +575,6 @@ class ImageBuilder:
 
             logger.info("Finished base OS image build")
         finally:
-            deps_tmpdir = self.image_builder_dir / "deps_staging"
             if deps_tmpdir.exists():
                 shutil.rmtree(deps_tmpdir)
                 logger.debug(f"Cleaned up temporary deps directory: {deps_tmpdir}")

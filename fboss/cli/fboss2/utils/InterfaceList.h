@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -17,6 +18,26 @@
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 
 namespace facebook::fboss::utils {
+
+/*
+ * Loopback interfaces follow the deployment convention: loopback<N> is the
+ * virtual (isVirtual) interface with intfID == kLoopbackIntfIdBase + N, backed
+ * by the same-numbered VLAN (named fbossLoopback<N>). The bootstrap config
+ * ships loopback0 this way, typically without an interface name, so resolution
+ * by token falls back to the conventional intfID when no name matches.
+ */
+inline constexpr int32_t kLoopbackIntfIdBase = 10;
+inline constexpr int32_t kMaxLoopbackIndex = 99;
+
+// Parses a loopback interface token ("loopback<N>", case-insensitive) into
+// its index N. Returns nullopt for anything else, including an index above
+// kMaxLoopbackIndex -- such a token is treated as an ordinary (unknown)
+// interface name rather than a loopback.
+std::optional<int32_t> parseLoopbackIndex(const std::string& name);
+
+// The conventional name for loopback <index>'s backing VLAN (and the
+// interface name Meta-style configs carry), e.g. "fbossLoopback0".
+std::string loopbackVlanName(int32_t index);
 
 /*
  * Intf represents a unified interface/port object that can contain

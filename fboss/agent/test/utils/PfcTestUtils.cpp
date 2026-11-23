@@ -251,10 +251,12 @@ void setupPortPgConfig(
     if (buffer.resumeOffset.has_value()) {
       pgConfig.resumeOffsetBytes() = *buffer.resumeOffset;
     }
-    if (ensemble->getHwAsicTable()
-            ->getHwAsics()
-            .cbegin()
-            ->second->getAsicType() == cfg::AsicType::ASIC_TYPE_JERICHO3) {
+    auto asicType = ensemble->getHwAsicTable()
+                        ->getHwAsics()
+                        .cbegin()
+                        ->second->getAsicType();
+    if (asicType == cfg::AsicType::ASIC_TYPE_JERICHO3 ||
+        asicType == cfg::AsicType::ASIC_TYPE_QUMRAN4D) {
       // Need to translate global config to shared thresholds
       pgConfig.maxSharedXoffThresholdBytes() = buffer.globalShared;
       pgConfig.minSharedXoffThresholdBytes() = buffer.globalShared;
@@ -296,6 +298,20 @@ void setupPortPgConfig(
 
 } // namespace
 
+uint64_t PfcBufferParams::getEgressBufferPoolBytes(
+    cfg::AsicType asicType,
+    int globalShared,
+    int globalHeadroom) {
+  if (asicType == cfg::AsicType::ASIC_TYPE_P200) {
+    // P200 has a single egress pool and does not allow changing its reserved
+    // bytes once a buffer profile is bound to it. Queues with reservedBytes
+    // must bind to a pool that has reserved bytes, so the pool is created with
+    // a 20MB reserve. Size the pool at 50MB so it holds that reserve.
+    return uint64_t{50} * 1024 * 1024;
+  }
+  return static_cast<uint64_t>(globalShared) + globalHeadroom;
+}
+
 PfcBufferParams PfcBufferParams::getPfcBufferParams(
     cfg::AsicType asicType,
     int globalShared,
@@ -332,6 +348,17 @@ PfcBufferParams PfcBufferParams::getPfcBufferParams(
     buffer.minLimit = 4200; // 10 cells * 420 bytes
     buffer.pgHeadroom = 4200;
     buffer.resumeOffset = 2100; // 5 cells * 420 bytes
+  } else if (asicType == cfg::AsicType::ASIC_TYPE_TOMAHAWKULTRA1) {
+    // TU1 low-latency MMU admits lossless packets against worst-case MTU
+    // (~169 cells); PG headroom must clear it or packets statically reject
+    // instead of triggering XOFF. Pool carries SDK defaults (5486 shared +
+    // 39516 headroom per buffer x33), which program single-step inside the
+    // [40540, 46026] window; smaller pools need two-step.
+    buffer.globalShared = 10138128; // 5486 cells * 33 * 56
+    buffer.globalHeadroom = 73025568; // 39516 cells * 33 * 56
+    buffer.minLimit = 2240; // 40 cells * 56 bytes
+    buffer.pgHeadroom = 11200; // 200 cells * 56 bytes
+    buffer.resumeOffset = 1800; // less than pgHeadroom
   } else {
     buffer.minLimit = 2200;
     buffer.pgHeadroom = 2200; // keep this lower than globalShared (why?)

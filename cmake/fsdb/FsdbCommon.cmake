@@ -22,5 +22,5 @@ target_link_libraries(fsdb_utils
   cow_storage
   thrift_cow_visitors
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )

@@ -158,6 +158,10 @@ class SaiPhyManager : public PhyManager {
 
   void gracefulExit() override;
 
+  bool isSaiPhyManager() const override {
+    return true;
+  }
+
   virtual cfg::AsicType getPhyAsicType() const = 0;
 
  protected:
@@ -342,10 +346,7 @@ void SaiPhyManager::initializeXphyImpl(
         saiPlatform->getWarmBootHelper()->reconstructWarmBootThriftState(
             wbState);
     initSaiSwitch(statePrev);
-    // TODO: seed Elbert too once Credo is validated.
-    if (getPhyAsicType() != cfg::AsicType::ASIC_TYPE_ELBERT_8DD) {
-      seedPlatformStateAfterWarmBoot(xphyID);
-    }
+    seedPlatformStateAfterWarmBoot(xphyID);
   } else {
     initSaiSwitch(nullptr);
   }

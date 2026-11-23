@@ -762,6 +762,55 @@ void u32ListAttr(
   }
 }
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+void u16ListAttr(
+    const sai_attribute_t* attr_list,
+    int i,
+    uint32_t listIndex,
+    vector<string>& attrLines,
+    bool logEntry) {
+  const auto& list = attr_list[i].value.u16list;
+  const auto limit = SaiTracer::getInstance()->checkListCount(
+      listIndex + 1, sizeof(sai_uint16_t), list.count);
+  const auto prefix = to<string>("s_a[", i, "].value.u16list.");
+  attrLines.push_back(to<string>(prefix, "count=", list.count));
+  if (logEntry && list.list) {
+    attrLines.push_back(
+        to<string>(prefix, "list=(sai_uint16_t*)(list_", listIndex, ")"));
+    for (uint32_t j = 0; j < std::min(list.count, limit); ++j) {
+      attrLines.push_back(to<string>(prefix, "list[", j, "]=", list.list[j]));
+    }
+  } else {
+    attrLines.push_back(to<string>(prefix, "list=NULL"));
+  }
+}
+
+void u64RangeListAttr(
+    const sai_attribute_t* attr_list,
+    int i,
+    uint32_t listIndex,
+    vector<string>& attrLines,
+    bool logEntry) {
+  const auto& list = attr_list[i].value.u64rangelist;
+  const auto limit = SaiTracer::getInstance()->checkListCount(
+      listIndex + 1, sizeof(sai_u64_range_t), list.count);
+  const auto prefix = to<string>("s_a[", i, "].value.u64rangelist.");
+  attrLines.push_back(to<string>(prefix, "count=", list.count));
+  if (logEntry && list.list) {
+    attrLines.push_back(
+        to<string>(prefix, "list=(sai_u64_range_t*)(list_", listIndex, ")"));
+    for (uint32_t j = 0; j < std::min(list.count, limit); ++j) {
+      attrLines.push_back(
+          to<string>(prefix, "list[", j, "].min=", list.list[j].min, "ULL"));
+      attrLines.push_back(
+          to<string>(prefix, "list[", j, "].max=", list.list[j].max, "ULL"));
+    }
+  } else {
+    attrLines.push_back(to<string>(prefix, "list=NULL"));
+  }
+}
+#endif
+
 void segmentListAttr(
     const sai_attribute_t* attr_list,
     int i,

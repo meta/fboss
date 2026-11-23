@@ -248,7 +248,6 @@ bcm_port_loopback_t fbToBcmLoopbackMode(cfg::PortLoopbackMode inMode) {
       throw FbossError("Nif loopback is unsupported for native BCM");
   }
   CHECK(0) << "Should never reach here";
-  return BCM_PORT_LOOPBACK_NONE;
 }
 
 int getBcmPfcDeadlockDetectionTimerGranularity(int deadlockDetectionTimeMsec) {

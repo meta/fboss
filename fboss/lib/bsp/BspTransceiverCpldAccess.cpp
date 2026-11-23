@@ -2,7 +2,6 @@
 
 #include "fboss/lib/bsp/BspTransceiverCpldAccess.h"
 
-#include <folly/Format.h>
 #include <folly/Range.h>
 #include <folly/logging/xlog.h>
 #include <stdint.h>

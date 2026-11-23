@@ -310,6 +310,6 @@ void SplitAgentThriftSyncer::updateWatchdogMissedCount() {
   if (multiSwitchStatsPrefix_.has_value()) {
     counterName = multiSwitchStatsPrefix_.value() + "." + counterName;
   }
-  fb303::fbData->addStatValue(counterName, watchdogMissedCount_);
+  fb303::fbData.ref().addStatValue(counterName, watchdogMissedCount_);
 }
 } // namespace facebook::fboss

@@ -112,6 +112,9 @@ bool Qumran4DAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::MPLS_ECMP:
     case HwAsic::Feature::SAI_ACL_MPLS_LABEL0_TTL:
     case HwAsic::Feature::SAI_MPLS_QOS:
+    case HwAsic::Feature::SAI_MPLS_TTL_1_TRAP:
+    case HwAsic::Feature::SAI_MPLS_LABEL_LOOKUP_FAIL_COUNTER:
+    case HwAsic::Feature::SAI_MPLS_NEXTHOP_OUTSEG_TYPE:
       return true;
     // Features not expected to work on SIM
     case HwAsic::Feature::SHARED_INGRESS_EGRESS_BUFFER_POOL:
@@ -142,7 +145,9 @@ bool Qumran4DAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::HSDK:
     case HwAsic::Feature::L3_EGRESS_MODE_AUTO_ENABLED:
     case HwAsic::Feature::INGRESS_FIELD_PROCESSOR_FLEX_COUNTER:
+    case HwAsic::Feature::PORT_MAC_FLUSH:
     case HwAsic::Feature::PENDING_L2_ENTRY:
+    case HwAsic::Feature::STATIC_FDB_EVICT_DYNAMIC:
     case HwAsic::Feature::EGRESS_QUEUE_FLEX_COUNTER:
     case HwAsic::Feature::INGRESS_L3_INTERFACE:
     case HwAsic::Feature::NON_UNICAST_HASH:
@@ -155,9 +160,6 @@ bool Qumran4DAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::ROUTE_FLEX_COUNTERS:
     case HwAsic::Feature::FEC_DIAG_COUNTERS:
     case HwAsic::Feature::SAI_ACL_TABLE_UPDATE:
-    case HwAsic::Feature::SAI_MPLS_TTL_1_TRAP:
-    case HwAsic::Feature::SAI_MPLS_NEXTHOP_OUTSEG_TYPE:
-    case HwAsic::Feature::SAI_MPLS_LABEL_LOOKUP_FAIL_COUNTER:
     case HwAsic::Feature::EXACT_MATCH:
     case HwAsic::Feature::RX_FREQUENCY_PPM:
     case HwAsic::Feature::SAI_FIRMWARE_PATH:
@@ -251,6 +253,8 @@ bool Qumran4DAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::CUT_THROUGH_FORWARDING:
     case HwAsic::Feature::SRV6_MYSID_DISCARD_COUNTER:
     case HwAsic::Feature::SRV6_MYSID_RESOURCE_COUNTER:
+    case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
+    case HwAsic::Feature::SRV6_DECAP_TUNNEL:
     case HwAsic::Feature::PBR_ACL:
     case HwAsic::Feature::DEVICE_WATERMARK_SUPPORT:
     case HwAsic::Feature::SWITCH_CUSTOM_DROP_BITMAP_SUPPORT:
@@ -290,11 +294,14 @@ bool Qumran4DAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::CREDIT_WATCHDOG:
     case HwAsic::Feature::VOQ_DELETE_COUNTER:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
+    case HwAsic::Feature::HIERARCHICAL_ECMP:
     case HwAsic::Feature::CBFC:
     case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:
     case HwAsic::Feature::PORT_DEBOUNCE:
     case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
+    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
+    case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:
     case HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS:
     case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
     case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:
@@ -305,6 +312,11 @@ bool Qumran4DAsic::isSupported(Feature feature) const {
     case HwAsic::Feature::CSIG:
     case HwAsic::Feature::ACL_ENTRY_OUT_PORT_QUALIFIER:
     case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
+    case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
+    case HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED:
+    case HwAsic::Feature::PORT_LATCH_STATUS:
+    case HwAsic::Feature::PCS_ERROR_COUNTERS:
+    case HwAsic::Feature::MIRROR_SESSION_POLICER:
       return false;
   }
   return false;

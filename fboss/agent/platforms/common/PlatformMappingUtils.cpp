@@ -22,10 +22,8 @@
 #include "fboss/agent/platforms/common/fuji/FujiPlatformMapping.h"
 #include "fboss/agent/platforms/common/galaxy/GalaxyFCPlatformMapping.h"
 #include "fboss/agent/platforms/common/galaxy/GalaxyLCPlatformMapping.h"
-#include "fboss/agent/platforms/common/icecube800banw/Icecube800banwPlatformMapping.h"
 #include "fboss/agent/platforms/common/icecube800bc/Icecube800bcPlatformMapping.h"
 #include "fboss/agent/platforms/common/icetea800bc/Icetea800bcPlatformMapping.h"
-#include "fboss/agent/platforms/common/j4sim/J4SimPlatformMapping.h"
 #include "fboss/agent/platforms/common/janga800bic/Janga800bicPlatformMapping.h"
 #include "fboss/agent/platforms/common/ladakh800bcls/Ladakh800bclsPlatformMapping.h"
 #include "fboss/agent/platforms/common/leh800bcls/Leh800bclsPlatformMapping.h"
@@ -37,7 +35,6 @@
 #include "fboss/agent/platforms/common/minipack3n/Minipack3NPlatformMapping.h"
 #include "fboss/agent/platforms/common/montblanc/MontblancPlatformMapping.h"
 #include "fboss/agent/platforms/common/morgan800cc/Morgan800ccPlatformMapping.h"
-#include "fboss/agent/platforms/common/saintpaul/SaintpaulPlatformMapping.h"
 #include "fboss/agent/platforms/common/tahan800bc/Tahan800bcPlatformMapping.h"
 #include "fboss/agent/platforms/common/tahansb800bc/Tahansb800bcPlatformMapping.h"
 #include "fboss/agent/platforms/common/wedge100/Wedge100PlatformMapping.h"
@@ -203,10 +200,6 @@ std::unique_ptr<PlatformMapping> initPlatformMapping(PlatformType type) {
       return platformMappingStr.empty()
           ? std::make_unique<Icecube800bcPlatformMapping>()
           : std::make_unique<Icecube800bcPlatformMapping>(platformMappingStr);
-    case PlatformType::PLATFORM_ICECUBE800BANW:
-      return platformMappingStr.empty()
-          ? std::make_unique<Icecube800banwPlatformMapping>()
-          : std::make_unique<Icecube800banwPlatformMapping>(platformMappingStr);
     case PlatformType::PLATFORM_ICETEA800BC:
       return platformMappingStr.empty()
           ? std::make_unique<Icetea800bcPlatformMapping>()
@@ -223,14 +216,6 @@ std::unique_ptr<PlatformMapping> initPlatformMapping(PlatformType type) {
       return platformMappingStr.empty()
           ? std::make_unique<Leh800bclsPlatformMapping>()
           : std::make_unique<Leh800bclsPlatformMapping>(platformMappingStr);
-    case PlatformType::PLATFORM_J4SIM:
-      return platformMappingStr.empty()
-          ? std::make_unique<J4SimPlatformMapping>()
-          : std::make_unique<J4SimPlatformMapping>(platformMappingStr);
-    case PlatformType::PLATFORM_SAINTPAUL:
-      return platformMappingStr.empty()
-          ? std::make_unique<SaintpaulPlatformMapping>()
-          : std::make_unique<SaintpaulPlatformMapping>(platformMappingStr);
     case PlatformType::PLATFORM_BLACKWOLF800BANW:
       return platformMappingStr.empty()
           ? std::make_unique<Blackwolf800banwPlatformMapping>()

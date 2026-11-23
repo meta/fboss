@@ -289,7 +289,7 @@ removal of individual I/O controllers.
   * `FBIOB_IOC_DEL_DEVICE` for deleting IO controllers.
 * Please refer to below header file for details:
 
-[fbiob-ioctl.h](https://github.com/facebook/fboss/blob/main/fboss/platform/platform_manager/uapi/fbiob-ioctl.h)
+[fbiob-ioctl.h](https://github.com/meta/fboss/blob/main/fboss/platform/platform_manager/uapi/fbiob-ioctl.h)
 
 #### 5.2.2 Sysfs Interface
 
@@ -876,11 +876,11 @@ The MDIO controller character device supports at least 2 ioctl requests:
 
 * C45_READ
 
-    [fboss/mdio/Mdio.h#L60](https://github.com/facebook/fboss/blob/main/fboss/mdio/Mdio.h#L60)
+    [fboss/mdio/Mdio.h#L60](https://github.com/meta/fboss/blob/main/fboss/mdio/Mdio.h#L60)
 
 * C45_WRITE
 
-    [fboss/mdio/Mdio.h#L65](https://github.com/facebook/fboss/blob/main/fboss/mdio/Mdio.h#L65)
+    [fboss/mdio/Mdio.h#L65](https://github.com/meta/fboss/blob/main/fboss/mdio/Mdio.h#L65)
 
 ### 13.3 Test Requirements
 

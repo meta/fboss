@@ -283,6 +283,14 @@ struct SaiSwitchTraits {
         SAI_SWITCH_ATTR_TAM_OBJECT_ID,
         std::vector<sai_object_id_t>,
         SaiObjectIdListDefault>;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    using MaxCsigTimers =
+        SaiAttribute<EnumType, SAI_SWITCH_ATTR_MAX_CSIG_TIMERS, sai_uint8_t>;
+    using CsigBwTimeIntervalInUsec = SaiAttribute<
+        EnumType,
+        SAI_SWITCH_ATTR_CSIG_BW_TIME_INTERVAL_IN_USEC,
+        std::vector<sai_uint32_t>>;
+#endif
     using NumberOfFabricPorts = SaiAttribute<
         EnumType,
         SAI_SWITCH_ATTR_NUMBER_OF_FABRIC_PORTS,
@@ -526,6 +534,16 @@ struct SaiSwitchTraits {
         SAI_SWITCH_ATTR_PFC_DLR_PACKET_ACTION,
         sai_int32_t,
         SaiPacketActionDefaultDrop>;
+    using VxlanDefaultPort = SaiAttribute<
+        EnumType,
+        SAI_SWITCH_ATTR_VXLAN_DEFAULT_PORT,
+        sai_uint16_t,
+        SaiIntDefault<sai_uint16_t>>;
+    using VxlanDefaultRouterMac = SaiAttribute<
+        EnumType,
+        SAI_SWITCH_ATTR_VXLAN_DEFAULT_ROUTER_MAC,
+        folly::MacAddress,
+        SaiMacAddressDefault>;
     struct AttributeFabricRemoteReachablePortList {
       std::optional<sai_attr_id_t> operator()();
     };
@@ -914,6 +932,19 @@ struct SaiSwitchTraits {
     using PacketDropTypeEgressList = SaiExtensionAttribute<
         std::vector<sai_int32_t>,
         AttributePacketDropTypeEgressList>;
+    struct AttributeDropReasonList {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using DropReasonList = SaiExtensionAttribute<
+        std::vector<sai_uint32_t>,
+        AttributeDropReasonList>;
+    struct AttributeStaticFdbReplaceDynamic {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using StaticFdbReplaceDynamic = SaiExtensionAttribute<
+        bool,
+        AttributeStaticFdbReplaceDynamic,
+        SaiBoolDefaultFalse>;
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 0)
     using LinkUpDebounceTimeout = SaiAttribute<
         EnumType,
@@ -927,7 +958,7 @@ struct SaiSwitchTraits {
         sai_int32_t,
         SaiIntDefault<sai_int32_t>>;
 
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
     struct AttributeSyncLockWrapper {
       std::optional<sai_attr_id_t> operator()();
     };
@@ -1057,13 +1088,15 @@ struct SaiSwitchTraits {
       std::optional<Attributes::LinkUpDebounceTimeout>
 #endif
 
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
       ,
       std::optional<Attributes::SyncLock>,
       std::optional<Attributes::SyncUnlock>,
       std::optional<Attributes::WarmRecover>
 #endif
-      >;
+      ,
+      std::optional<Attributes::VxlanDefaultPort>,
+      std::optional<Attributes::VxlanDefaultRouterMac>>;
 
   // Avoid using SAI_SWITCH_STAT_PACKET_INTEGRITY_DROP as that counts
   // both DramPacketError and EgressRcvPacketError. As we now have a
@@ -1158,6 +1191,10 @@ SAI_ATTRIBUTE_NAME(Switch, EgressAcl)
 
 SAI_ATTRIBUTE_NAME(Switch, AclFieldList)
 SAI_ATTRIBUTE_NAME(Switch, TamObject)
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+SAI_ATTRIBUTE_NAME(Switch, MaxCsigTimers)
+SAI_ATTRIBUTE_NAME(Switch, CsigBwTimeIntervalInUsec)
+#endif
 SAI_ATTRIBUTE_NAME(Switch, NumberOfFabricPorts)
 SAI_ATTRIBUTE_NAME(Switch, FabricPortList)
 SAI_ATTRIBUTE_NAME(Switch, UseEcnThresholds)
@@ -1202,6 +1239,8 @@ SAI_ATTRIBUTE_NAME(Switch, CreditWdTimer)
 #endif
 SAI_ATTRIBUTE_NAME(Switch, MaxCores)
 SAI_ATTRIBUTE_NAME(Switch, PfcDlrPacketAction)
+SAI_ATTRIBUTE_NAME(Switch, VxlanDefaultPort)
+SAI_ATTRIBUTE_NAME(Switch, VxlanDefaultRouterMac)
 SAI_ATTRIBUTE_NAME(Switch, SdkBootTime)
 SAI_ATTRIBUTE_NAME(Switch, FabricRemoteReachablePortList)
 SAI_ATTRIBUTE_NAME(Switch, RouteNoImplicitMetaData)
@@ -1271,11 +1310,13 @@ SAI_ATTRIBUTE_NAME(Switch, TechSupportType)
 SAI_ATTRIBUTE_NAME(Switch, ModuleIdFabricPortList)
 SAI_ATTRIBUTE_NAME(Switch, PacketDropTypeIngressList)
 SAI_ATTRIBUTE_NAME(Switch, PacketDropTypeEgressList)
+SAI_ATTRIBUTE_NAME(Switch, DropReasonList)
+SAI_ATTRIBUTE_NAME(Switch, StaticFdbReplaceDynamic)
 #if defined(BRCM_SAI_SDK_XGS_AND_DNX)
 SAI_ATTRIBUTE_NAME(Switch, LocalSystemPortIdRangeList)
 #endif
 
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
 SAI_ATTRIBUTE_NAME(Switch, SyncLock)
 SAI_ATTRIBUTE_NAME(Switch, SyncUnlock)
 #endif

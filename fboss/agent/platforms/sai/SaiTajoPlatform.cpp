@@ -35,12 +35,12 @@ const std::set<sai_api_t>& SaiTajoPlatform::getSupportedApiList() const {
 std::string SaiTajoPlatform::getHwConfig() {
   auto chipConfigType = config()->thrift.platform()->chip()->getType();
   if (chipConfigType != facebook::fboss::cfg::ChipConfig::Type::asicConfig) {
-    return *config()->thrift.platform()->chip().value().get_asic().config();
+    return *config()->thrift.platform()->chip().value().asic()->config();
   }
 
   auto& asicConfig =
-      config()->thrift.platform()->chip().value().get_asicConfig();
-  return asicConfig.common().value().get_jsonConfig();
+      config()->thrift.platform()->chip().value().asicConfig().value();
+  return asicConfig.common().value().jsonConfig().value();
 }
 
 std::vector<PortID> SaiTajoPlatform::getAllPortsInGroup(PortID portID) const {

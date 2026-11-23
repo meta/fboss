@@ -9,11 +9,13 @@
  */
 #pragma once
 
+#include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/hw/sai/fake/FakeManager.h"
 
 #include <folly/MacAddress.h>
 
 #include <map>
+#include <utility>
 
 extern "C" {
 #include <sai.h>
@@ -288,11 +290,28 @@ class FakeSwitch {
     return pfcDlrPacketAction_;
   }
 
-  void setTamObjectId(sai_object_id_t objectId) {
-    tamObjectId_ = objectId;
+  void setVxlanDefaultPort(sai_uint16_t port) {
+    vxlanDefaultPort_ = port;
   }
 
-  sai_object_id_t getTamObjectId() const {
+  sai_uint16_t getVxlanDefaultPort() const {
+    return vxlanDefaultPort_;
+  }
+
+  void setVxlanDefaultRouterMac(const sai_mac_t& mac) {
+    folly::ByteRange r(std::begin(mac), std::end(mac));
+    vxlanDefaultRouterMac_ = folly::MacAddress::fromBinary(r);
+  }
+
+  folly::MacAddress vxlanDefaultRouterMac() const {
+    return vxlanDefaultRouterMac_;
+  }
+
+  void setTamObjectId(std::vector<sai_object_id_t> objectId) {
+    tamObjectId_ = std::move(objectId);
+  }
+
+  const std::vector<sai_object_id_t>& getTamObjectId() const {
     return tamObjectId_;
   }
 
@@ -328,6 +347,14 @@ class FakeSwitch {
     return aclDropSnoopDisabled_;
   }
 
+  void setStaticFdbReplaceDynamic(bool enable) {
+    staticFdbReplaceDynamic_ = enable;
+  }
+
+  bool getStaticFdbReplaceDynamic() {
+    return staticFdbReplaceDynamic_;
+  }
+
   void setLinkUpDebounceTimeout(sai_uint32_t timeoutUs) {
     linkUpDebounceTimeoutUs_ = timeoutUs;
   }
@@ -360,10 +387,23 @@ class FakeSwitch {
     packetDropTypeEgressList_ = std::move(dropTypes);
   }
 
+  const std::vector<sai_uint32_t>& getDropReasonList() const {
+    return dropReasonList_;
+  }
+
+  void setDropReasonList(std::vector<sai_uint32_t> reasons) {
+    dropReasonList_ = std::move(reasons);
+  }
+
   sai_object_id_t id;
 
   sai_status_t setLed(const sai_attribute_t* attr);
   sai_status_t getLed(sai_attribute_t* attr) const;
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+  sai_uint8_t maxCsigTimers{2};
+  std::vector<sai_uint32_t> csigBwIntervals{128, 256, 512};
+#endif
 
  private:
   folly::MacAddress srcMac_;
@@ -413,15 +453,20 @@ class FakeSwitch {
   bool creditWatchDogEnable_{true};
   uint32_t creditWatchDogMs_{500};
   sai_packet_action_t pfcDlrPacketAction_{SAI_PACKET_ACTION_DROP};
-  sai_object_id_t tamObjectId_{SAI_NULL_OBJECT_ID};
+  sai_uint16_t vxlanDefaultPort_ = static_cast<sai_uint16_t>(
+      cfg::switch_config_constants::kVxlanDefaultPort());
+  std::vector<sai_object_id_t> tamObjectId_;
+  folly::MacAddress vxlanDefaultRouterMac_;
   bool pfcMonitorEnable_{false};
   bool cablePropagationDelayMeasurement_{false};
   bool portCl72RetryEnable_{false};
   bool aclDropSnoopDisabled_{false};
+  bool staticFdbReplaceDynamic_{false};
   sai_uint32_t linkUpDebounceTimeoutUs_{0};
   sai_int32_t switchingMode_{SAI_SWITCH_SWITCHING_MODE_STORE_AND_FORWARD};
   std::vector<sai_int32_t> packetDropTypeIngressList_;
   std::vector<sai_int32_t> packetDropTypeEgressList_;
+  std::vector<sai_uint32_t> dropReasonList_;
 };
 
 using FakeSwitchManager = FakeManager<sai_object_id_t, FakeSwitch>;

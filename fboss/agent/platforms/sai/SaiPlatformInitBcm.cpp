@@ -13,10 +13,8 @@
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/platforms/common/PlatformMapping.h"
 #include "fboss/agent/platforms/common/blackwolf800banw/Blackwolf800banwPlatformMapping.h"
-#include "fboss/agent/platforms/common/icecube800banw/Icecube800banwPlatformMapping.h"
 #include "fboss/agent/platforms/common/icecube800bc/Icecube800bcPlatformMapping.h"
 #include "fboss/agent/platforms/common/icetea800bc/Icetea800bcPlatformMapping.h"
-#include "fboss/agent/platforms/common/j4sim/J4SimPlatformMapping.h"
 #include "fboss/agent/platforms/common/janga800bic/Janga800bicPlatformMapping.h"
 #include "fboss/agent/platforms/common/ladakh800bcls/Ladakh800bclsPlatformMapping.h"
 #include "fboss/agent/platforms/common/leh800bcls/Leh800bclsPlatformMapping.h"
@@ -25,7 +23,6 @@
 #include "fboss/agent/platforms/common/meru800bia/Meru800biaPlatformMapping.h"
 #include "fboss/agent/platforms/common/minipack3bta/Minipack3BTAPlatformMapping.h"
 #include "fboss/agent/platforms/common/montblanc/MontblancPlatformMapping.h"
-#include "fboss/agent/platforms/common/saintpaul/SaintpaulPlatformMapping.h"
 #include "fboss/agent/platforms/common/tahan800bc/Tahan800bcPlatformMapping.h"
 #include "fboss/agent/platforms/common/tahansb800bc/Tahansb800bcPlatformMapping.h"
 #include "fboss/agent/platforms/sai/GenericSaiBcmPlatform.h"
@@ -85,12 +82,8 @@ std::unique_ptr<PlatformMapping> createGenericSaiBcmPlatformMapping(
       return std::make_unique<Blackwolf800banwPlatformMapping>();
     case PlatformType::PLATFORM_ICECUBE800BC:
       return std::make_unique<Icecube800bcPlatformMapping>();
-    case PlatformType::PLATFORM_ICECUBE800BANW:
-      return std::make_unique<Icecube800banwPlatformMapping>();
     case PlatformType::PLATFORM_ICETEA800BC:
       return std::make_unique<Icetea800bcPlatformMapping>();
-    case PlatformType::PLATFORM_J4SIM:
-      return std::make_unique<J4SimPlatformMapping>();
     case PlatformType::PLATFORM_JANGA800BIC:
       return std::make_unique<Janga800bicPlatformMapping>();
     case PlatformType::PLATFORM_LADAKH800BCLS:
@@ -109,8 +102,6 @@ std::unique_ptr<PlatformMapping> createGenericSaiBcmPlatformMapping(
       return std::make_unique<Minipack3BTAPlatformMapping>();
     case PlatformType::PLATFORM_MONTBLANC:
       return std::make_unique<MontblancPlatformMapping>();
-    case PlatformType::PLATFORM_SAINTPAUL:
-      return std::make_unique<SaintpaulPlatformMapping>();
     case PlatformType::PLATFORM_TAHAN800BC:
       return std::make_unique<Tahan800bcPlatformMapping>();
     case PlatformType::PLATFORM_TAHANSB800BC:

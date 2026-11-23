@@ -30,7 +30,6 @@ facebook::fboss::cfg::PortLoopbackMode bcmToFbLoopbackMode(
     default:
       CHECK(0) << "Should never reach here";
   }
-  return facebook::fboss::cfg::PortLoopbackMode::NONE;
 }
 } // namespace
 

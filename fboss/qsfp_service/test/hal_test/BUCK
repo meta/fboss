@@ -32,7 +32,6 @@ cpp_library(
     deps = [
         "fbsource//xplat/folly:conv",
         "fbsource//xplat/folly:file_util",
-        "fbsource//xplat/folly:format",
         "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
         "//fboss/agent:switch_config-cpp2-types",

@@ -15,21 +15,12 @@ namespace facebook::fboss {
 
 StateDelta hwSwitchFibUpdate(
     const SwitchIdScopeResolver* resolver,
-    facebook::fboss::RouterID vrf,
-    const facebook::fboss::IPv4NetworkToRouteMap& v4NetworkToRoute,
-    const facebook::fboss::IPv6NetworkToRouteMap& v6NetworkToRoute,
-    const facebook::fboss::LabelToRouteMap& labelToRoute,
+    const std::vector<RibVrfFib>& vrfFibs,
     const NextHopIDManager* nextHopIDManager,
     const MySidTable& mySidTable,
     const std::shared_ptr<SwitchState> oldState) {
   facebook::fboss::RibToSwitchStateUpdater ribToSwitchStateUpdater(
-      resolver,
-      vrf,
-      v4NetworkToRoute,
-      v6NetworkToRoute,
-      labelToRoute,
-      nextHopIDManager,
-      mySidTable);
+      resolver, vrfFibs, nextHopIDManager, mySidTable);
   ribToSwitchStateUpdater(oldState);
   auto lastDelta = ribToSwitchStateUpdater.getLastDelta();
   CHECK(lastDelta.has_value());
@@ -45,25 +36,16 @@ HwSwitchRouteUpdateWrapper::HwSwitchRouteUpdateWrapper(
           rib,
           [apply = std::move(apply)](
               const SwitchIdScopeResolver* resolver,
-              facebook::fboss::RouterID vrf,
-              const facebook::fboss::IPv4NetworkToRouteMap& v4NetworkToRoute,
-              const facebook::fboss::IPv6NetworkToRouteMap& v6NetworkToRoute,
-              const facebook::fboss::LabelToRouteMap& labelToRoute,
+              const std::vector<RibVrfFib>& vrfFibs,
               const NextHopIDManager* nextHopIDManager,
               const MySidTable& mySidTable,
               void* cookie) {
             auto hwSwitch = static_cast<HwSwitch*>(cookie);
             auto oldState = hwSwitch->getProgrammedState();
-            auto newState = hwSwitchFibUpdate(
-                                resolver,
-                                vrf,
-                                v4NetworkToRoute,
-                                v6NetworkToRoute,
-                                labelToRoute,
-                                nextHopIDManager,
-                                mySidTable,
-                                oldState)
-                                .newState();
+            auto newState =
+                hwSwitchFibUpdate(
+                    resolver, vrfFibs, nextHopIDManager, mySidTable, oldState)
+                    .newState();
             if (apply) {
               apply(StateDelta(oldState, newState));
             }

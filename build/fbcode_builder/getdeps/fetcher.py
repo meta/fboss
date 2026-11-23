@@ -348,7 +348,10 @@ class GitFetcher(Fetcher):
             return ChangeStatus()
 
         print("Updating %s -> %s" % (self.repo_dir, self.rev))
-        run_cmd(["git", "fetch", "origin", self.rev], cwd=self.repo_dir)
+        run_cmd(
+            ["git", "fetch", "--depth=" + str(self.depth), "origin", self.rev],
+            cwd=self.repo_dir,
+        )
         run_cmd(["git", "checkout", self.rev], cwd=self.repo_dir)
         run_cmd(["git", "submodule", "update", "--init"], cwd=self.repo_dir)
 
@@ -791,7 +794,8 @@ class SimpleShipitTransformerFetcher(Fetcher):
             mapping.add_mapping(src, dest)
         if self.manifest.shipit_fbcode_builder:
             mapping.add_mapping(
-                "fbcode/opensource/fbcode_builder", "build/fbcode_builder"
+                "fbcode/opensource/fbcode_builder",
+                self.manifest.shipit_fbcode_builder_dir,
             )
         for pattern in self.manifest.get_section_as_args("shipit.strip", self.ctx):
             mapping.add_exclusion(pattern)

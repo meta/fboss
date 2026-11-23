@@ -238,7 +238,6 @@ std::shared_ptr<Interface> makeRemoteInterface(
     const Interface::Addresses& subnets) {
   auto remoteIntf = std::make_shared<Interface>(
       intfId,
-      RouterID(0),
       std::optional<VlanID>(std::nullopt),
       folly::StringPiece("RemoteIntf"),
       folly::MacAddress("c6:ca:2b:2a:b1:b6"),

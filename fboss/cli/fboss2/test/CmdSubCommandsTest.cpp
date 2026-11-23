@@ -1,21 +1,46 @@
-// (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
+// Copyright (c) Meta Platforms, Inc. and affiliates.
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <CLI/CLI.hpp>
+#include <folly/ScopeGuard.h>
+#include <algorithm>
 
+#include "fboss/cli/fboss2/CmdArgsLists.h"
+#include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/CmdList.h"
+#include "fboss/cli/fboss2/CmdLocalOptions.h"
 #include "fboss/cli/fboss2/CmdSubcommands.h"
 #include "fboss/cli/fboss2/utils/CLIParserUtils.h"
 
 namespace facebook::fboss {
 namespace {
 
+struct FakeReadCmdTraits : public ReadCommandTraits, public CliDocsExempt {};
+struct FakeReadCmd {
+  using Traits = FakeReadCmdTraits;
+  void run() {}
+};
+
+struct FakeWriteCmd {
+  using Traits = WriteCommandTraits;
+  void run() {}
+};
+
+utils::ObjectArgTypeId noArgType() {
+  return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
+}
+
 class CmdSubCommandsTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    CmdArgsLists::getInstance()->clear();
     app_ = std::make_unique<CLI::App>("Test CLI");
+  }
+
+  void TearDown() override {
+    CmdArgsLists::getInstance()->clear();
   }
 
   std::unique_ptr<CLI::App> app_;
@@ -120,8 +145,8 @@ TEST_F(CmdSubCommandsTest, MergesSubcommandsFromDuplicateCommand) {
           []() {},
           []() { return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE; },
           {Command(
-              "child1",
-              "First child help",
+              "child2",
+              "Second child help",
               []() {},
               []() {
                 return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
@@ -136,8 +161,8 @@ TEST_F(CmdSubCommandsTest, MergesSubcommandsFromDuplicateCommand) {
           []() {},
           []() { return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE; },
           {Command(
-              "child2",
-              "Second child help",
+              "child1",
+              "First child help",
               []() {},
               []() {
                 return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
@@ -157,6 +182,11 @@ TEST_F(CmdSubCommandsTest, MergesSubcommandsFromDuplicateCommand) {
   ASSERT_NE(configCmd, nullptr);
   EXPECT_NE(utils::getSubcommandIf(*configCmd, "child1"), nullptr);
   EXPECT_NE(utils::getSubcommandIf(*configCmd, "child2"), nullptr);
+
+  const auto help = configCmd->help();
+  ASSERT_NE(help.find("child1"), std::string::npos);
+  ASSERT_NE(help.find("child2"), std::string::npos);
+  EXPECT_LT(help.find("child1"), help.find("child2"));
 }
 
 TEST_F(CmdSubCommandsTest, MergeThrowsOnDuplicateLeafCommand) {
@@ -197,14 +227,25 @@ TEST_F(CmdSubCommandsTest, MergeThrowsOnDuplicateLeafCommand) {
 
   std::vector<Command> emptySpecialCmds;
 
-  try {
-    CmdSubcommands::getInstance()->init(
-        *app_, cmdTree, additionalTree, emptySpecialCmds);
-    FAIL() << "Expected std::runtime_error to be thrown";
-  } catch (const std::runtime_error& e) {
-    EXPECT_THAT(
-        std::string(e.what()),
-        ::testing::HasSubstr("Command `samechild` already exists"));
+  for (bool duplicateRoot : {false, true}) {
+    SCOPED_TRACE(duplicateRoot);
+    CLI::App app("Test CLI");
+    auto baseTree = cmdTree;
+    auto extraTree = additionalTree;
+    if (duplicateRoot) {
+      baseTree.front().subcommands.clear();
+      extraTree.front().subcommands.clear();
+    }
+    const std::string commandName = duplicateRoot ? "config" : "samechild";
+    try {
+      CmdSubcommands::getInstance()->init(
+          app, baseTree, extraTree, emptySpecialCmds);
+      FAIL() << "Expected std::runtime_error to be thrown";
+    } catch (const std::runtime_error& e) {
+      EXPECT_THAT(
+          std::string(e.what()),
+          ::testing::HasSubstr("Command `" + commandName + "` already exists"));
+    }
   }
 }
 
@@ -220,8 +261,8 @@ TEST_F(CmdSubCommandsTest, MergesNestedSubcommands) {
               "child",
               "Child help",
               {Command(
-                  "grandchild1",
-                  "Grandchild1 help",
+                  "grandchild2",
+                  "Grandchild2 help",
                   []() {},
                   []() {
                     return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
@@ -237,8 +278,8 @@ TEST_F(CmdSubCommandsTest, MergesNestedSubcommands) {
               "child",
               "Child help",
               {Command(
-                  "grandchild2",
-                  "Grandchild2 help",
+                  "grandchild1",
+                  "Grandchild1 help",
                   []() {},
                   []() {
                     return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_NONE;
@@ -259,6 +300,92 @@ TEST_F(CmdSubCommandsTest, MergesNestedSubcommands) {
   ASSERT_NE(childCmd, nullptr);
   EXPECT_NE(utils::getSubcommandIf(*childCmd, "grandchild1"), nullptr);
   EXPECT_NE(utils::getSubcommandIf(*childCmd, "grandchild2"), nullptr);
+
+  const auto help = childCmd->help();
+  ASSERT_NE(help.find("grandchild1"), std::string::npos);
+  ASSERT_NE(help.find("grandchild2"), std::string::npos);
+  EXPECT_LT(help.find("grandchild1"), help.find("grandchild2"));
+}
+
+TEST_F(CmdSubCommandsTest, MergesSubcommandsIntoExecutableParent) {
+  auto args = CmdArgsLists::getInstance();
+  auto options = CmdLocalOptions::getInstance();
+  args->clear();
+  options->clear();
+  SCOPE_EXIT {
+    args->clear();
+    options->clear();
+  };
+  bool parentCalled = false;
+  bool childCalled = false;
+  const auto ipArgs = [] {
+    return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_ID_IP_LIST;
+  };
+  const CommandTree base = {
+      {"show",
+       "object",
+       "Show object",
+       {{"parent",
+         "Parent help",
+         [&] { parentCalled = true; },
+         ipArgs,
+         [] { return std::vector<utils::LocalOption>{{"--mode", "Mode"}}; },
+         {{"zulu", "Zulu help", [] {}, noArgType}}}}}};
+  const CommandTree additional = {
+      {"show",
+       "object",
+       "Show object",
+       {{"parent",
+         "Parent help",
+         {{"alpha", "Alpha help", [&] { childCalled = true; }, ipArgs}}}}}};
+
+  CmdSubcommands::getInstance()->init(*app_, base, additional, {});
+  ASSERT_NO_THROW(
+      app_->parse("show object parent 192.0.2.1 --mode value alpha 192.0.2.2"));
+
+  EXPECT_FALSE(parentCalled);
+  EXPECT_TRUE(childCalled);
+  EXPECT_EQ(args->at(0), (std::vector<std::string>{"192.0.2.1"}));
+  EXPECT_EQ(args->at(1), (std::vector<std::string>{"192.0.2.2"}));
+  EXPECT_EQ(options->getLocalOption("show_object_parent", "--mode"), "value");
+}
+
+TEST_F(CmdSubCommandsTest, HandlerlessDuplicateRootChildrenStartAtDepthZero) {
+  // Mirrors "config vlan" in CmdListConfig.cpp: an executable root with its
+  // own positional arg, plus a handler-less duplicate root whose child reads
+  // its arg from data_[0] (ParentCmd = void).
+  auto args = CmdArgsLists::getInstance();
+  args->clear();
+  SCOPE_EXIT {
+    args->clear();
+  };
+  bool rootCalled = false;
+  bool defaultCalled = false;
+  const ArgRegistrarFn vlanArgs{
+      [](CLI::App& cmd, std::vector<std::string>& args) {
+        cmd.add_option("vlan_id", args, "VLAN ID");
+      }};
+  const CommandTree cmdTree = {
+      {"config",
+       "vlan",
+       "Configure VLAN settings",
+       [&] { rootCalled = true; },
+       vlanArgs},
+      {"config",
+       "vlan",
+       "Configure VLAN settings",
+       {{"default",
+         "Default VLAN help",
+         [&] { defaultCalled = true; },
+         vlanArgs}}},
+  };
+
+  CmdSubcommands::getInstance()->init(*app_, cmdTree, {}, {});
+  ASSERT_NO_THROW(app_->parse("config vlan default 2001"));
+
+  EXPECT_FALSE(rootCalled);
+  EXPECT_TRUE(defaultCalled);
+  EXPECT_EQ(args->at(0), (std::vector<std::string>{"2001"}));
 }
 
 TEST_F(CmdSubCommandsTest, ThrowsOnDuplicateNestedCommand) {
@@ -357,13 +484,106 @@ TEST_F(CmdSubCommandsTest, InitWithMultipleVerbs) {
   EXPECT_NE(utils::getSubcommandIf(*clearCmd, "object2"), nullptr);
 }
 
+TEST_F(CmdSubCommandsTest, RegistersRunningConfigFromSharedCommandTree) {
+  CmdSubcommands::getInstance()->init(*app_, kCommandTree(), {}, {});
+
+  auto* showCmd = utils::getSubcommandIf(*app_, "show");
+  ASSERT_NE(showCmd, nullptr);
+  auto* configCmd = utils::getSubcommandIf(*showCmd, "config");
+  ASSERT_NE(configCmd, nullptr);
+  auto* runningCmd = utils::getSubcommandIf(*configCmd, "running");
+  ASSERT_NE(runningCmd, nullptr);
+
+  for (const auto* daemon : {"agent", "bgp"}) {
+    SCOPED_TRACE(daemon);
+    EXPECT_NE(utils::getSubcommandIf(*runningCmd, daemon), nullptr);
+  }
+}
+
+TEST_F(CmdSubCommandsTest, RegistersBgpConfigFromRealCommandTree) {
+  auto tree = mergeCommandTrees({kCommandTree(), kAdditionalCommandTree()});
+  auto bgp = std::find_if(tree.begin(), tree.end(), [](const auto& cmd) {
+    return cmd.verb == "show" && cmd.name == "bgp";
+  });
+  ASSERT_NE(bgp, tree.end());
+  auto config = std::find_if(
+      bgp->subcommands.begin(), bgp->subcommands.end(), [](const auto& cmd) {
+        return cmd.name == "config";
+      });
+  ASSERT_NE(config, bgp->subcommands.end());
+  ASSERT_TRUE(config->commandHandler.has_value());
+  bool called = false;
+  config->commandHandler = [&called]() { called = true; };
+
+  CmdSubcommands::getInstance()->init(*app_, tree, {}, {});
+
+  auto* showCmd = utils::getSubcommandIf(*app_, "show");
+  ASSERT_NE(showCmd, nullptr);
+  auto* bgpCmd = utils::getSubcommandIf(*showCmd, "bgp");
+  ASSERT_NE(bgpCmd, nullptr);
+  auto* configCmd = utils::getSubcommandIf(*bgpCmd, "config");
+  ASSERT_NE(configCmd, nullptr);
+  EXPECT_EQ(utils::getSubcommandIf(*configCmd, "running"), nullptr);
+
+  auto* rawCmd = utils::getSubcommandIf(*configCmd, "raw");
+#ifdef IS_OSS
+  EXPECT_EQ(rawCmd, nullptr);
+#else
+  ASSERT_NE(rawCmd, nullptr);
+#endif
+
+  EXPECT_NO_THROW(app_->parse("show bgp config"));
+  EXPECT_TRUE(called);
+  EXPECT_THROW(app_->parse("show bgp config running"), CLI::ExtrasError);
+}
+
+TEST_F(CmdSubCommandsTest, ValidatesFsdbPathDuringParsing) {
+  CommandTree cmdTree = {RootCommand(
+      "show",
+      "fsdb",
+      "Show FSDB information",
+      {Command(
+          "state",
+          "Show FSDB operational state",
+          []() {},
+          []() {
+            return utils::ObjectArgTypeId::OBJECT_ARG_TYPE_FSDB_PATH;
+          })})};
+  CommandTree emptyTree;
+  std::vector<Command> emptySpecialCmds;
+
+  auto parse = [&](std::vector<std::string> args) {
+    CmdArgsLists::getInstance()->clear();
+    app_ = std::make_unique<CLI::App>("Test CLI");
+    CmdSubcommands::getInstance()->init(
+        *app_, cmdTree, emptyTree, emptySpecialCmds);
+
+    std::vector<char*> argv;
+    argv.reserve(args.size());
+    for (auto& arg : args) {
+      argv.push_back(arg.data());
+    }
+    app_->parse(static_cast<int>(argv.size()), argv.data());
+  };
+
+  EXPECT_THROW(parse({"fboss2", "show", "fsdb", "state"}), CLI::RequiredError);
+  EXPECT_THROW(
+      parse({"fboss2", "show", "fsdb", "state", "/"}), CLI::ValidationError);
+  EXPECT_THROW(
+      parse({"fboss2", "show", "fsdb", "state", "///"}), CLI::ValidationError);
+  EXPECT_THROW(
+      parse({"fboss2", "show", "fsdb", "state", "agent"}),
+      CLI::ValidationError);
+  EXPECT_NO_THROW(parse({"fboss2", "show", "fsdb", "state", "/agent"}));
+}
+
 TEST_F(CmdSubCommandsTest, RegistersLocalOptionsFromRealCommandTree) {
   /*
-   * A command's LocalOptions only reach CLI11 if its entry in the command
-   * tree also passes localOptionsHandler<Traits>. Declaring them in the
-   * traits struct alone leaves the flag unparseable at the CLI, which no
-   * per-command test catches because those set the option value directly on
-   * CmdLocalOptions. Guard one real command that carries a local option.
+   * Local options only reach CLI11 if their command-tree entry supplies a
+   * localOptionsHandler callback. Declaring them in the traits struct alone
+   * leaves the flag unparseable at the CLI, which per-command tests don't catch
+   * because those set the value directly on CmdLocalOptions. Guard shared and
+   * build-specific local options.
    */
   std::vector<Command> emptySpecialCmds;
 
@@ -377,6 +597,116 @@ TEST_F(CmdSubCommandsTest, RegistersLocalOptionsFromRealCommandTree) {
   auto* summaryCmd = utils::getSubcommandIf(*bgpCmd, "summary");
   ASSERT_NE(summaryCmd, nullptr);
   EXPECT_NE(summaryCmd->get_option_no_throw("--sort-by"), nullptr);
+
+  for (const auto* name : {"neighbors", "table"}) {
+    SCOPED_TRACE(name);
+    auto* cmd = utils::getSubcommandIf(*bgpCmd, name);
+    ASSERT_NE(cmd, nullptr);
+    auto* garOption = cmd->get_option_no_throw("--decode-gar-lbw-ext-comm");
+#ifdef IS_OSS
+    EXPECT_EQ(garOption, nullptr);
+#else
+    EXPECT_NE(garOption, nullptr);
+#endif
+  }
+}
+
+TEST_F(CmdSubCommandsTest, CommandRecordsReadWriteMode) {
+  Command readCmd("r", "read", commandHandler<FakeReadCmd>, noArgType);
+  Command writeCmd("w", "write", commandHandler<FakeWriteCmd>, noArgType);
+  Command lambdaCmd("l", "lambda", []() {}, noArgType);
+
+  EXPECT_EQ(readCmd.commandHandler->mode(), CliReadWriteMode::CLI_MODE_READ);
+  EXPECT_EQ(writeCmd.commandHandler->mode(), CliReadWriteMode::CLI_MODE_WRITE);
+  EXPECT_EQ(lambdaCmd.commandHandler->mode(), CliReadWriteMode::CLI_MODE_WRITE);
+}
+
+TEST_F(CmdSubCommandsTest, ReadWriteModeSurvivesSort) {
+  Command parent(
+      "p",
+      "parent",
+      {Command("b", "read", commandHandler<FakeReadCmd>, noArgType),
+       Command("a", "write", commandHandler<FakeWriteCmd>, noArgType)});
+
+  ASSERT_EQ(parent.subcommands.size(), 2);
+  EXPECT_EQ(parent.subcommands[0].name, "a");
+  EXPECT_EQ(
+      parent.subcommands[0].commandHandler->mode(),
+      CliReadWriteMode::CLI_MODE_WRITE);
+  EXPECT_EQ(parent.subcommands[1].name, "b");
+  EXPECT_EQ(
+      parent.subcommands[1].commandHandler->mode(),
+      CliReadWriteMode::CLI_MODE_READ);
+}
+
+TEST_F(CmdSubCommandsTest, FilterReadCommandsDropsWriteCommands) {
+  CommandTree cmdTree = {
+      RootCommand(
+          "show",
+          "readParent",
+          "help",
+          commandHandler<FakeReadCmd>,
+          noArgType,
+          {Command(
+               "writeChild", "help", commandHandler<FakeWriteCmd>, noArgType),
+           Command(
+               "readChild", "help", commandHandler<FakeReadCmd>, noArgType)}),
+      // A write command's subtree goes with it, even its read children.
+      RootCommand(
+          "set",
+          "writeParent",
+          "help",
+          commandHandler<FakeWriteCmd>,
+          noArgType,
+          {Command(
+              "readChild", "help", commandHandler<FakeReadCmd>, noArgType)}),
+      // A group left with no children is dropped.
+      RootCommand(
+          "clear",
+          "group",
+          "help",
+          {Command(
+              "writeChild", "help", commandHandler<FakeWriteCmd>, noArgType)}),
+  };
+
+  const auto filtered = filterReadCommands(cmdTree);
+
+  ASSERT_EQ(filtered.size(), 1);
+  EXPECT_EQ(filtered[0].name, "readParent");
+  ASSERT_EQ(filtered[0].subcommands.size(), 1);
+  EXPECT_EQ(filtered[0].subcommands[0].name, "readChild");
+}
+
+TEST_F(CmdSubCommandsTest, RegistersOnlyUsedVerbs) {
+  CommandTree cmdTree = {
+      RootCommand(
+          "show", "testObject", "help", []() {}, noArgType),
+  };
+  CommandTree emptyTree;
+  std::vector<Command> emptySpecialCmds;
+
+  CmdSubcommands::getInstance()->init(
+      *app_, cmdTree, emptyTree, emptySpecialCmds, VerbRegistration::kOnlyUsed);
+
+  EXPECT_NE(utils::getSubcommandIf(*app_, "show"), nullptr);
+  EXPECT_EQ(utils::getSubcommandIf(*app_, "set"), nullptr);
+}
+
+TEST_F(CmdSubCommandsTest, RegistersReadOnlyRealCommandTrees) {
+  std::vector<Command> emptySpecialCmds;
+
+  CmdSubcommands::getInstance()->init(
+      *app_,
+      filterReadCommands(kCommandTree()),
+      filterReadCommands(kAdditionalCommandTree()),
+      emptySpecialCmds,
+      VerbRegistration::kOnlyUsed);
+
+  std::vector<std::string> verbs;
+  for (const auto* verb : app_->get_subcommands(nullptr)) {
+    verbs.push_back(verb->get_name());
+  }
+  EXPECT_EQ(verbs, std::vector<std::string>{"show"});
 }
 
 } // namespace

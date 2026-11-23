@@ -37,4 +37,15 @@ SaiAclTableTraits::Attributes::AttributeFieldRouteDestination::operator()() {
 #endif
 }
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+std::optional<sai_attr_id_t>
+SaiAclCounterTraits::Attributes::AttributeLabelExtendedWrapper::operator()() {
+#if defined(TAJO_SDK_GTE_26_5) && !defined(TAJO_SDK_P200)
+  return SAI_ACL_COUNTER_ATTR_EXT_LABEL_EXTENDED;
+#else
+  return std::nullopt;
+#endif
+}
+#endif
+
 } // namespace facebook::fboss

@@ -80,6 +80,8 @@ class SaiLagManager {
   std::map<std::string, HwTrunkStats> getAllHwTrunkStats() const;
 
  private:
+  void programTtlDecrement(const AggregatePort& aggregatePort);
+
   std::pair<PortSaiId, std::shared_ptr<SaiLagMember>> addMember(
       const std::shared_ptr<SaiLag>& lag,
       AggregatePortID aggPort,

@@ -44,4 +44,9 @@ template void CmdHandler<
     CmdConfigDataPlaneTrafficPolicy,
     CmdConfigDataPlaneTrafficPolicyTraits>::run();
 
+std::vector<std::string> CmdConfigDataPlaneTrafficPolicyTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return traffic_policy::completeConfigArgs(typed);
+}
+
 } // namespace facebook::fboss

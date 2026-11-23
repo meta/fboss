@@ -39,7 +39,9 @@ cpp_library(
     name = "fsdb_cow_storage",
     srcs = [
         "FsdbCowHybridStateStorage.cpp",
+        "FsdbCowHybridStateStoragePatch.cpp",
         "FsdbCowStateStorage.cpp",
+        "FsdbCowStateStoragePatch.cpp",
         "FsdbCowStatsStorage.cpp",
     ],
     headers = ["FsdbCowStorage.h"],

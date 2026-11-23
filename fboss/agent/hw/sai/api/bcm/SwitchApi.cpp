@@ -822,6 +822,19 @@ SaiSwitchTraits::Attributes::AttributePacketDropTypeEgressList::operator()() {
   return std::nullopt;
 }
 
+std::optional<sai_attr_id_t>
+SaiSwitchTraits::Attributes::AttributeDropReasonList::operator()() {
+  return std::nullopt;
+}
+
+std::optional<sai_attr_id_t>
+SaiSwitchTraits::Attributes::AttributeStaticFdbReplaceDynamic::operator()() {
+#if defined(BRCM_SAI_SDK_XGS_GTE_13_0) && !defined(BRCM_SAI_SDK_XGS_GTE_14_0)
+  return SAI_SWITCH_ATTR_EXT_STATIC_FDB_REPLACE_DYNAMIC;
+#endif
+  return std::nullopt;
+}
+
 const std::vector<sai_stat_id_t>& SaiSwitchTraits::deviceWatermarkBytes() {
   static const std::vector<sai_stat_id_t> stats;
   return stats;

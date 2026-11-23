@@ -19,20 +19,20 @@ cpp_library(
     ],
     deps = [
         "fbsource//third-party/glog:glog",
-        "//folly:conv",
-        "//folly:string",
-        "//folly/io:iobuf",
-        "//folly/logging:logging",
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/io:iobuf",
+        "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly:range",
+        "fbsource//xplat/folly:synchronized",
         ":lldp_structs-cpp2-types",
         "//fboss/agent:agent_features",
         "//fboss/agent:fboss-types",
         "//fboss/thrift_cow/nodes:nodes",
         "//fboss/thrift_cow/storage:cow_storage",
-        "//folly:network_address",
-        "//folly:range",
-        "//folly:synchronized",
         "//thrift/lib/cpp2:type_class",
     ],
 )
@@ -45,9 +45,9 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly/io:iobuf",
         ":lldp",
         "//fboss/agent/packet:packet",
-        "//folly/io:iobuf",
     ],
 )
 

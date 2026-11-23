@@ -994,8 +994,13 @@ bool verifyDsfAgentRestartForRdsws(
       // Trigger graceful or ungraceful Agent restart
       if (!restartServiceForSwitches(
               {rdsw},
-              triggerGracefulRestart ? triggerGracefulAgentRestart
-                                     : triggerUngracefulAgentRestart,
+              [triggerGracefulRestart](const std::string& switchName) {
+                if (triggerGracefulRestart) {
+                  triggerGracefulAgentRestart(switchName);
+                } else {
+                  triggerUngracefulAgentRestart(switchName);
+                }
+              },
               getAgentAliveSinceEpoch,
               verifySwSwitchRunState,
               SwitchRunState::CONFIGURED)) {
@@ -1052,8 +1057,13 @@ bool verifyDsfAgentRestartForFdsws(
       // Trigger graceful or ungraceful Agent restart
       if (!restartServiceForSwitches(
               {fdsw},
-              triggerGracefulRestart ? triggerGracefulAgentRestart
-                                     : triggerUngracefulAgentRestart,
+              [triggerGracefulRestart](const std::string& switchName) {
+                if (triggerGracefulRestart) {
+                  triggerGracefulAgentRestart(switchName);
+                } else {
+                  triggerUngracefulAgentRestart(switchName);
+                }
+              },
               getAgentAliveSinceEpoch,
               verifySwSwitchRunState,
               SwitchRunState::CONFIGURED)) {

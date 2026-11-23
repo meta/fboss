@@ -2,6 +2,7 @@
 
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
+#include <fmt/format.h>
 #include <gtest/gtest.h>
 #include <filesystem>
 

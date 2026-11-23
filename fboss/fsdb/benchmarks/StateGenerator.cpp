@@ -81,7 +81,6 @@ cfg::NdpConfig fillNdpConfig() {
 state::InterfaceFields fillInterfaceMap(int portId, int numInterfaces) {
   state::InterfaceFields interfaceFields;
   interfaceFields.interfaceId() = portId;
-  interfaceFields.routerId() = 0;
   interfaceFields.vlanId() = 0;
   interfaceFields.name() = folly::to<std::string>("interface ", portId);
   interfaceFields.mac() = 796855659067998208;

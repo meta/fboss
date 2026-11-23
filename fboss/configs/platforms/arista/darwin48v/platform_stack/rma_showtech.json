@@ -2,7 +2,12 @@
   "i2cBusIgnore": [],
   "i2cDumpDevices": [
     "/run/devmap/cplds/BLACKHAWK_CPLD",
-    "/run/devmap/cplds/FAN_CPLD"
+    "/run/devmap/cplds/FAN_CPLD",
+    "/run/devmap/sensors/CPU_BOARD_TEMP_MAX6658",
+    "/run/devmap/sensors/CPU_FP_TEMP_LM73",
+    "/run/devmap/sensors/CPU_POS_UCD90160",
+    "/run/devmap/sensors/FS_FAN_SLG4F4527",
+    "/run/devmap/sensors/SC_BOARD_TEMP_MAX6581"
   ],
   "psus": [
     "/run/devmap/sensors/PSU_PMBUS"
@@ -108,6 +113,14 @@
         }
       ]
     }
+  ],
+  "regDumpDevices": [
+    "/run/devmap/sensors/CPU_MPS1_PMBUS",
+    "/run/devmap/sensors/CPU_MPS2_PMBUS",
+    "/run/devmap/sensors/SC_POS_UCD90320",
+    "/run/devmap/sensors/SC_QSFPDD_IR35223",
+    "/run/devmap/sensors/SC_TH3_ANLG_IR35223",
+    "/run/devmap/sensors/SC_TH3_CORE_IR35223"
   ],
   "scPowerGood": {
     "sysfsAttributes": [

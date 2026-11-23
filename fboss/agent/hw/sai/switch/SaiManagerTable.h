@@ -61,6 +61,7 @@ class SaiUdfManager;
 class SaiVirtualChannelManager;
 class SaiVirtualRouterManager;
 class SaiVlanManager;
+class SaiVxlanTunnelManager;
 class SaiVendorSwitchManager;
 class SaiWredManager;
 class SaiStore;
@@ -193,6 +194,9 @@ class SaiManagerTable {
   SaiSrv6TunnelManager& srv6TunnelManager();
   const SaiSrv6TunnelManager& srv6TunnelManager() const;
 
+  SaiVxlanTunnelManager& vxlanTunnelManager();
+  const SaiVxlanTunnelManager& vxlanTunnelManager() const;
+
   SaiUdfManager& udfManager();
   const SaiUdfManager& udfManager() const;
 
@@ -243,6 +247,7 @@ class SaiManagerTable {
   std::unique_ptr<SaiSrv6SidListManager> srv6SidListManager_;
   std::unique_ptr<SaiSrv6MySidManager> srv6MySidManager_;
   std::unique_ptr<SaiSrv6TunnelManager> srv6TunnelManager_;
+  std::unique_ptr<SaiVxlanTunnelManager> vxlanTunnelManager_;
   std::unique_ptr<UnsupportedFeatureManager> teFlowEntryManager_;
   std::unique_ptr<SaiUdfManager> udfManager_;
   std::unique_ptr<SaiVendorSwitchManager> vendorSwitchManager_;

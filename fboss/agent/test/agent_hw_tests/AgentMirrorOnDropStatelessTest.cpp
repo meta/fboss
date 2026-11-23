@@ -16,9 +16,7 @@
 #include "fboss/agent/test/agent_hw_tests/AgentMirrorOnDropXgsImpl.h"
 #include "fboss/agent/test/utils/AclTestUtils.h"
 #include "fboss/agent/test/utils/PacketSnooper.h"
-#include "fboss/agent/test/utils/PfcTestUtils.h"
 #include "fboss/agent/test/utils/PortTestUtils.h"
-#include "fboss/agent/test/utils/TrapPacketUtils.h"
 #include "fboss/lib/CommonUtils.h"
 
 namespace facebook::fboss {
@@ -142,21 +140,6 @@ AgentMirrorOnDropStatelessTest::getSrv6EncapMtuExceededDropReasons() {
   return egressOnly(impl()->getSrv6EncapMtuExceededDropReason());
 }
 
-void AgentMirrorOnDropStatelessTest::configureMmuDropBuffers(
-    cfg::SwitchConfig& config,
-    const PortID& injectionPortId,
-    int priority) {
-  auto hwAsic = checkSameAndGetAsicForTesting(getAgentEnsemble()->getL3Asics());
-  utility::setupPfcBuffers(
-      getAgentEnsemble(),
-      config,
-      {injectionPortId},
-      {}, // losslessPgIds
-      {priority}, // lossyPgIds
-      utility::PfcBufferParams::getPfcBufferParams(
-          hwAsic->getAsicType(), kDefaultGlobalSharedBytes));
-}
-
 void AgentMirrorOnDropStatelessTest::configureErspanMirror(
     cfg::SwitchConfig& config,
     const std::string& mirrorName,
@@ -165,6 +148,20 @@ void AgentMirrorOnDropStatelessTest::configureErspanMirror(
     const PortID& srcPortId) {
   impl()->configureErspanMirror(
       config, mirrorName, tunnelDstIp, tunnelSrcIp, srcPortId);
+}
+
+uint32_t AgentMirrorOnDropStatelessTest::getExpectedModPacketIngressPortId(
+    PortID port) const {
+  // Tajo exports FBOSS port IDs; XGS exports SDK logical port IDs.
+  if (hwAsicForPort(port)->getAsicVendor() ==
+      HwAsic::AsicVendor::ASIC_VENDOR_TAJO) {
+    return static_cast<uint32_t>(port);
+  }
+  const auto hwLogicalPortId = getSw()->getHwLogicalPortId(port);
+  if (!hwLogicalPortId.has_value()) {
+    throw FbossError("Missing hardware logical port ID for port ", port);
+  }
+  return *hwLogicalPortId;
 }
 
 void AgentMirrorOnDropStatelessTest::validateMirrorOnDropPacket(
@@ -189,7 +186,8 @@ void AgentMirrorOnDropStatelessTest::validateMirrorOnDropPacket(
   EXPECT_EQ(fields.outerSrcIp, kSwitchIp_);
   EXPECT_EQ(fields.outerDstIp, kCollectorIp_);
   EXPECT_EQ(fields.outerDstPort, static_cast<uint16_t>(kMirrorDstPort));
-  EXPECT_EQ(fields.ingressPort, static_cast<uint16_t>(injectionPortId));
+  EXPECT_EQ(
+      fields.ingressPort, getExpectedModPacketIngressPortId(injectionPortId));
   EXPECT_EQ(fields.dropReasonIngress, expectedReasons.ingressDropReason);
   EXPECT_EQ(fields.dropReasonEgress, expectedReasons.egressDropReason);
   EXPECT_EQ(fields.innerSrcIp, expectedInnerSrcIp.value_or(kPacketSrcIp_));
@@ -231,18 +229,10 @@ void AgentMirrorOnDropStatelessTest::testDefaultRouteDrop() {
 
   auto setup = [&]() {
     auto config = getAgentEnsemble()->getCurrentConfig();
-    config.mirrorOnDropReports()->push_back(
-        makeMirrorOnDropReport("mod-default-route-drop"));
-    auto* asic =
-        checkSameAndGetAsicForTesting(getAgentEnsemble()->getL3Asics());
-    utility::addTrapPacketAcl(
-        asic,
-        &config,
-        folly::CIDRNetwork(folly::IPAddress(kCollectorIp_), 128),
-        cfg::ToCpuAction::TRAP);
-    applyNewConfig(config);
-    setupEcmpTraffic(collectorPortId, kCollectorIp_, kCollectorNextHopMac_);
-    waitForStateUpdates(getSw());
+    applyMirrorOnDropConfig(
+        config,
+        makeMirrorOnDropReport("mod-default-route-drop"),
+        collectorPortId);
   };
 
   auto verify = [&]() {
@@ -281,25 +271,14 @@ void AgentMirrorOnDropStatelessTest::testAclDrop() {
 
   auto setup = [&]() {
     auto config = getAgentEnsemble()->getCurrentConfig();
-    config.mirrorOnDropReports()->push_back(
-        makeMirrorOnDropReport("mod-acl-drop"));
-
     cfg::AclEntry aclEntry;
     aclEntry.name() = "acl-drop-by-dstip";
     aclEntry.dstIp() = fmt::format("{}/128", kAclDropDestIp.str());
     aclEntry.actionType() = cfg::AclActionType::DENY;
     utility::addAclEntry(&config, aclEntry, utility::kDefaultAclTable());
 
-    auto* asic =
-        checkSameAndGetAsicForTesting(getAgentEnsemble()->getL3Asics());
-    utility::addTrapPacketAcl(
-        asic,
-        &config,
-        folly::CIDRNetwork(folly::IPAddress(kCollectorIp_), 128),
-        cfg::ToCpuAction::TRAP);
-    applyNewConfig(config);
-    setupEcmpTraffic(collectorPortId, kCollectorIp_, kCollectorNextHopMac_);
-    waitForStateUpdates(getSw());
+    applyMirrorOnDropConfig(
+        config, makeMirrorOnDropReport("mod-acl-drop"), collectorPortId);
   };
 
   auto verify = [&]() {
@@ -343,18 +322,9 @@ void AgentMirrorOnDropStatelessTest::testMmuDrop() {
 
   auto setup = [&]() {
     auto config = getAgentEnsemble()->getCurrentConfig();
-    config.mirrorOnDropReports()->push_back(
-        makeMirrorOnDropReport("mod-mmu-drop"));
     configureMmuDropBuffers(config, injectionPortId, kPriority);
-    auto* asic =
-        checkSameAndGetAsicForTesting(getAgentEnsemble()->getL3Asics());
-    utility::addTrapPacketAcl(
-        asic,
-        &config,
-        folly::CIDRNetwork(folly::IPAddress(kCollectorIp_), 128),
-        cfg::ToCpuAction::TRAP);
-    applyNewConfig(config);
-    setupEcmpTraffic(collectorPortId, kCollectorIp_, kCollectorNextHopMac_);
+    applyMirrorOnDropConfig(
+        config, makeMirrorOnDropReport("mod-mmu-drop"), collectorPortId);
     setupEcmpTraffic(
         txOffPortId,
         kDropDestIp,

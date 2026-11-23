@@ -275,6 +275,7 @@ int Platform::getLaneCount(cfg::PortProfileID profile) const {
     case cfg::PortProfileID::PROFILE_800G_8_PAM4_RS544X2N_OPTICAL:
     case cfg::PortProfileID::PROFILE_800G_8_PAM4_RS544X2N_COPPER:
     case cfg::PortProfileID::PROFILE_1600G_8_PAM4_RS544X2N_OPTICAL:
+    case cfg::PortProfileID::PROFILE_1600G_8_PAM4_RS544X2N_COPPER:
       return 8;
 
     case cfg::PortProfileID::PROFILE_DEFAULT:

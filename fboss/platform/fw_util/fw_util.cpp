@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
       ->add_option(
           "--fw_target_name",
           fw_target_name,
-          "Firmware target name, to see list of targets, run fw_util --list")
+          "Firmware target name, to see list of targets, run fw_util --fw_action=list")
       ->default_val("all");
 
   fwGroup
@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
       "Firmware binary file path to be programmed");
 
   fwGroup->add_option(
-      "--config_file", config_file_path, "Path to the fw_util config flie");
+      "--config_file", config_file_path, "Path to the fw_util config file");
 
   // Group: Flags
   auto flagsGroup = app.add_option_group("Flags", "Additional flags");

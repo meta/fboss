@@ -110,6 +110,20 @@ class NextHopGroupStoreTest : public SaiStoreTest {
         0);
   }
 #endif
+
+  NextHopSaiId createTunnelEncapNextHop(
+      sai_object_id_t tunnelId,
+      const folly::IPAddress& ip) {
+    auto& nextHopApi = saiApiTable->nextHopApi();
+    return nextHopApi.create<SaiTunnelEncapNextHopTraits>(
+        {SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP,
+         tunnelId,
+         ip,
+         std::nullopt,
+         std::nullopt,
+         std::nullopt},
+        0);
+  }
 };
 
 TEST_F(NextHopGroupStoreTest, loadEmptyNextHopGroup) {
@@ -629,3 +643,42 @@ TEST_F(NextHopGroupStoreTest, nextHopGroupJsonAllNextHopTypes) {
   EXPECT_FALSE(nhgAk2AhkJson.items().end() == iter);
 }
 #endif
+
+TEST_F(NextHopGroupStoreTest, nextHopGroupJsonTunnelEncapNextHop) {
+  auto nextHopGroupId = createNextHopGroup();
+
+  folly::IPAddress ip{"10::2"};
+  sai_object_id_t tunnelId = 100;
+  sai_uint32_t weight = 5;
+
+  auto nextHopId = createTunnelEncapNextHop(tunnelId, ip);
+  createNextHopGroupMember(nextHopGroupId, nextHopId, weight);
+
+  // perform a warm boot load
+  SaiStore s(0);
+  s.reload();
+  auto& store = s.get<SaiNextHopGroupTraits>();
+
+  SaiNextHopGroupTraits::AdapterHostKey k;
+  k.nhopMemberSet.insert(
+      std::make_pair(
+          SaiTunnelEncapNextHopTraits::AdapterHostKey{tunnelId, ip}, weight));
+
+  auto got = store.get(k);
+  ASSERT_TRUE(got);
+
+  // Verify round-trip serialization
+  auto json = got->adapterHostKeyToFollyDynamic();
+  auto recoveredKey =
+      SaiObject<SaiNextHopGroupTraits>::follyDynamicToAdapterHostKey(json);
+  EXPECT_EQ(recoveredKey, k);
+
+  // Verify the member list carries the tunnel-encap type
+  auto memberList = json[AttributeName<
+      SaiNextHopGroupTraits::Attributes::NextHopMemberList>::value];
+  ASSERT_EQ(memberList.size(), 1);
+  EXPECT_EQ(
+      memberList[0][AttributeName<SaiIpNextHopTraits::Attributes::Type>::value]
+          .asString(),
+      folly::to<std::string>(SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP));
+}

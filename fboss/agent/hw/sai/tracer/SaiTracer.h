@@ -143,6 +143,12 @@ class SaiTracer {
 
   void logFdbEntryRemoveFn(const sai_fdb_entry_t* fdb_entry, sai_status_t rv);
 
+  void logFdbFlushFn(
+      sai_object_id_t switch_id,
+      uint32_t attr_count,
+      const sai_attribute_t* attr_list,
+      sai_status_t rv);
+
   void logInsegEntryRemoveFn(
       const sai_inseg_entry_t* inseg_entry,
       sai_status_t rv);
@@ -288,6 +294,7 @@ class SaiTracer {
 #endif
   sai_hash_api_t* hashApi_;
   sai_hostif_api_t* hostifApi_;
+  sai_policer_api_t* policerApi_{};
   sai_isolation_group_api_t* isolationGroupApi_;
   sai_lag_api_t* lagApi_;
   sai_neighbor_api_t* neighborApi_;
@@ -374,6 +381,10 @@ class SaiTracer {
       {TYPE_INDEX(std::vector<sai_object_id_t>), &oidListAttr},
       {TYPE_INDEX(std::vector<sai_uint32_t>), &u32ListAttr},
       {TYPE_INDEX(std::vector<sai_int32_t>), &s32ListAttr},
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      {TYPE_INDEX(std::vector<sai_uint16_t>), &u16ListAttr},
+      {TYPE_INDEX(std::vector<sai_u64_range_t>), &u64RangeListAttr},
+#endif
       {TYPE_INDEX(std::vector<sai_int8_t>), &s8ListAttr},
       {TYPE_INDEX(std::vector<sai_qos_map_t>), &qosMapListAttr},
       {TYPE_INDEX(std::vector<sai_map_t>), &mapListAttr},
@@ -538,8 +549,13 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_TAM_EVENT, "tamEvent_"},
       {SAI_OBJECT_TYPE_TAM_EVENT_THRESHOLD, "tamEventThreshold_"},
       {SAI_OBJECT_TYPE_TAM, "tam_"},
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      {SAI_OBJECT_TYPE_TAM_INT, "tamInt_"},
+#endif
       {SAI_OBJECT_TYPE_TUNNEL, "tunnel_"},
       {SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY, "tunnelTerm_"},
+      {SAI_OBJECT_TYPE_TUNNEL_MAP, "tunnelMap_"},
+      {SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY, "tunnelMapEntry_"},
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
       {SAI_OBJECT_TYPE_SRV6_SIDLIST, "srv6SidList_"},
 #endif
@@ -557,6 +573,7 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_VIRTUAL_ROUTER, "virtualRouter_"},
       {SAI_OBJECT_TYPE_VLAN, "vlan_"},
       {SAI_OBJECT_TYPE_VLAN_MEMBER, "vlanMember_"},
+      {SAI_OBJECT_TYPE_POLICER, "policer_"},
       {SAI_OBJECT_TYPE_ISOLATION_GROUP, "isolationGroup_"},
       {SAI_OBJECT_TYPE_ISOLATION_GROUP_MEMBER, "isolationGroupMember_"},
       {SAI_OBJECT_TYPE_WRED, "wred_"},
@@ -580,6 +597,7 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_COUNTER, "counter_api->"},
       {SAI_OBJECT_TYPE_DEBUG_COUNTER, "debug_counter_api->"},
       {SAI_OBJECT_TYPE_FDB_ENTRY, "fdb_api->"},
+      {SAI_OBJECT_TYPE_FDB_FLUSH, "fdb_api->"},
 #if defined(BRCM_SAI_SDK_DNX_GTE_11_0)
       {static_cast<sai_object_type_t>(SAI_OBJECT_TYPE_FIRMWARE), "firmware_api->"},
 #endif
@@ -631,8 +649,13 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_TAM_EVENT, "tam_api->"},
       {SAI_OBJECT_TYPE_TAM_EVENT_THRESHOLD, "tam_api->"},
       {SAI_OBJECT_TYPE_TAM, "tam_api->"},
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+      {SAI_OBJECT_TYPE_TAM_INT, "tam_api->"},
+#endif
       {SAI_OBJECT_TYPE_TUNNEL, "tunnel_api->"},
       {SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY, "tunnel_api->"},
+      {SAI_OBJECT_TYPE_TUNNEL_MAP, "tunnel_api->"},
+      {SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY, "tunnel_api->"},
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
       {SAI_OBJECT_TYPE_SRV6_SIDLIST, "srv6_api->"},
       {SAI_OBJECT_TYPE_MY_SID_ENTRY, "srv6_api->"},
@@ -653,6 +676,7 @@ class SaiTracer {
       {SAI_OBJECT_TYPE_VIRTUAL_ROUTER, "virtual_router_api->"},
       {SAI_OBJECT_TYPE_VLAN, "vlan_api->"},
       {SAI_OBJECT_TYPE_VLAN_MEMBER, "vlan_api->"},
+      {SAI_OBJECT_TYPE_POLICER, "policer_api->"},
       {SAI_OBJECT_TYPE_ISOLATION_GROUP, "isolation_group_api->"},
       {SAI_OBJECT_TYPE_ISOLATION_GROUP_MEMBER, "isolation_group_api->"},
       {SAI_OBJECT_TYPE_WRED, "wred_api->"}};

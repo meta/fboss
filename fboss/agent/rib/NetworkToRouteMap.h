@@ -175,4 +175,13 @@ std::shared_ptr<Route<AddrT>>& value(
     std::pair<const AddrT, std::shared_ptr<Route<AddrT>>>& iter) {
   return iter.second;
 }
+
+// Routes of one VRF to program in a FIB update
+struct RibVrfFib {
+  RouterID vrf;
+  const IPv4NetworkToRouteMap* v4NetworkToRoute;
+  const IPv6NetworkToRouteMap* v6NetworkToRoute;
+  const LabelToRouteMap* labelToRoute;
+  bool vrfDeleted{false};
+};
 } // namespace facebook::fboss

@@ -3,101 +3,7 @@
         "(c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.",
         "This file is generated. Do not modify it manually!",
         "@codegen-source : configerator\/raw_configs\/neteng\/fboss\/coop\/inputs\/platform_to_agent_sdk_version",
-        "@generated SignedSource<<1530c81669a0404f4cbaf277b07b2363>>"
-    ],
-    "MINIPACK": [
-        {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.29",
-            "saiSdk": "10.2.0.0_odp",
-            "saiVersion": "1.13.2"
-        },
-        {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.26"
-        }
-    ],
-    "FUJI": [
-        {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.29",
-            "saiSdk": "10.2.0.0_odp",
-            "saiVersion": "1.13.2"
-        },
-        {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.26"
-        },
-        {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.32",
-            "saiSdk": "13.3.0.0_odp",
-            "saiVersion": "1.16.1"
-        }
-    ],
-    "ELBERT": [
-        {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.29",
-            "saiSdk": "10.2.0.0_odp",
-            "saiVersion": "1.13.2"
-        },
-        {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.26"
-        }
-    ],
-    "YAMP": [
-        {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.29",
-            "saiSdk": "10.2.0.0_odp",
-            "saiVersion": "1.13.2"
-        },
-        {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.26"
-        }
-    ],
-    "MONTBLANC": [
-        {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.30",
-            "saiSdk": "11.7.0.0_odp",
-            "saiVersion": "1.14.0"
-        },
-        {
-            "rolloutType": "RELEASE_CANDIDATE",
-            "asicSdk": "6.5.32",
-            "saiSdk": "13.3.0.0_odp",
-            "saiVersion": "1.16.1"
-        }
-    ],
-    "MORGAN800CC": [
-        {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "25.5.4210",
-            "saiSdk": "25.5.4210",
-            "saiVersion": "1.16.1"
-        },
-        {
-            "rolloutType": "RELEASE_CANDIDATE",
-            "asicSdk": "26.2.4210",
-            "saiSdk": "26.2.4210",
-            "saiVersion": "1.17.1"
-        }
-    ],
-    "WEDGE100": [
-        {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.29",
-            "saiSdk": "10.2.0.0_odp",
-            "saiVersion": "1.13.2"
-        },
-        {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.26"
-        }
+        "@generated SignedSource<<18637e8df3a0b56c8ba7eb05d231cde4>>"
     ],
     "WEDGE400": [
         {
@@ -117,30 +23,36 @@
             "saiVersion": "1.16.1"
         }
     ],
-    "DARWIN": [
+    "FUJI": [
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.32",
+            "saiSdk": "13.3.0.0_odp",
+            "saiVersion": "1.16.1"
+        },
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.26"
+        },
         {
             "rolloutType": "PRODUCTION",
             "asicSdk": "6.5.29",
             "saiSdk": "10.2.0.0_odp",
             "saiVersion": "1.13.2"
-        },
-        {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.26"
         }
     ],
-    "WEDGE400C": [
+    "MONTBLANC": [
         {
             "rolloutType": "PRODUCTION",
-            "asicSdk": "24.8.3001",
-            "saiSdk": "24.8.3001",
+            "asicSdk": "6.5.30",
+            "saiSdk": "11.7.0.0_odp",
             "saiVersion": "1.14.0"
         },
         {
             "rolloutType": "RELEASE_CANDIDATE",
-            "asicSdk": "25.11.4210",
-            "saiSdk": "25.11.4210",
-            "saiVersion": "1.17.0"
+            "asicSdk": "6.5.32",
+            "saiSdk": "13.3.0.0_odp",
+            "saiVersion": "1.16.1"
         }
     ],
     "WEDGE800BACT": [
@@ -159,20 +71,18 @@
             "saiVersion": "1.16.1"
         }
     ],
-    "WEDGE800CACT": [
+    "TAHAN800BC": [
         {
             "rolloutType": "PRODUCTION",
-            "asicSdk": "25.11.4210",
-            "saiSdk": "25.11.4210",
-            "saiVersion": "1.17.0"
-        }
-    ],
-    "WEDGE800CNHP": [
+            "asicSdk": "6.5.30",
+            "saiSdk": "11.7.0.0_odp",
+            "saiVersion": "1.14.0"
+        },
         {
-            "rolloutType": "PRODUCTION",
-            "asicSdk": "25.11.4210",
-            "saiSdk": "25.11.4210",
-            "saiVersion": "1.17.0"
+            "rolloutType": "RELEASE_CANDIDATE",
+            "asicSdk": "6.5.32",
+            "saiSdk": "13.3.0.0_odp",
+            "saiVersion": "1.16.1"
         }
     ],
     "ICECUBE800BC": [
@@ -181,6 +91,88 @@
             "asicSdk": "6.5.34",
             "saiSdk": "14.2.0.0_odp",
             "saiVersion": "1.17.4"
+        },
+        {
+            "rolloutType": "RELEASE_CANDIDATE",
+            "asicSdk": "6.5.36",
+            "saiSdk": "16.0_ea_odp",
+            "saiVersion": "1.18.1"
+        }
+    ],
+    "TAHANSB800BC": [
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.34",
+            "saiSdk": "14.2.0.0_odp",
+            "saiVersion": "1.17.4"
+        },
+        {
+            "rolloutType": "RELEASE_CANDIDATE",
+            "asicSdk": "6.5.36",
+            "saiSdk": "16.0_ea_odp",
+            "saiVersion": "1.18.1"
+        }
+    ],
+    "LADAKH800BCLS": [
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.34",
+            "saiSdk": "14.2.0.0_odp",
+            "saiVersion": "1.17.4"
+        },
+        {
+            "rolloutType": "RELEASE_CANDIDATE",
+            "asicSdk": "6.5.36",
+            "saiSdk": "16.0_ea_odp",
+            "saiVersion": "1.18.1"
+        }
+    ],
+    "LEH800BCLS": [
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.34",
+            "saiSdk": "14.2.0.0_odp",
+            "saiVersion": "1.17.4"
+        },
+        {
+            "rolloutType": "RELEASE_CANDIDATE",
+            "asicSdk": "6.5.36",
+            "saiSdk": "16.0_ea_odp",
+            "saiVersion": "1.18.1"
+        }
+    ],
+    "M4062NHP": [
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.34",
+            "saiSdk": "14.2.0.0_odp",
+            "saiVersion": "1.17.4"
+        },
+        {
+            "rolloutType": "RELEASE_CANDIDATE",
+            "asicSdk": "6.5.36",
+            "saiSdk": "16.0_ea_odp",
+            "saiVersion": "1.18.1"
+        }
+    ],
+    "MINIPACK3BTA": [
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.36",
+            "saiSdk": "16.0_ea_odp",
+            "saiVersion": "1.18.1"
+        }
+    ],
+    "ELBERT": [
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.29",
+            "saiSdk": "10.2.0.0_odp",
+            "saiVersion": "1.13.2"
+        },
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.26"
         }
     ],
     "MINIPACK3N": [
@@ -219,7 +211,7 @@
             "saiVersion": "1.15.0"
         }
     ],
-    "JANGA800BIC": [
+    "MERU800BIAC": [
         {
             "rolloutType": "PRODUCTION",
             "asicSdk": "6.5.30",
@@ -233,7 +225,7 @@
             "saiVersion": "1.15.0"
         }
     ],
-    "MERU800BIAC": [
+    "JANGA800BIC": [
         {
             "rolloutType": "PRODUCTION",
             "asicSdk": "6.5.30",
@@ -275,58 +267,108 @@
             "saiVersion": "1.15.0"
         }
     ],
-    "TAHAN800BC": [
+    "MORGAN800CC": [
         {
             "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.30",
-            "saiSdk": "11.7.0.0_odp",
+            "asicSdk": "25.5.4210",
+            "saiSdk": "25.5.4210",
+            "saiVersion": "1.16.1"
+        },
+        {
+            "rolloutType": "RELEASE_CANDIDATE",
+            "asicSdk": "26.2.4210",
+            "saiSdk": "26.2.4210",
+            "saiVersion": "1.17.1"
+        }
+    ],
+    "WEDGE400C": [
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "24.8.3001",
+            "saiSdk": "24.8.3001",
             "saiVersion": "1.14.0"
         },
         {
             "rolloutType": "RELEASE_CANDIDATE",
-            "asicSdk": "6.5.32",
-            "saiSdk": "13.3.0.0_odp",
-            "saiVersion": "1.16.1"
+            "asicSdk": "25.11.4210",
+            "saiSdk": "25.11.4210",
+            "saiVersion": "1.17.0"
         }
     ],
-    "TAHANSB800BC": [
+    "WEDGE800CACT": [
         {
             "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.34",
-            "saiSdk": "14.2.0.0_odp",
-            "saiVersion": "1.17.4"
+            "asicSdk": "25.11.4210",
+            "saiSdk": "25.11.4210",
+            "saiVersion": "1.17.0"
         }
     ],
-    "LADAKH800BCLS": [
+    "WEDGE800CNHP": [
         {
             "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.34",
-            "saiSdk": "14.2.0.0_odp",
-            "saiVersion": "1.17.4"
+            "asicSdk": "25.11.4210",
+            "saiSdk": "25.11.4210",
+            "saiVersion": "1.17.0"
         }
     ],
-    "LEH800BCLS": [
+    "DARWIN": [
         {
             "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.34",
-            "saiSdk": "14.2.0.0_odp",
-            "saiVersion": "1.17.4"
+            "asicSdk": "6.5.29",
+            "saiSdk": "10.2.0.0_odp",
+            "saiVersion": "1.13.2"
+        },
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.26"
         }
     ],
-    "MINIPACK3BTA": [
+    "MINIPACK": [
         {
             "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.36",
-            "saiSdk": "16.0_ea_odp",
-            "saiVersion": "1.18.1"
+            "asicSdk": "6.5.29",
+            "saiSdk": "10.2.0.0_odp",
+            "saiVersion": "1.13.2"
+        },
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.26"
         }
     ],
-    "M4062NHP": [
+    "SANDIA": [
         {
             "rolloutType": "PRODUCTION",
-            "asicSdk": "6.5.34",
-            "saiSdk": "14.2.0.0_odp",
-            "saiVersion": "1.17.4"
+            "asicSdk": "6.5.29",
+            "saiSdk": "10.2.0.0_odp",
+            "saiVersion": "1.13.2"
+        },
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.26"
+        }
+    ],
+    "WEDGE100": [
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.29",
+            "saiSdk": "10.2.0.0_odp",
+            "saiVersion": "1.13.2"
+        },
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.26"
+        }
+    ],
+    "YAMP": [
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.29",
+            "saiSdk": "10.2.0.0_odp",
+            "saiVersion": "1.13.2"
+        },
+        {
+            "rolloutType": "PRODUCTION",
+            "asicSdk": "6.5.26"
         }
     ]
 }

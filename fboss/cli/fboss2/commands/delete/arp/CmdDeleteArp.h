@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 #include "fboss/cli/fboss2/CmdHandler.h"
+#include "fboss/cli/fboss2/commands/config/arp/CmdConfigArp.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -48,6 +50,11 @@ struct CmdDeleteArpTraits : public WriteCommandTraits {
         args,
         "<attr> [<attr> ...] where <attr> is one of: "
         "age-interval, max-probes, stale-interval, timeout");
+  }
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed) {
+    return utils::completion::completeAttrList(
+        typed, utils::completion::toWords(arp_attrs::kValidAttrs));
   }
   using ObjectArgType = ArpDeleteAttrs;
   using RetType = std::string;

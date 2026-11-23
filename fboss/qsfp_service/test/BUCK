@@ -18,6 +18,8 @@ cpp_binary(
         "QsfpServiceTest.h",
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     deps = [
         "fbsource//third-party/googletest:gtest",
         "fbsource//xplat/folly:singleton",
@@ -51,6 +53,8 @@ cpp_library(
         "TransceiverManagerTestHelper.h",
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     deps = [
         ":fake-configs-helper",
         "//fboss/qsfp_service/if:transceiver_validation-cpp2-types",
@@ -69,6 +73,8 @@ cpp_unittest(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     network_access = network_access_utils.none(),
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     deps = [
         ":transceiver_manager_test_helper",
         "//fboss/lib:common_file_utils",
@@ -102,6 +108,7 @@ cpp_unittest(
         "//fboss/lib/bsp/janga800bic:janga800bic_bsp",
         "//fboss/lib/bsp/ladakh800bcls:ladakh800bcls_bsp",
         "//fboss/lib/bsp/leh800bcls:leh800bcls_bsp",
+        "//fboss/lib/bsp/m4061nhp:m4061nhp_bsp",
         "//fboss/lib/bsp/m4062nhp:m4062nhp_bsp",
         "//fboss/lib/bsp/meru800bfa:meru800bfa_bsp",
         "//fboss/lib/bsp/meru800bia:meru800bia_bsp",
@@ -126,6 +133,8 @@ cpp_unittest(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     network_access = network_access_utils.none(),
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     deps = [
         "fbsource//xplat/folly/testing:test_util",
         ":mock_transceivers",
@@ -148,6 +157,8 @@ cpp_unittest(
     resources = [
         "//fboss/configs:example_integrated_optics_platform_mapping.json",
     ],
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     deps = [
         "fbsource//third-party/googletest:gmock",
         "fbsource//xplat/folly:file_util",
@@ -254,6 +265,8 @@ cpp_unittest(
     srcs = ["PortManagerTest.cpp"],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     network_access = network_access_utils.none(),
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     deps = [
         "fbsource//third-party/googletest:gmock",
         "fbsource//xplat/folly:file_util",
@@ -279,6 +292,8 @@ cpp_unittest(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     network_access = network_access_utils.none(),
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     deps = [
         "fbsource//xplat/folly/logging:logging",
         "fbsource//xplat/folly/testing:test_util",

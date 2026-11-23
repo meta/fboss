@@ -6,7 +6,7 @@
 
 namespace facebook::fboss::platform::fan_service {
 
-int16_t PidLogic::calculatePwm(float measurement) {
+float PidLogic::calculatePwm(float measurement) {
   float newPwm, pwmDelta{0};
   float minVal = *pidSetting_.setPoint() - *pidSetting_.negHysteresis();
   float maxVal = *pidSetting_.setPoint() + *pidSetting_.posHysteresis();
@@ -66,7 +66,7 @@ int16_t PidLogic::calculatePwm(float measurement) {
   return newPwm;
 }
 
-int16_t IncrementalPidLogic::calculatePwm(float measurement) {
+float IncrementalPidLogic::calculatePwm(float measurement) {
   float pwmDelta{0};
   float minVal = *pidSetting_.setPoint() - *pidSetting_.negHysteresis();
   float maxVal = *pidSetting_.setPoint() + *pidSetting_.posHysteresis();
@@ -77,7 +77,7 @@ int16_t IncrementalPidLogic::calculatePwm(float measurement) {
         (*pidSetting_.kd() *
          (measurement - 2 * previousRead1_ + previousRead2_));
   }
-  int16_t newPwm = lastPwm_ + pwmDelta;
+  float newPwm = lastPwm_ + pwmDelta;
 
   XLOG(DBG2) << fmt::format(
       "Measurement: {}, Previous Read 1: {}, Previous Read 2: {}, "

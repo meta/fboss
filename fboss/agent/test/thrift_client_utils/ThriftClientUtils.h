@@ -62,7 +62,9 @@ std::map<int64_t, cfg::DsfNode> getSwitchIdToDsfNode(
 facebook::fboss::fsdb::SubscriberIdToOperSubscriberInfos
 getSubscriberIdToOperSusbscriberInfos(const std::string& switchName);
 
-void triggerGracefulAgentRestart(const std::string& switchName);
+void triggerGracefulAgentRestart(
+    const std::string& switchName,
+    int32_t delayInSeconds = 0);
 void triggerUngracefulAgentRestart(const std::string& switchName);
 void triggerGracefulAgentRestartWithDelay(
     const std::string& switchName,

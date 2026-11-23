@@ -131,7 +131,6 @@ sai_port_media_type_t getSaiCablePropagationDelayMediaType(
     default:
       return SAI_PORT_MEDIA_TYPE_UNKNOWN;
   }
-  return SAI_PORT_MEDIA_TYPE_UNKNOWN;
 }
 
 sai_port_media_type_t getSaiPortMediaFromInterfaceType(
@@ -164,7 +163,6 @@ sai_port_media_type_t getSaiPortMediaFromInterfaceType(
           "Unsupported interface type: ",
           apache::thrift::util::enumNameSafe(interfaceType));
   }
-  return SAI_PORT_MEDIA_TYPE_UNKNOWN;
 }
 
 sai_port_fec_mode_t getSaiPortFecMode(phy::FecMode fec) {

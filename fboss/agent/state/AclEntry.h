@@ -182,6 +182,39 @@ class AclEntry : public ThriftStructNode<AclEntry, state::AclEntryFields> {
     setIpV6Word<switch_state_tags::dstIpV6Word2>(word);
   }
 
+  // Returns {value, mask}
+  std::optional<std::pair<uint32_t, uint32_t>> getDstIpV6Word1WithMask() const {
+    return getIpV6WordWithMask<switch_state_tags::dstIpV6Word1WithMask>();
+  }
+
+  void setDstIpV6Word1WithMask(const cfg::AclIpV6WordMatch& match) {
+    setIpV6WordWithMask<switch_state_tags::dstIpV6Word1WithMask>(match);
+  }
+
+  // Returns {value, mask}
+  std::optional<std::pair<uint32_t, uint32_t>> getDstIpV6Word0WithMask() const {
+    return getIpV6WordWithMask<switch_state_tags::dstIpV6Word0WithMask>();
+  }
+
+  void setDstIpV6Word0WithMask(const cfg::AclIpV6WordMatch& match) {
+    setIpV6WordWithMask<switch_state_tags::dstIpV6Word0WithMask>(match);
+  }
+
+  // Returns {ip, mask}
+  std::optional<std::pair<folly::IPAddress, folly::IPAddress>>
+  getDstIpWithMask() const {
+    if (auto dstIpWithMask = cref<switch_state_tags::dstIpWithMask>()) {
+      const auto match = dstIpWithMask->toThrift();
+      return std::make_pair(
+          folly::IPAddress(*match.ip()), folly::IPAddress(*match.mask()));
+    }
+    return std::nullopt;
+  }
+
+  void setDstIpWithMask(const cfg::AclIpMatch& dstIpWithMask) {
+    set<switch_state_tags::dstIpWithMask>(dstIpWithMask);
+  }
+
   std::optional<uint8_t> getProto() const {
     if (auto proto = cref<switch_state_tags::proto>()) {
       return proto->cref();
@@ -532,7 +565,8 @@ class AclEntry : public ThriftStructNode<AclEntry, state::AclEntryFields> {
         getVlanID() || getUdfGroups() || getRoceOpcode() || getRoceBytes() ||
         getRoceMask() || getUdfTable() || getTrafficClass() ||
         getNextHopGroupId() || getDstIpV6Word3() || getDstIpV6Word2() ||
-        getLookupClassPort() || getMplsLabel0Ttl();
+        getLookupClassPort() || getMplsLabel0Ttl() || getDstIpWithMask() ||
+        getDstIpV6Word1WithMask() || getDstIpV6Word0WithMask();
   }
 
   std::set<cfg::AclTableQualifier> getRequiredAclTableQualifiers() const;
@@ -564,6 +598,23 @@ class AclEntry : public ThriftStructNode<AclEntry, state::AclEntryFields> {
   template <typename Tag>
   void setIpV6Word(int64_t word) {
     set<Tag>(static_cast<int64_t>(validateIpV6Word(word)));
+  }
+
+  template <typename Tag>
+  std::optional<std::pair<uint32_t, uint32_t>> getIpV6WordWithMask() const {
+    if (auto match = cref<Tag>()) {
+      const auto word = match->toThrift();
+      return std::make_pair(
+          validateIpV6Word(*word.value()), validateIpV6Word(*word.mask()));
+    }
+    return std::nullopt;
+  }
+
+  template <typename Tag>
+  void setIpV6WordWithMask(const cfg::AclIpV6WordMatch& match) {
+    validateIpV6Word(*match.value());
+    validateIpV6Word(*match.mask());
+    set<Tag>(match);
   }
 
   // Inherit the constructors required for clone()

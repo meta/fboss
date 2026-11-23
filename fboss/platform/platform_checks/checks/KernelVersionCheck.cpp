@@ -11,7 +11,7 @@
 #include "fboss/platform/platform_checks/checks/KernelVersionCheck.h"
 
 #include <folly/String.h>
-#include <folly/logging/xlog.h>
+#include "fboss/platform/platform_checks/CommandLog.h"
 
 #include "common/config/ConfigeratorConfig.h"
 #include "configerator/structs/fboss/fboss_platform/gen-cpp2/kernel_versions_types.h"
@@ -24,9 +24,10 @@ CheckResult KernelVersionCheck::run() {
     return makeError("Failed to get supported kernel versions");
   }
 
-  auto uname = host().run("uname -r");
+  CommandLog log;
+  auto uname = log.run(host(), "uname -r");
   if (!uname.ok()) {
-    return makeError("Failed to get kernel version information");
+    return log.attachTo(makeError("Failed to get kernel version information"));
   }
   std::string kernelRelease = folly::trimWhitespace(uname.standardOut).str();
 
@@ -34,14 +35,14 @@ CheckResult KernelVersionCheck::run() {
           supportedKernelVersions->begin(),
           supportedKernelVersions->end(),
           kernelRelease) != supportedKernelVersions->end()) {
-    return makeOK();
+    return log.attachTo(makeOK());
   }
 
   std::string errorMsg =
       "Kernel version " + kernelRelease + " is not supported";
   std::string remediationMsg = "Reprovision to install correct kernel";
-  return makeProblem(
-      errorMsg, RemediationType::REPROVISION_REQUIRED, remediationMsg);
+  return log.attachTo(makeProblem(
+      errorMsg, RemediationType::REPROVISION_REQUIRED, remediationMsg));
 }
 
 std::optional<std::vector<std::string>>

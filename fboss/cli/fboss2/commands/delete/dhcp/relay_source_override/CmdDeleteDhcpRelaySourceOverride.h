@@ -17,6 +17,8 @@
 namespace facebook::fboss {
 
 struct CmdDeleteDhcpRelaySourceOverrideTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdDeleteDhcp;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     cmd.add_option("family", args, "<family> is one of: ipv4, ipv6")

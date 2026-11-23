@@ -40,15 +40,14 @@ TEST_F(CmdShowBgpNexthopInfoWikiDocsTestFixture, printOutputRendersSampleList) {
   CmdShowBgpNexthopInfo().printOutput(CmdShowBgpNexthopInfo::sampleModel(), ss);
   const std::string output = ss.str();
 
+  EXPECT_THAT(output, HasSubstr("Resolved For Selection"));
   // Pin each row whole rather than probing for bare "Yes"/"No", which also
   // occur in the empty-cache message and are not tied to a row. Column widths
   // come from utils::Table, so collapse runs of spaces.
-  EXPECT_THAT(output, ContainsRegex("192\\.0\\.2\\.11 +Yes +10"));
-  // Reachable but not resolved for selection: indistinguishable from the
-  // healthy peer in the list view, which is why the detail view exists.
-  EXPECT_THAT(output, ContainsRegex("192\\.0\\.2\\.12 +Yes +10"));
+  EXPECT_THAT(output, ContainsRegex("192\\.0\\.2\\.11 +Yes +10 +Yes +171"));
+  EXPECT_THAT(output, ContainsRegex("192\\.0\\.2\\.12 +Yes +N/A +No +171"));
   // The unreachable entry has no IGP cost, so its cost column renders N/A.
-  EXPECT_THAT(output, ContainsRegex("192\\.0\\.2\\.13 +No +N/A"));
+  EXPECT_THAT(output, ContainsRegex("192\\.0\\.2\\.13 +No +N/A +No +0"));
 }
 
 // The same entries rendered in detail mode must produce the per-nexthop view,
@@ -89,6 +88,7 @@ TEST_F(CmdShowBgpNexthopInfoWikiDocsTestFixture, printOutputRendersDetailView) {
   const auto unresolved =
       renderDetail(listModel.entries()->at(1), "192.0.2.12");
   EXPECT_THAT(unresolved, ContainsRegex("Reachable +Yes"));
+  EXPECT_THAT(unresolved, ContainsRegex("IGP Cost +N/A"));
   EXPECT_THAT(unresolved, ContainsRegex("Resolved For Selection +No"));
   EXPECT_THAT(unresolved, ContainsRegex("Dependent Routes +171"));
 

@@ -39,6 +39,7 @@ class HwSysPortFb303Stats : public HwBasePortFb303Stats {
             false /*mplsLabelLookupFailCounterSupported*/,
             false /*linkDebounceRetriggerCounterSupported*/,
             false /*sllHllDiscardCounterSupported*/,
+            false /*portLatchStatusSupported*/,
             multiSwitchStatsPrefix) {
     portStats_.portName_() = portName;
 

@@ -53,7 +53,7 @@ NextHopResolver<AddrT>::resolveNextHopNeighbor(
     const std::shared_ptr<SwitchState>& state,
     const AddrT& destinationIp,
     const NextHop& nexthop) const {
-  if (!nexthop.isResolved()) {
+  if (!nexthop.intfID().has_value()) {
     return std::shared_ptr<NeighborEntryT>{nullptr};
   }
 

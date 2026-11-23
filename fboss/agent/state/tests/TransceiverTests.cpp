@@ -37,6 +37,45 @@ TEST(TransceiverSpec, SerializeTransceiver) {
   validateNodeSerialization(*tcvr);
 }
 
+TEST(TransceiverSpec, VendorOverridesToOverrideFactor) {
+  TransceiverVendorPartNumber placeholder, transceiver;
+  placeholder.vendor() = "Vendor_1";
+  placeholder.partNumber() = "PartNum_1";
+  transceiver.vendor() = "FBOSSONE";
+  transceiver.partNumber() = "PN_1";
+  TransceiverVendorOverride vendorOverride;
+  vendorOverride.placeholder() = placeholder;
+  vendorOverride.transceivers() = {transceiver};
+  const std::vector<TransceiverVendorOverride> vendorOverrides = {
+      vendorOverride};
+  TransceiverInfo tcvrInfo;
+  tcvrInfo.tcvrState()->present() = true;
+  tcvrInfo.tcvrState()->port() = 1;
+  tcvrInfo.tcvrState()->vendorOverrides() = vendorOverrides;
+
+  auto tcvr = TransceiverSpec::createPresentTransceiver(tcvrInfo);
+
+  EXPECT_EQ(tcvr->getVendorOverrides(), vendorOverrides);
+  EXPECT_EQ(
+      tcvr->toPlatformPortConfigOverrideFactor()
+          .vendorOverrides()
+          .to_optional(),
+      vendorOverrides);
+  validateNodeSerialization(*tcvr);
+}
+
+TEST(TransceiverSpec, VendorOverridesUnset) {
+  TransceiverInfo tcvrInfo;
+  tcvrInfo.tcvrState()->present() = true;
+  tcvrInfo.tcvrState()->port() = 1;
+
+  auto tcvr = TransceiverSpec::createPresentTransceiver(tcvrInfo);
+
+  EXPECT_FALSE(tcvr->getVendorOverrides().has_value());
+  EXPECT_FALSE(
+      tcvr->toPlatformPortConfigOverrideFactor().vendorOverrides().has_value());
+}
+
 TEST(TransceiverSpec, SerializeSwitchState) {
   auto platform = createMockPlatform();
   auto state = std::make_shared<SwitchState>();

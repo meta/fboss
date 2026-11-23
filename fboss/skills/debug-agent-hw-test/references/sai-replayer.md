@@ -12,7 +12,7 @@ Use it to:
   right order, `rv:0`), to rule a FBOSS bug in or out.
 - **Hand the vendor a standalone repro** — a captured log compiles into a binary the vendor
   can run on their own setup with no FBOSS, no test harness. The core artifact of a
-  `FAIL_VENDOR` escalation (see [vendor-escalation.md](vendor-escalation.md)).
+  `FAIL_VENDOR` escalation (see the [vendor-escalation skill](../../vendor-escalation/SKILL.md)).
 - **Profile SDK latency** — with elapsed-time logging, see how long each SDK call takes
   (e.g. to find a warmboot or scale bottleneck).
 
@@ -89,6 +89,6 @@ duration — ideal for finding slow primitives:
 ## Next Steps
 
 - Inspect the trace to confirm programming, or compile it for the vendor.
-- For a `FAIL_VENDOR` escalation, bundle the trace per [vendor-escalation.md](vendor-escalation.md).
+- For a `FAIL_VENDOR` escalation, bundle the trace with the [vendor-escalation skill](../../vendor-escalation/SKILL.md).
 - For runtime ASIC-behavior bugs (queues, marking, drops) the trace can't explain, switch to
   [vendor-diag-shell.md](vendor-diag-shell.md).

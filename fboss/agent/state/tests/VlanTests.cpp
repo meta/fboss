@@ -145,7 +145,7 @@ TEST(Vlan, applyConfig) {
   // Add an interface
   config.interfaces()->resize(2);
   *config.interfaces()[1].intfID() = 1;
-  *config.interfaces()[1].routerID() = 0;
+  config.interfaces()[1].routerID() = 0;
   *config.interfaces()[1].vlanID() = 1;
   config.interfaces()[1].ipAddresses()->resize(2);
   config.interfaces()[1].ipAddresses()[0] = "10.1.1.1/24";
@@ -195,7 +195,7 @@ TEST(Vlan, applyConfig) {
   config.vlans()[2].intfID() = 1299;
   config.interfaces()->resize(3);
   *config.interfaces()[2].intfID() = 1299;
-  *config.interfaces()[2].routerID() = 0;
+  config.interfaces()[2].routerID() = 0;
   *config.interfaces()[2].vlanID() = 1299;
   config.interfaces()[2].ipAddresses()->resize(2);
   config.interfaces()[2].ipAddresses()[0] = "10.1.10.1/24";
@@ -240,12 +240,14 @@ TEST(Vlan, applyConfig) {
   config.vlans()[3].intfID() = 99;
   config.interfaces()->resize(4);
   *config.interfaces()[3].intfID() = 99;
-  *config.interfaces()[3].routerID() = 1;
   *config.interfaces()[3].vlanID() = 99;
   config.interfaces()[3].ipAddresses()->resize(2);
   config.interfaces()[3].ipAddresses()[0] = "1.2.3.4/24";
   config.interfaces()[3].ipAddresses()[1] = "10.0.0.1/9";
-  auto stateV4 = publishAndApplyConfig(stateV3, &config, platform.get());
+  auto stateV4 = publishAndApplyConfig(
+      preBindInterfaceVrfs(stateV3, {{InterfaceID(99), RouterID(1)}}),
+      &config,
+      platform.get());
   ASSERT_NE(nullptr, stateV4);
   // VLAN 1 should be unchanged
   EXPECT_EQ(vlanV2, stateV4->getVlans()->getNode(VlanID(1)));
@@ -275,7 +277,7 @@ TEST(Vlan, applyConfig) {
   config.vlans()[4].intfID().reset();
   config.interfaces()->resize(5);
   *config.interfaces()[4].intfID() = 100;
-  *config.interfaces()[4].routerID() = 0;
+  config.interfaces()[4].routerID() = 0;
   *config.interfaces()[4].vlanID() = 100;
   config.interfaces()[4].ipAddresses()->resize(2);
   config.interfaces()[4].ipAddresses()[0] = "10.50.3.7/24";
@@ -384,10 +386,10 @@ TEST(VlanMap, applyConfig) {
   config.interfaces()->resize(2);
   *config.interfaces()[0].intfID() = 1234;
   *config.interfaces()[0].vlanID() = 1234;
-  *config.interfaces()[0].routerID() = 0;
+  config.interfaces()[0].routerID() = 0;
   *config.interfaces()[1].intfID() = 99;
   *config.interfaces()[1].vlanID() = 99;
-  *config.interfaces()[1].routerID() = 0;
+  config.interfaces()[1].routerID() = 0;
 
   auto stateV1 = publishAndApplyConfig(stateV0, &config, platform.get());
   auto vlansV1 = stateV1->getVlans();

@@ -22,7 +22,7 @@ namespace facebook::fboss {
 
 struct HwFb303Counter {
   facebook::stats::MonotonicCounter fb303Counter;
-  int64_t cumulativeValue;
+  int64_t cumulativeValue{0};
   explicit HwFb303Counter(facebook::stats::MonotonicCounter counter)
       : fb303Counter(std::move(counter)) {}
 };

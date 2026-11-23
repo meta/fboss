@@ -92,6 +92,14 @@ class CmisHelper final {
          MediaInterfaceCode::CR4_400G},
         {ActiveCuHostInterfaceCode::AUI_PAM4_8S_800G,
          MediaInterfaceCode::CR8_800G},
+        {ActiveCuHostInterfaceCode::AUI_PAM4_1_200G,
+         MediaInterfaceCode::CR1_200G},
+        {ActiveCuHostInterfaceCode::AUI_PAM4_2_400G,
+         MediaInterfaceCode::CR2_400G},
+        {ActiveCuHostInterfaceCode::AUI_PAM4_4_800G,
+         MediaInterfaceCode::CR4_800G},
+        {ActiveCuHostInterfaceCode::AUI_PAM4_8_1600G,
+         MediaInterfaceCode::CR8_1600G},
     };
     return activeMediaInterfaceMapping_;
   }
@@ -101,12 +109,19 @@ class CmisHelper final {
     static const ActiveSpeedApplicationMap activeSpeedApplicationMapping_ = {
         {cfg::PortSpeed::HUNDREDG,
          {ActiveCuHostInterfaceCode::AUI_PAM4_1S_100G}},
+        // Order is not significant: consumers disambiguate the 100G/lane and
+        // 200G/lane entries on the advertised host lane count.
         {cfg::PortSpeed::TWOHUNDREDG,
-         {ActiveCuHostInterfaceCode::AUI_PAM4_2S_200G}},
+         {ActiveCuHostInterfaceCode::AUI_PAM4_2S_200G,
+          ActiveCuHostInterfaceCode::AUI_PAM4_1_200G}},
         {cfg::PortSpeed::FOURHUNDREDG,
-         {ActiveCuHostInterfaceCode::AUI_PAM4_4S_400G}},
+         {ActiveCuHostInterfaceCode::AUI_PAM4_4S_400G,
+          ActiveCuHostInterfaceCode::AUI_PAM4_2_400G}},
         {cfg::PortSpeed::EIGHTHUNDREDG,
-         {ActiveCuHostInterfaceCode::AUI_PAM4_8S_800G}}};
+         {ActiveCuHostInterfaceCode::AUI_PAM4_8S_800G,
+          ActiveCuHostInterfaceCode::AUI_PAM4_4_800G}},
+        {cfg::PortSpeed::ONEPOINTSIXT,
+         {ActiveCuHostInterfaceCode::AUI_PAM4_8_1600G}}};
     return activeSpeedApplicationMapping_;
   }
 
@@ -160,6 +175,50 @@ class CmisHelper final {
                 ActiveCuHostInterfaceCode::AUI_PAM4_8S_800G,
                 ActiveCuHostInterfaceCode::AUI_PAM4_8S_800G,
                 ActiveCuHostInterfaceCode::AUI_PAM4_8S_800G,
+            },
+            {
+                // 8x200G CR1_200G
+                ActiveCuHostInterfaceCode::AUI_PAM4_1_200G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_1_200G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_1_200G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_1_200G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_1_200G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_1_200G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_1_200G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_1_200G,
+            },
+            {
+                // 4x400G CR2_400G
+                ActiveCuHostInterfaceCode::AUI_PAM4_2_400G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_2_400G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_2_400G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_2_400G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_2_400G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_2_400G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_2_400G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_2_400G,
+            },
+            {
+                // 2x800G CR4_800G
+                ActiveCuHostInterfaceCode::AUI_PAM4_4_800G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_4_800G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_4_800G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_4_800G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_4_800G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_4_800G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_4_800G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_4_800G,
+            },
+            {
+                // 1x1600G CR8_1600G
+                ActiveCuHostInterfaceCode::AUI_PAM4_8_1600G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_8_1600G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_8_1600G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_8_1600G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_8_1600G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_8_1600G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_8_1600G,
+                ActiveCuHostInterfaceCode::AUI_PAM4_8_1600G,
             },
         };
     return activeOsfpValidSpeedCombinations_;

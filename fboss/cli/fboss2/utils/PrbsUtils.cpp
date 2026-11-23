@@ -17,6 +17,11 @@ std::vector<phy::PortComponent> prbsComponents(
         phy::PortComponent::TRANSCEIVER_SYSTEM,
         phy::PortComponent::TRANSCEIVER_LINE};
   }
+  if (components.empty()) {
+    throw std::runtime_error(
+        "No PRBS component specified, expecting one or more of: asic, "
+        "xphy_system, xphy_line, transceiver_system, transceiver_line");
+  }
   std::vector<phy::PortComponent> prbsComps;
   for (const auto& comp : components) {
     if (comp == "asic") {

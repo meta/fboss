@@ -200,10 +200,13 @@ getSubscriberIdToOperSusbscriberInfos(const std::string& switchName) {
   return subInfos;
 }
 
-void triggerGracefulAgentRestart(const std::string& switchName) {
+void triggerGracefulAgentRestart(
+    const std::string& switchName,
+    int32_t delayInSeconds) {
   try {
     auto swAgentClient = getSwAgentThriftClient(switchName);
-    swAgentClient->sync_gracefullyRestartService("fboss_sw_agent_test");
+    swAgentClient->sync_gracefullyRestartService(
+        "fboss_sw_agent_test", delayInSeconds);
   } catch (...) {
     // Thrift request may throw error as the Agent exits.
     // Ignore it, as we only wanted to trigger exit.
@@ -239,7 +242,7 @@ void triggerGracefulAgentRestartWithDelay(
 void triggerGracefulQsfpRestart(const std::string& switchName) {
   try {
     auto swAgentClient = getSwAgentThriftClient(switchName);
-    swAgentClient->sync_gracefullyRestartService("qsfp_service_for_testing");
+    swAgentClient->sync_gracefullyRestartService("qsfp_service_for_testing", 0);
   } catch (...) {
     // Thrift request may throw error as the Agent exits.
     // Ignore it, as we only wanted to trigger exit.
@@ -259,7 +262,7 @@ void triggerUngracefulQsfpRestart(const std::string& switchName) {
 void triggerGracefulFsdbRestart(const std::string& switchName) {
   try {
     auto swAgentClient = getSwAgentThriftClient(switchName);
-    swAgentClient->sync_gracefullyRestartService("fsdb_service_for_testing");
+    swAgentClient->sync_gracefullyRestartService("fsdb_service_for_testing", 0);
   } catch (...) {
     // Thrift request may throw error as the Agent exits.
     // Ignore it, as we only wanted to trigger exit.

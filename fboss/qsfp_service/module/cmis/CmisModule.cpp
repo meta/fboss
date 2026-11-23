@@ -45,6 +45,11 @@ DEFINE_bool(
     false,
     "Flag to explicit control to module values overridden for specific vendors");
 
+DEFINE_int32(
+    max_datapath_state_update_time_us,
+    10000000,
+    "Maximum time in microseconds to wait for datapath initialization or de-initialization");
+
 namespace {
 
 // Lower Page 00h register offsets used to switch the active bank/page before a
@@ -56,7 +61,6 @@ constexpr int kUsecBetweenPowerModeFlap = 100000;
 constexpr int kUsecBetweenLaneInit = 10000; // 10ms
 constexpr int kUsecDiagSelectLatchWaitPrbs = 350000; // 350 ms
 constexpr int kUsecAfterAppProgramming = 500000;
-constexpr int kUsecDatapathStateUpdateTime = 10000000; // 10 seconds
 constexpr int kUsecDatapathStatePollTime = 500000; // 500 ms
 // Application Advertising: ApSel 1-8 in Lower Page 00h, 9-15 in Page 01h
 constexpr uint8_t kNumLowerPageApplications = 8;
@@ -651,19 +655,52 @@ bool isValidVdmConfigType(int vdmConf) {
   return false;
 }
 
+namespace {
+bool hasHostStartLane(
+    const CmisModule::ApplicationAdvertisingField& capability,
+    uint8_t startHostLane) {
+  return std::find(
+             capability.hostStartLanes.begin(),
+             capability.hostStartLanes.end(),
+             startHostLane) != capability.hostStartLanes.end();
+}
+
+bool isInfiniBandHostInterface(uint8_t hostInterface) {
+  const auto code = static_cast<ActiveCuHostInterfaceCode>(hostInterface);
+  return (code >= ActiveCuHostInterfaceCode::IB_SDR &&
+          code <= ActiveCuHostInterfaceCode::IB_NDR) ||
+      code == ActiveCuHostInterfaceCode::IB_XDR;
+}
+} // namespace
+
 std::optional<CmisModule::ApplicationAdvertisingField>
-CmisModule::getApplicationField(uint8_t application, uint8_t startHostLane)
-    const {
+CmisModule::getApplicationField(
+    uint8_t mediaInterfaceCode,
+    uint8_t startHostLane) const {
   // Module capabilities advertise per-bank (intra-bank) host start lanes. A
   // port's lanes are confined to one bank, so match against the intra-bank
   // position (identity for single-bank modules / lanes 0-7).
   uint8_t intraStartHostLane = laneInBank(startHostLane);
   for (const auto& capability : moduleCapabilities_) {
-    if (capability.moduleMediaInterface == application &&
-        std::find(
-            capability.hostStartLanes.begin(),
-            capability.hostStartLanes.end(),
-            intraStartHostLane) != capability.hostStartLanes.end()) {
+    if (capability.moduleMediaInterface == mediaInterfaceCode &&
+        hasHostStartLane(capability, intraStartHostLane)) {
+      return capability;
+    }
+  }
+  return std::nullopt;
+}
+
+std::optional<CmisModule::ApplicationAdvertisingField>
+CmisModule::selectApplicationField(
+    uint8_t mediaInterfaceCode,
+    uint8_t startHostLane,
+    std::optional<int> hostLaneCount) const {
+  uint8_t intraStartHostLane = laneInBank(startHostLane);
+  for (const auto& capability : moduleCapabilities_) {
+    if (capability.moduleMediaInterface == mediaInterfaceCode &&
+        !isInfiniBandHostInterface(capability.moduleHostInterface) &&
+        (!hostLaneCount || capability.hostLaneCount == *hostLaneCount) &&
+        hasHostStartLane(capability, intraStartHostLane)) {
       return capability;
     }
   }
@@ -2008,6 +2045,27 @@ CmisModule::VdmDiagsLocationStatus CmisModule::getVdmDiagsValLocation(
   return vdmConfigDataLocations_.at(vdmConf);
 }
 
+bool CmisModule::hasVdmStatisticsObservables() const {
+  for (auto vdmConf :
+       {PRE_FEC_BER_MEDIA_IN_MIN,
+        PRE_FEC_BER_HOST_IN_MIN,
+        PRE_FEC_BER_MEDIA_IN_MAX,
+        PRE_FEC_BER_HOST_IN_MAX,
+        PRE_FEC_BER_MEDIA_IN_AVG,
+        PRE_FEC_BER_HOST_IN_AVG,
+        ERR_FRAME_MEDIA_IN_MIN,
+        ERR_FRAME_HOST_IN_MIN,
+        ERR_FRAME_MEDIA_IN_MAX,
+        ERR_FRAME_HOST_IN_MAX,
+        ERR_FRAME_MEDIA_IN_AVG,
+        ERR_FRAME_HOST_IN_AVG}) {
+    if (getVdmDiagsValLocation(vdmConf).vdmConfImplementedByModule) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /*
  * getCdbSymbolErrorHistogramLocked
  *
@@ -2444,6 +2502,11 @@ VdmPerfMonitorStatsForOds CmisModule::getVdmPerfMonitorStatsForOds(
 
 TransceiverModuleIdentifier CmisModule::getIdentifier() {
   return (TransceiverModuleIdentifier)getSettingsValue(CmisField::IDENTIFIER);
+}
+
+bool CmisModule::isCpo() const {
+  return getSettingsValue(CmisField::IDENTIFIER) ==
+      static_cast<uint8_t>(TransceiverModuleIdentifier::CPO);
 }
 
 void CmisModule::setQsfpFlatMem() {
@@ -3171,8 +3234,15 @@ std::optional<CmisModule::AllLaneConfig> CmisModule::getAllPortsStageSet0Config(
   }
   AllLaneConfig stageSet0Config;
   for (auto lane = 0; lane < kMaxOsfpNumLanes;) {
-    if (auto laneCapability =
-            getApplicationField(laneProgramValues[lane], lane)) {
+    // Speed combos only carry the media interface per lane, so prefer the
+    // requesting port's lane count for every port in the combo
+    auto laneCapability =
+        selectApplicationField(laneProgramValues[lane], lane, numHostLanes);
+    if (!laneCapability) {
+      laneCapability =
+          selectApplicationField(laneProgramValues[lane], lane, std::nullopt);
+    }
+    if (laneCapability) {
       uint8_t currApSelCode = laneCapability.value().ApSelCode;
       for (auto currApLane = lane;
            currApLane < lane + laneCapability.value().hostLaneCount;
@@ -3465,28 +3535,15 @@ CmisModule::getAppSelCodeForSpeed(
       startHostLane,
       numHostLanesForPort);
 
-  // We use the module Media Interface ID for Optical modules, which is located
-  // at the second byte of the field (byteOffset = 1), as Application ID here.
-  // If we have an AEC cable, we use the module host interface ID which has a
-  // byteOffset of 0. This is in page 00h app sel advertising (starting at
-  // offset 86 for page)
-  int byteOffset =
-      isAecModule() ? kHostInterfaceCodeOffset : kMediaInterfaceCodeOffset;
-
-  // Get the current application interface code based on module type
-  uint8_t currentApplication = 0;
-  if (currentApplicationSel >= 1 && currentApplicationSel <= 15) {
-    currentApplication =
-        getInterfaceCodeForAppSel(currentApplicationSel, byteOffset);
-  } else {
-    QSFP_LOG(INFO, this) << "currentApplication: not selected yet";
-  }
-
   // Loop through all the applications that we support for the given speed and
   // check if any of those are present in the moduleCapabilities. We configure
-  // the first application that both we support and the module supports
+  // the first application that both we support and the module supports. A
+  // speed can be served by applications with different host lane counts (800G
+  // as 8x100G via 800GAUI-8, or as 4x200G via 800GAUI-4), so the lane count
+  // always has to match, at every speed.
   for (auto application : appCodes) {
-    auto capability = getApplicationField(application, startHostLane);
+    auto capability =
+        selectApplicationField(application, startHostLane, numHostLanesForPort);
 
     // Check if the module supports the application
     if (!capability) {
@@ -3494,26 +3551,23 @@ CmisModule::getAppSelCodeForSpeed(
     }
 
     auto numHostLanes = capability->hostLaneCount;
-    // We could support 100G-1 or 100G-4, 200G-1, 200G-2 or 200G-4, 400G-2 or
-    // 400G-4. Thus compare both speed and number of host lanes
-    if ((speed == cfg::PortSpeed::HUNDREDG ||
-         speed == cfg::PortSpeed::TWOHUNDREDG ||
-         speed == cfg::PortSpeed::FOURHUNDREDG) &&
-        numHostLanesForPort != numHostLanes) {
-      continue;
-    }
 
     // If the currently configured application is the same as what we are trying
-    // to configure, then skip the configuration
-    if (application == currentApplication) {
+    // to configure, then skip the configuration. Compare AppSel codes rather
+    // than interface codes since a module can advertise the same interface
+    // code in more than one application.
+    if (capability->ApSelCode == currentApplicationSel) {
       QSFP_LOG(INFO, this) << fmt::format(
-          "Speed matches: currentApplication {:#x}. Doing nothing",
-          currentApplication);
+          "Speed matches: currentApplicationSel {:#x}. Doing nothing",
+          currentApplicationSel);
       // Make sure the datapath is initialized, otherwise initialize it before
       // returning. The port's lanes live in one bank; use an intra-bank mask.
       const uint8_t bank = laneToBank(startHostLane);
       uint8_t hostLaneMask = laneMask(laneInBank(startHostLane), numHostLanes);
-      if (datapathResetPendingMask_[bank] & hostLaneMask) {
+      // A CPO module that was reset is back to TX disabled; resetting the
+      // datapath enables TX between deinit and init.
+      if ((datapathResetPendingMask_[bank] & hostLaneMask) ||
+          isCpoTxDisabled(hostLaneMask, bank)) {
         resetDataPathWithFunc(portName, std::nullopt, hostLaneMask, bank);
         datapathResetPendingMask_[bank] &= ~hostLaneMask;
         QSFP_LOG(INFO, this) << fmt::format(
@@ -4027,10 +4081,10 @@ bool CmisModule::tcvrPortStateSupported(TransceiverPortState& portState) const {
       currTransmitterTechnology == TransmitterTechnology::COPPER &&
       !activeElectricalCable) {
     // For Active cables, the tcvr is configrable, so we need to check.
-    // For passive copper cables, return true irrespective of speed as the
-    // copper cables are mostly flexible with all speeds. We can change this
-    // later when we know of any limitations.
-    return true;
+    // For passive copper cables, any speed is accepted as the copper cables
+    // are mostly flexible with all speeds, but optical media profiles are not.
+    return portState.transmitterTech != TransmitterTechnology::OPTICAL &&
+        portState.transmitterTech != TransmitterTechnology::BACKPLANE;
   }
 
   auto speed = portState.speed;
@@ -4062,13 +4116,8 @@ bool CmisModule::tcvrPortStateSupported(TransceiverPortState& portState) const {
   }
 
   for (auto application : appCodes) {
-    if (auto capability = getApplicationField(application, startHostLane)) {
-      // Application supported on the starting host lane
-      auto hostLaneCount = capability->hostLaneCount;
-      if (numHostLanes == hostLaneCount) {
-        // Host Lane count also matches
-        return true;
-      }
+    if (selectApplicationField(application, startHostLane, numHostLanes)) {
+      return true;
     }
   }
   return false;
@@ -4543,11 +4592,24 @@ MediaInterfaceCode CmisModule::getModuleMediaInterface() const {
           CmisHelper::getMediaInterfaceCode<SMFMediaInterfaceCode>(
               smfCode, CmisHelper::getSmfMediaInterfaceMapping());
     }
-  } else if (mediaTypeEncoding == MediaTypeEncodings::ACTIVE_CABLES) {
-    // TODO: For now, we only support the 8x100G Active Electrical Cable.
-    // We can use the number of lanes and Interface codes to derive
-    // the MediaInterfaceCode.
-    moduleMediaInterface = MediaInterfaceCode::CR8_800G;
+  } else if (
+      mediaTypeEncoding == MediaTypeEncodings::ACTIVE_CABLES &&
+      !moduleCapabilities_.empty()) {
+    // The module-level code describes the whole cable, so derive it from the
+    // widest application it advertises (an 8-lane 1.6TAUI-8 part reports
+    // CR8_1600G, an 8-lane 800GAUI-8 part still reports CR8_800G). Narrower
+    // breakout applications are reported per lane by getMediaInterfaceId().
+    auto widest = std::max_element(
+        moduleCapabilities_.begin(),
+        moduleCapabilities_.end(),
+        [](const auto& a, const auto& b) {
+          return a.hostLaneCount < b.hostLaneCount;
+        });
+    moduleMediaInterface =
+        CmisHelper::getMediaInterfaceCode<ActiveCuHostInterfaceCode>(
+            static_cast<ActiveCuHostInterfaceCode>(
+                widest->moduleMediaInterface),
+            CmisHelper::getActiveMediaInterfaceMapping());
   }
 
   return moduleMediaInterface;
@@ -4983,6 +5045,12 @@ bool CmisModule::driveVdmCaptureLocked() {
     // behind the cheap armed-flag load.
     if (captureVdmStats_.load() && isReadyForVdmFreezeLocked() &&
         captureVdmStats_.exchange(false)) {
+      if (!hasVdmStatisticsObservables()) {
+        // Nothing to freeze; read the live basic observables in this refresh
+        readVdmFrozenPagesLocked();
+        vdmIntervalStartTime_ = std::time(nullptr);
+        return true;
+      }
       requestVdmFreezeLocked();
     }
     return false;
@@ -5492,10 +5560,11 @@ uint64_t CmisModule::getExpectedDatapathDelayUsec(bool init) {
     }
   } else {
     QSFP_LOG(INFO, this) << fmt::format(
-        "Default max Init/DeInit time {:d} uSec", kUsecDatapathStateUpdateTime);
+        "Default max Init/DeInit time {:d} uSec",
+        FLAGS_max_datapath_state_update_time_us);
   }
 
-  return kUsecDatapathStateUpdateTime;
+  return FLAGS_max_datapath_state_update_time_us;
 }
 
 uint64_t CmisModule::maxDatapathStatePolls(bool init) {
@@ -5540,6 +5609,15 @@ uint8_t CmisModule::getActiveAppSelLaneMask(uint8_t bank) {
     }
   }
   return mask;
+}
+
+bool CmisModule::isCpoTxDisabled(uint8_t laneMask, uint8_t bank) {
+  if (!isCpo()) {
+    return false;
+  }
+  uint8_t txDisable;
+  readCmisField(CmisField::TX_DISABLE, &txDisable, false, bank);
+  return txDisable & laneMask;
 }
 
 void CmisModule::resetDataPath(const std::string& portName) {
@@ -5799,12 +5877,28 @@ void CmisModule::resetDataPathWithFunc(
     if (retries >= maxRetriesDeInit) {
       QSFP_LOG(ERR, this) << fmt::format(
           "Datapath could not deactivate even after waiting {:d} uSec",
-          kUsecDatapathStateUpdateTime);
+          FLAGS_max_datapath_state_update_time_us);
     }
 
     // Call the afterDataPathDeinitFunc() after deactivate all lanes
     if (afterDataPathDeinitFunc) {
       (*afterDataPathDeinitFunc)();
+    }
+
+    // CPO modules come up with TX disabled on every lane, so enable TX on the
+    // lanes being initialized before activating their datapath.
+    if (isCpo()) {
+      QSFP_LOG(INFO, this) << fmt::format(
+          "Port {} enabling TX on bank {:d} lane mask {:#x}",
+          portName,
+          bank,
+          initMask);
+      readModifyWriteCmisField(
+          CmisField::TX_DISABLE,
+          initMask,
+          0,
+          false /* skipBankAndPageChange */,
+          bank);
     }
 
     // Release the lanes from DeInit.
@@ -5827,7 +5921,7 @@ void CmisModule::resetDataPathWithFunc(
     if (retries >= maxRetriesInit) {
       QSFP_LOG(ERR, this) << fmt::format(
           "Datapath didn't come out of deactivated state even after waiting {:d} uSec",
-          kUsecDatapathStateUpdateTime);
+          FLAGS_max_datapath_state_update_time_us);
     } else {
       datapathInitDoneInProgramMask_[bank] |= initMask;
     }
@@ -6046,6 +6140,7 @@ uint64_t CmisModule::getFwUpgradeCdbWriteDelayUsec() const {
     case MediaInterfaceCode::LR4_400G_10KM:
     case MediaInterfaceCode::DR4_400G:
     case MediaInterfaceCode::FR4_2x400G:
+    case MediaInterfaceCode::FR4_2x400G_IB:
     case MediaInterfaceCode::DR4_2x400G:
     case MediaInterfaceCode::FR8_800G:
     case MediaInterfaceCode::FR4_LITE_2x400G:

@@ -83,6 +83,8 @@ class AclRuleConfigArgs : public utils::BaseObjectArgType<std::string> {
 };
 
 struct CmdConfigAclRuleTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigAcl;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     // expected_min=4 (table, rule, attr, value) is required to shield

@@ -21,6 +21,7 @@
 #include "fboss/agent/state/ArpTable.h"
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/InterfaceMap.h"
+#include "fboss/agent/state/InterfaceVrfMap.h"
 #include "fboss/agent/state/NdpEntry.h"
 #include "fboss/agent/state/NdpTable.h"
 #include "fboss/agent/state/SwitchState.h"
@@ -138,11 +139,15 @@ void utilCreateDir(folly::StringPiece path) {
   }
 }
 
-IPAddressV4 getAnyIntfIP(const std::shared_ptr<SwitchState>& state) {
-  IPAddressV4 intfIp;
+IPAddressV4 getAnyIntfIP(
+    const std::shared_ptr<SwitchState>& state,
+    RouterID vrf) {
   for (const auto& [_, intfMap] : std::as_const(*state->getInterfaces())) {
     for (const auto& intfIter : std::as_const(*intfMap)) {
       const auto& intf = intfIter.second;
+      if (state->getInterfaceVrfs()->getVrf(intf->getID()) != vrf) {
+        continue;
+      }
       for (auto iter : std::as_const(*intf->getAddresses())) {
         auto address = folly::IPAddress(iter.first);
         if (address.isV4()) {
@@ -151,14 +156,18 @@ IPAddressV4 getAnyIntfIP(const std::shared_ptr<SwitchState>& state) {
       }
     }
   }
-  throw FbossError("Cannot find IPv4 address on any interface");
+  throw FbossError("Cannot find IPv4 address on any interface in VRF ", vrf);
 }
 
-IPAddressV6 getAnyIntfIPv6(const std::shared_ptr<SwitchState>& state) {
-  IPAddressV6 intfIp;
+IPAddressV6 getAnyIntfIPv6(
+    const std::shared_ptr<SwitchState>& state,
+    RouterID vrf) {
   for (const auto& [_, intfMap] : std::as_const(*state->getInterfaces())) {
     for (const auto& intfIter : std::as_const(*intfMap)) {
       const auto& intf = intfIter.second;
+      if (state->getInterfaceVrfs()->getVrf(intf->getID()) != vrf) {
+        continue;
+      }
       for (auto iter : std::as_const(*intf->getAddresses())) {
         auto address = folly::IPAddress(iter.first);
         if (address.isV6()) {
@@ -167,7 +176,7 @@ IPAddressV6 getAnyIntfIPv6(const std::shared_ptr<SwitchState>& state) {
       }
     }
   }
-  throw FbossError("Cannot find IPv6 address on any interface");
+  throw FbossError("Cannot find IPv6 address on any interface in VRF ", vrf);
 }
 
 IPAddressV4 getSwitchVlanIP(
@@ -586,13 +595,9 @@ std::vector<PortID> getPortsForInterface(
   return ports;
 }
 
-std::optional<PortID> getInterfacePortToReach(
+std::optional<PortID> getInterfacePort(
     const std::shared_ptr<SwitchState>& state,
-    const folly::IPAddress& ipAddr) {
-  auto intf = state->getInterfaces()->getIntfToReach(RouterID(0), ipAddr);
-  if (!intf) {
-    return std::nullopt;
-  }
+    const std::shared_ptr<Interface>& intf) {
   auto intfType = intf->getType();
   std::optional<PortID> port{};
   switch (intfType) {
@@ -764,6 +769,29 @@ std::optional<VlanID> getVlanIDFromVlanOrIntf(
 template std::optional<VlanID> getVlanIDFromVlanOrIntf<Vlan>(
     const std::shared_ptr<Vlan>& vlanOrIntf);
 template std::optional<VlanID> getVlanIDFromVlanOrIntf<Interface>(
+    const std::shared_ptr<Interface>& vlanOrIntf);
+
+template <typename VlanOrIntfT>
+RouterID getVrfFromVlanOrIntf(
+    const std::shared_ptr<SwitchState>& state,
+    const std::shared_ptr<VlanOrIntfT>& vlanOrIntf) {
+  if (!vlanOrIntf) {
+    throw FbossError("No ingress VLAN or interface to get the VRF from");
+  }
+  InterfaceID intfID;
+  if constexpr (std::is_same_v<VlanOrIntfT, Vlan>) {
+    intfID = vlanOrIntf->getInterfaceID();
+  } else {
+    intfID = vlanOrIntf->getID();
+  }
+  return state->getInterfaceVrfs()->getVrf(intfID);
+}
+
+template RouterID getVrfFromVlanOrIntf<Vlan>(
+    const std::shared_ptr<SwitchState>& state,
+    const std::shared_ptr<Vlan>& vlanOrIntf);
+template RouterID getVrfFromVlanOrIntf<Interface>(
+    const std::shared_ptr<SwitchState>& state,
     const std::shared_ptr<Interface>& vlanOrIntf);
 
 template <typename NTableT>
@@ -1228,7 +1256,7 @@ std::set<PortID> getL2ConnectedL1FabricPorts(
         const auto& neighbor = expectedNeighbors.front();
         if (apache::thrift::is_non_optional_field_set_manually_or_by_serializer(
                 neighbor.remoteSystem()) &&
-            l2NodeNames.find(*neighbor.remoteSystem()) != l2NodeNames.end()) {
+            l2NodeNames.contains(*neighbor.remoteSystem())) {
           l2ConnectedPorts.insert(portId);
         }
       }

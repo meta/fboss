@@ -47,7 +47,7 @@ cpp_library(
         "I2cSmbusIo.h",
     ],
     deps = [
-        "fbsource//xplat/folly:format",
+        "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/logging:logging",
     ],
     exported_deps = [

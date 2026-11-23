@@ -1773,7 +1773,7 @@
   "numXcvrs": 2,
   "numRtms": 32,
   "bspKmodsRpmName": "fboss_bsp_kmods",
-  "bspKmodsRpmVersion": "4.4.2-1",
+  "bspKmodsRpmVersion": "2026.10.3-1",
   "nonBspKmodsToLoad": [
     "i2c_i801",
     "spidev",

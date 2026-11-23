@@ -615,7 +615,9 @@ class AgentMultiNodeVoqSwitchHyperPortTest : public AgentMultiNodeTest {
     auto baselineSnapshot = getPrimarySwitchFlapSnapshot(myHostname, remoteIPs);
     if (!utility::restartServiceForSwitches(
             {remoteEdsw},
-            utility::triggerGracefulAgentRestart,
+            [](const std::string& switchName) {
+              utility::triggerGracefulAgentRestart(switchName);
+            },
             utility::getAgentAliveSinceEpoch,
             utility::verifySwSwitchRunState,
             SwitchRunState::CONFIGURED)) {

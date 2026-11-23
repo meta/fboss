@@ -34,6 +34,7 @@ class NdpCache : public NeighborCache<NdpTable> {
       InterfaceID intfID);
 
   void sentNeighborSolicitation(folly::IPAddressV6 ip);
+  void resolve(folly::IPAddressV6 ip);
   void receivedNdpMine(
       folly::IPAddressV6 ip,
       folly::MacAddress mac,

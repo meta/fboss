@@ -19,7 +19,9 @@
 namespace facebook::fboss {
 
 namespace {
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 0)
 constexpr size_t kMaxCounterLabelSize = 31;
+#endif
 } // namespace
 
 std::shared_ptr<SaiCounterHandle> SaiCounterManager::incRefOrAddRouteCounter(

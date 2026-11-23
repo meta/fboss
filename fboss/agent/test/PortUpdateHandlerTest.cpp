@@ -342,6 +342,45 @@ TEST_F(PortUpdateHandlerTest, AccessPolicyStateClearedOnPortRemoved) {
   EXPECT_FALSE(counters.checkExist("port21.access_policy_state"));
 }
 
+TEST_F(PortUpdateHandlerTest, ActiveStateCounterNotSetWithoutActiveState) {
+  CounterCache counters(sw);
+  portUpdateHandler->stateUpdated(*std::make_shared<StateDelta>(
+      std::make_shared<SwitchState>(), initState));
+
+  counters.update();
+  EXPECT_FALSE(counters.checkExist("port1.active"));
+}
+
+TEST_F(PortUpdateHandlerTest, ActiveStateCounterSetOnPortAdded) {
+  CounterCache counters(sw);
+  // Warm boot replays the restored state as all ports newly added
+  auto activeState = stateWithModifiedPort(
+      initState, [](auto& port) { port->setActiveState(true); });
+  portUpdateHandler->stateUpdated(*std::make_shared<StateDelta>(
+      std::make_shared<SwitchState>(), activeState));
+
+  counters.update();
+  ASSERT_TRUE(counters.checkExist("port1.active"));
+  EXPECT_EQ(counters.value("port1.active"), 1);
+}
+
+TEST_F(PortUpdateHandlerTest, ActiveStateCounterFollowsPortRename) {
+  CounterCache counters(sw);
+  auto activeState = stateWithModifiedPort(
+      initState, [](auto& port) { port->setActiveState(true); });
+  portUpdateHandler->stateUpdated(*std::make_shared<StateDelta>(
+      std::make_shared<SwitchState>(), activeState));
+
+  auto renamedState = stateWithModifiedPort(
+      activeState, [](auto& port) { port->setName("eth1/1/1"); });
+  portUpdateHandler->stateUpdated(
+      *std::make_shared<StateDelta>(activeState, renamedState));
+
+  counters.update();
+  ASSERT_TRUE(counters.checkExist("eth1/1/1.active"));
+  EXPECT_EQ(counters.value("eth1/1/1.active"), 1);
+}
+
 template <typename SwitchTypeT>
 class PortUpdateHandlerLoopDetectionTest : public ::testing::Test {
  public:

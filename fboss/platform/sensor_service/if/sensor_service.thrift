@@ -71,7 +71,7 @@ struct SensorReadResponse {
 // described in `warnings`. Callers should treat an empty list as "nothing to
 // show", not as an error.
 //
-// `records`: successfully parsed records, newest `detectedAtMs` first.
+// `records`: successfully parsed records, newest boot (`bootTimeSec`) first.
 //
 // `skippedCount`: records dropped for a reason this call could count, namely
 // those over the cap and those that failed to read or parse. It is a lower

@@ -6021,7 +6021,7 @@
           "test_name_regex": "HwAsicDefaultProgrammingTest.verifyDefaultProgramming"
         }
     ],
-    "chenab/2605.37/2605.37/chenab": [
+    "chenab/2605.38/2605.38/chenab": [
         {
           "test_name_regex": "HwVlanTest.VlanApplyConfig"
         },
@@ -9092,7 +9092,7 @@
           "test_name_regex": "HwAsicDefaultProgrammingTest.verifyDefaultProgramming"
         }
     ],
-    "nvda/2605.37/2605.37/spectrum4": [
+    "nvda/2605.38/2605.38/spectrum4": [
         {
           "test_name_regex": "HwVlanTest.VlanApplyConfig"
         },

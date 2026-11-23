@@ -581,9 +581,6 @@
         },
         {
           "test_name_regex": "OpticsFwUpgradeTest.*$"
-        },
-        {
-          "test_name_regex": "warm_boot.*$"
         }
     ],
     "ladakh800bcls_evt/physdk-brcm_pai-4.1/brcm_pai-4.1": [
@@ -607,9 +604,6 @@
         },
         {
           "test_name_regex": "OpticsFwUpgradeTest.*$"
-        },
-        {
-          "test_name_regex": "warm_boot.*$"
         }
     ],
     "ladakh800bcls_postevt/physdk-brcm_pai-4.1/brcm_pai-4.1": [
@@ -633,9 +627,6 @@
         },
         {
           "test_name_regex": "OpticsFwUpgradeTest.*$"
-        },
-        {
-          "test_name_regex": "warm_boot.*$"
         }
     ],
     "leh800bcls/physdk-brcm_pai-4.1/brcm_pai-4.1": [
@@ -659,9 +650,6 @@
         },
         {
           "test_name_regex": "OpticsFwUpgradeTest.*$"
-        },
-        {
-          "test_name_regex": "warm_boot.*$"
         }
     ],
     "meru400bfu/physdk-credo-0.7.2/credo-0.7.2": [

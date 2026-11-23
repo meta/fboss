@@ -300,6 +300,63 @@ class ComponentBuilder:
             common_scripts_dir: Path("/fboss/oss/scripts"),
         }
 
+        # Manifest-declared extra mounts. /src only covers the common parent
+        # of the build script and the manifest; a component whose script needs
+        # host paths outside that subtree declares them here. Generic on
+        # purpose: a list of {"host": ..., "container": ...} mappings, with
+        # host paths resolved from the manifest dir unless absolute, plus an
+        # optional "mode" of "rw" (default) or "ro".
+        read_only_volumes: dict[Path, Path] = {}
+        for mount in self.component_data.get("mounts", []):
+            if not isinstance(mount, dict):
+                raise ComponentError(
+                    f"Component '{self.component_name}' mount must be an object "
+                    f"with 'host' and 'container' keys, found: {mount!r}"
+                )
+            host_raw = mount.get("host")
+            container_raw = mount.get("container")
+            if not host_raw or not container_raw:
+                raise ComponentError(
+                    f"Component '{self.component_name}' mount needs both 'host' "
+                    f"and 'container' keys, found: {mount!r}"
+                )
+            host_path = Path(host_raw)
+            resolved_host = (
+                host_path
+                if host_path.is_absolute()
+                else (self.manifest_dir / host_path).resolve()
+            )
+            if not resolved_host.exists():
+                raise ComponentError(
+                    f"Component '{self.component_name}' mount host path not found: "
+                    f"{resolved_host} (from manifest path: {host_raw})"
+                )
+            container_path = Path(container_raw)
+            if not container_path.is_absolute():
+                raise ComponentError(
+                    f"Component '{self.component_name}' mount container path must be "
+                    f"absolute, found: {container_raw}"
+                )
+            if container_path in volumes.values():
+                raise ComponentError(
+                    f"Component '{self.component_name}' mount container path "
+                    f"{container_path} collides with a standard mount"
+                )
+            mode = mount.get("mode", "rw")
+            if mode not in ("rw", "ro"):
+                raise ComponentError(
+                    f"Component '{self.component_name}' mount mode must be 'rw' "
+                    f"or 'ro', found: {mode!r}"
+                )
+            if mode == "ro":
+                read_only_volumes[resolved_host] = container_path
+            else:
+                volumes[resolved_host] = container_path
+            logger.info(
+                f"Mounting extra '{resolved_host}' at {container_path} ({mode}) "
+                f"for '{self.component_name}'"
+            )
+
         # Mount dependency artifacts into the container
         dependency_install_paths = {}
         for dep_name, dep_artifact in self.dependency_artifacts.items():
@@ -333,6 +390,7 @@ class ComponentBuilder:
             dependency_install_paths=(
                 dependency_install_paths if dependency_install_paths else None
             ),
+            read_only_volumes=read_only_volumes or None,
         )
 
         return find_artifact_in_dir(

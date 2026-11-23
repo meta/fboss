@@ -299,11 +299,27 @@ DEFINE_int32(
     "Percentage of MySID resources (out of 100) allowed to use before ResourceAccountant rejects the update.");
 
 DEFINE_bool(
+    enable_pbr_acl_resource_protection,
+    true,
+    "Enable PBR ACL entry resource protection in ResourceAccountant");
+
+DEFINE_int32(
+    pbr_acl_resource_percentage,
+    75,
+    "Percentage of PBR ACL entries (out of 100) allowed to use before ResourceAccountant rejects the update.");
+
+DEFINE_bool(
     srv6,
     false,
     "Enable SRv6 features, e.g. collecting the SRv6 MySID resource counter. "
     "Only valid on configs whose SDK is initialized with SRv6/mySid support "
     "(sai_stats_support); leave off otherwise.");
+
+DEFINE_bool(
+    allow_mixed_ip_srv6_nhop_groups,
+    false,
+    "Allow routes whose next-hop group mixes SRv6 next hops with plain IP "
+    "next hops. When false, RibToSwitchStateUpdater rejects such routes.");
 
 DEFINE_bool(
     enable_srv6_nexthop_resource_protection,
@@ -396,6 +412,13 @@ DEFINE_bool(
     resolve_nexthops_from_id,
     false,
     "Resolve nexthops from NextHopSetID in FibInfo maps instead of inline nexthops");
+
+DEFINE_bool(
+    drop_inline_nexthops_with_id,
+    false,
+    "Drop inline nexthops from route entries that carry a NextHopSetID. SAI "
+    "only; requires resolve_nexthops_from_id and enable_nexthop_id_manager, "
+    "and turning either of those off afterwards needs a cold boot");
 
 DEFINE_int32(
     ecmp_resource_manager_make_before_break_buffer,

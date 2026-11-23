@@ -14,8 +14,8 @@ Invariant tests run on a standalone DUT using the per-platform agent config unde
 
 All invariant test cases can be found at:
 
-https://github.com/facebook/fboss/tree/main/fboss/agent/test/prod_invariant_tests
-https://github.com/facebook/fboss/blob/main/fboss/agent/test/prod_agent_tests/ProdInvariantTests.cpp
+https://github.com/meta/fboss/tree/main/fboss/agent/test/prod_invariant_tests
+https://github.com/meta/fboss/blob/main/fboss/agent/test/prod_agent_tests/ProdInvariantTests.cpp
 
 Example gtest names: `ProdInvariantTest.verifyInvariants`, `ProdInvariantRtswTest.verifyInvariants`.
 

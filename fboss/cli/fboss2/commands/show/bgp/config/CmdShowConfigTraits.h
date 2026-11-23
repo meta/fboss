@@ -44,13 +44,11 @@ struct CmdShowConfigRunningBgpTraits : public ReadCommandTraits {
         // Reading it.
         "Output is large on a production switch; page it or pipe it through a "
         "JSON filter rather than reading it end to end. "
-        // Command spelling, which differs by build.
-        "The command is reached as 'show bgp config' in the internal build, "
-        "where 'show bgp config raw' gives the config-file rendering instead "
-        "and 'show config running bgp' is an equivalent alias; in the "
-        "open-source build it is spelled 'show bgp config running' and "
-        "neither the raw variant nor the 'show config running bgp' alias is "
-        "registered. "
+        // Command spellings and the internal-only raw variant.
+        "The command is reached as 'show bgp config' in both builds, with "
+        "'show config running bgp' as an equivalent alias. Internally, "
+        "'show bgp config raw' gives the config-file rendering instead; "
+        "the raw variant is not registered in the open-source build. "
         // The two builds also differ in the SHAPE of what they return.
         "The two builds also differ in what they render: the internal build "
         "returns the structured BgpConfig document illustrated below, while "

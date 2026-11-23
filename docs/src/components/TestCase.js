@@ -10,7 +10,7 @@ export default function TestCase({id, children}) {
 
   if (testName) {
     const searchQuery = `"${testName}"`;
-    link = `https://github.com/facebook/fboss/search?q=${encodeURIComponent(searchQuery)}`;
+    link = `https://github.com/meta/fboss/search?q=${encodeURIComponent(searchQuery)}`;
     tooltipText = `Test: ${id} - Click to view source`;
   }
 

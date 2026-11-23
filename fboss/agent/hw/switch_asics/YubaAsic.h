@@ -123,6 +123,9 @@ class YubaAsic : public TajoAsic {
   std::optional<uint32_t> getMaxMySidEntries() const override {
     return 2048;
   }
+  std::optional<uint32_t> getMaxPbrAclEntries() const override {
+    return 448;
+  }
   std::optional<uint32_t> getMaxRouteCounters() const override {
     return 4096;
   }
@@ -188,6 +191,10 @@ class YubaAsic : public TajoAsic {
     return 512;
   }
 
+  std::optional<uint32_t> getMaxVrfs() const override {
+    return 256;
+  }
+
   std::optional<uint32_t> getMaxArpTableSize() const override {
     return 512;
   }
@@ -222,11 +229,13 @@ class YubaAsic : public TajoAsic {
  private:
   bool isSrv6Supported() const;
   bool isCsigSupported() const;
+  bool isDropReasonListSupported() const;
   bool isSupportedFabric(Feature feature) const;
   bool isSupportedNonFabric(Feature feature) const;
   static constexpr auto kSrv6MinSdkRequired = "26.2.4210";
   // CSIG is delivered in 26.5.5210.4.
-  static constexpr auto kCsigMinSdkRequired = "26.5.5210";
+  static constexpr auto kCsigMinSdkRequired = "26.5.4210";
+  static constexpr auto kDropReasonListMinSdkRequired = "26.5.4210";
   std::optional<uint64_t> currentSdkVersion_{std::nullopt};
 };
 

@@ -1,0 +1,9 @@
+load("@fbcode_macros//build_defs:native_rules.bzl", "buck_filegroup")
+
+oncall("fboss_oss")
+
+buck_filegroup(
+    name = "default_configs",
+    srcs = glob(["*/*.conf"]),
+    visibility = ["//fboss/facebook/horizon/..."],
+)

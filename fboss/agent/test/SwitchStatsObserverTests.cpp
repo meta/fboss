@@ -57,7 +57,6 @@ class SwitchStatsObserverTest : public ::testing::Test {
     if (add) {
       auto rif = std::make_shared<Interface>(
           InterfaceID(kInterfaceId),
-          RouterID(0),
           std::optional<VlanID>(std::nullopt),
           folly::StringPiece("1001"),
           folly::MacAddress{},

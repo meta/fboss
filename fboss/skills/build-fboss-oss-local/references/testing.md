@@ -52,6 +52,30 @@ If that prints `0`, a pass means nothing. Services-only targets such as
 (`sai_test-fake` and friends) end in `-fake`, so the sweep's pattern skips them
 even when they are packaged; run them directly if you need them.
 
+### <a id="asan"></a>From an ASAN build
+
+Add `--asan` for a tarball from a `run-getdeps.py --asan` build:
+
+```bash
+./fboss/oss/scripts/github_actions/docker-unittest.py --asan <fboss_bins.tar.zst>
+```
+
+Unless `ASAN_OPTIONS` is already set, it uses the build's
+`detect_leaks=0:detect_odr_violation=1` (see
+[run-getdeps-reference.md](run-getdeps-reference.md#asan-builds)). It also
+points ASAN at `llvm-symbolizer` so reports carry file:line, and preloads the
+ASAN runtime into Python tests, whose interpreter is not instrumented. Without
+it, Python tests fail to import with `undefined symbol: __asan_...`. For a leak
+sweep, set `ASAN_OPTIONS=detect_leaks=1:detect_odr_violation=1`; Python tests
+keep leak detection off regardless, since CPython's own allocations read as
+leaks.
+
+The sweep runs each test binary as one process, so a test that leaves state
+behind can fail a later one in the same binary. A failure that disappears with
+`--gtest_filter=<Suite.Case>` is that, not an ASAN finding.
+
+### CTest
+
 The unit tests are also registered with CTest via `gtest_discover_tests`, so
 `ctest` works in the build directory. Note that CTest registers
 `Suite.Case` names, not target names, so `ctest -R <target>` usually matches

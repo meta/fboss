@@ -9,7 +9,10 @@
  */
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 
+#include "fboss/cli/fboss2/CmdGlobalOptions.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
+
+#include <syslog.h>
 
 namespace facebook::fboss::utils {
 
@@ -22,7 +25,13 @@ const std::string getOobNameFromHost(const std::string& /* host */) {
   return "";
 }
 
-void logUsage(const CmdLogInfo& /*Cmd Log Info*/) {}
+void logUsage(const CmdLogInfo& cmdLogInfo) {
+  if (CmdGlobalOptions::getInstance()->getLogUsage() == "none") {
+    return;
+  }
+  openlog("fboss2", LOG_PID, LOG_USER);
+  syslog(LOG_USER | LOG_INFO, "%s", formatUsageLine(cmdLogInfo).c_str());
+}
 
 std::vector<std::string> getBgpDrainedInterafces(const HostInfo& /*hostInfo*/) {
   return {};

@@ -3,7 +3,7 @@
   "known_bad_tests": {
     "brcm/10.2.0.0_odp/tomahawk3_pciegen3": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -57,7 +57,7 @@
     ],
     "brcm/10.2.0.0_odp/tomahawk3_pciegen3/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -111,7 +111,7 @@
     ],
     "brcm/10.2.0.0_odp/tomahawk3_pciegen3/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -165,7 +165,7 @@
     ],
     "brcm/10.2.0.0_odp/tomahawk4": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -215,7 +215,7 @@
     ],
     "brcm/10.2.0.0_odp/tomahawk4/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -265,7 +265,7 @@
     ],
     "brcm/10.2.0.0_odp/tomahawk4/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -315,7 +315,7 @@
     ],
     "brcm/10.2.0.0_odp/tomahawk5": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -341,7 +341,7 @@
     ],
     "brcm/10.2.0.0_odp/tomahawk5/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -367,7 +367,7 @@
     ],
     "brcm/10.2.0.0_odp/tomahawk5/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -393,7 +393,7 @@
     ],
     "brcm/10.2.0.0_odp/tomahawk_pentium": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -483,7 +483,7 @@
     ],
     "brcm/10.2.0.0_odp/tomahawk_pentium/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -573,7 +573,7 @@
     ],
     "brcm/10.2.0.0_odp/tomahawk_pentium/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -687,7 +687,7 @@
           "reason": "ARS not available on TH"
         },
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -749,7 +749,7 @@
           "reason": "ARS not available on TH"
         },
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -811,7 +811,7 @@
           "reason": "ARS not available on TH"
         },
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -849,7 +849,7 @@
     ],
     "brcm/11.7.0.0_dnx_odp/ramon3": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -867,7 +867,7 @@
     ],
     "brcm/11.7.0.0_dnx_odp/ramon3/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -885,7 +885,7 @@
     ],
     "brcm/11.7.0.0_dnx_odp/ramon3/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -903,7 +903,7 @@
     ],
     "brcm/11.7.0.0_odp/tomahawk3_pciegen3": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -957,7 +957,7 @@
     ],
     "brcm/11.7.0.0_odp/tomahawk3_pciegen3/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1011,7 +1011,7 @@
     ],
     "brcm/11.7.0.0_odp/tomahawk3_pciegen3/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1065,7 +1065,7 @@
     ],
     "brcm/11.7.0.0_odp/tomahawk4": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1103,7 +1103,7 @@
     ],
     "brcm/11.7.0.0_odp/tomahawk4/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1141,7 +1141,7 @@
     ],
     "brcm/11.7.0.0_odp/tomahawk4/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1179,7 +1179,7 @@
     ],
     "brcm/11.7.0.0_odp/tomahawk5": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1205,7 +1205,7 @@
     ],
     "brcm/11.7.0.0_odp/tomahawk5/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1231,7 +1231,7 @@
     ],
     "brcm/11.7.0.0_odp/tomahawk5/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1281,7 +1281,7 @@
           "reason": "ARS not available on TH"
         },
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1351,7 +1351,7 @@
           "reason": "ARS not available on TH"
         },
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1409,7 +1409,7 @@
           "reason": "ARS not available on TH"
         },
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1479,7 +1479,7 @@
           "reason": "ARS not available on TH"
         },
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1513,7 +1513,7 @@
     ],
     "brcm/12.2.0.0_dnx_odp/ramon3": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1531,7 +1531,7 @@
     ],
     "brcm/12.2.0.0_dnx_odp/ramon3/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1549,7 +1549,7 @@
     ],
     "brcm/12.2.0.0_dnx_odp/ramon3/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1567,7 +1567,7 @@
     ],
     "brcm/13.0_ea_odp/tomahawk5": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1593,7 +1593,7 @@
     ],
     "brcm/13.0_ea_odp/tomahawk5/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1619,7 +1619,7 @@
     ],
     "brcm/13.0_ea_odp/tomahawk5/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1645,7 +1645,7 @@
     ],
     "brcm/13.3.0.0_odp/tomahawk5": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1671,7 +1671,7 @@
     ],
     "brcm/13.3.0.0_odp/tomahawk5/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1697,7 +1697,7 @@
     ],
     "brcm/13.3.0.0_odp/tomahawk5/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1723,7 +1723,7 @@
     ],
     "brcm/14.2.0.0_odp/tomahawk6": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1749,7 +1749,7 @@
     ],
     "brcm/14.2.0.0_odp/tomahawk6/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1775,7 +1775,7 @@
     ],
     "brcm/14.2.0.0_odp/tomahawk6/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1801,7 +1801,7 @@
     ],
     "brcm/8.2.0.0_odp/tomahawk3_pciegen3": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1855,7 +1855,7 @@
     ],
     "brcm/8.2.0.0_odp/tomahawk3_pciegen3/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1909,7 +1909,7 @@
     ],
     "brcm/8.2.0.0_odp/tomahawk3_pciegen3/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -1963,7 +1963,7 @@
     ],
     "brcm/8.2.0.0_odp/tomahawk4": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2013,7 +2013,7 @@
     ],
     "brcm/8.2.0.0_odp/tomahawk4/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2063,7 +2063,7 @@
     ],
     "brcm/8.2.0.0_odp/tomahawk4/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2113,7 +2113,7 @@
     ],
     "brcm/8.2.0.0_odp/tomahawk_pentium": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2203,7 +2203,7 @@
     ],
     "brcm/8.2.0.0_odp/tomahawk_pentium/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2293,7 +2293,7 @@
     ],
     "brcm/8.2.0.0_odp/tomahawk_pentium/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2383,7 +2383,7 @@
     ],
     "leaba/1.42.8/gibraltar": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2433,11 +2433,19 @@
         {
           "test_name_regex": "RxSlowPathArpBenchmark",
           "reason": "not able to generate linerate traffic on cisco asic"
+        },
+        {
+          "test_name_regex": "HwInitAndExit400Gx400GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
+        },
+        {
+          "test_name_regex": "HwInitAndExit40Gx10GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
         }
     ],
     "leaba/1.42.8/gibraltar/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2487,11 +2495,19 @@
         {
           "test_name_regex": "RxSlowPathArpBenchmark",
           "reason": "not able to generate linerate traffic on cisco asic"
+        },
+        {
+          "test_name_regex": "HwInitAndExit400Gx400GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
+        },
+        {
+          "test_name_regex": "HwInitAndExit40Gx10GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
         }
     ],
     "leaba/1.42.8/gibraltar/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2541,11 +2557,19 @@
         {
           "test_name_regex": "RxSlowPathArpBenchmark",
           "reason": "not able to generate linerate traffic on cisco asic"
+        },
+        {
+          "test_name_regex": "HwInitAndExit400Gx400GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
+        },
+        {
+          "test_name_regex": "HwInitAndExit40Gx10GBenchmark",
+          "reason": "Times out on leaba 1.42.8 after D118563817 (MAC loopback storm)"
         }
     ],
     "leaba/24.8.3001/gibraltar": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2599,7 +2623,7 @@
     ],
     "leaba/24.8.3001/gibraltar/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2653,7 +2677,7 @@
     ],
     "leaba/24.8.3001/gibraltar/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2707,7 +2731,7 @@
     ],
     "leaba/24.8.3001/graphene200": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2765,7 +2789,7 @@
     ],
     "leaba/24.8.3001/graphene200/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2823,7 +2847,7 @@
     ],
     "leaba/24.8.3001/graphene200/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2881,7 +2905,7 @@
     ],
     "leaba/25.11.4210/gibraltar": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2935,7 +2959,7 @@
     ],
     "leaba/25.11.4210/gibraltar/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -2989,7 +3013,7 @@
     ],
     "leaba/25.11.4210/gibraltar/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3043,7 +3067,7 @@
     ],
     "leaba/25.11.4210/graphene202x": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3101,7 +3125,7 @@
     ],
     "leaba/25.11.4210/graphene202x/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3159,7 +3183,7 @@
     ],
     "leaba/25.11.4210/graphene202x/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3217,7 +3241,7 @@
     ],
     "leaba/25.5.4210/gibraltar": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3271,7 +3295,7 @@
     ],
     "leaba/25.5.4210/gibraltar/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3325,7 +3349,7 @@
     ],
     "leaba/25.5.4210/gibraltar/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3379,7 +3403,7 @@
     ],
     "leaba/25.5.4210/graphene200": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3437,7 +3461,7 @@
     ],
     "leaba/25.5.4210/graphene200/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3495,7 +3519,7 @@
     ],
     "leaba/25.5.4210/graphene200/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3553,7 +3577,7 @@
     ],
     "leaba/26.2.4210/graphene200": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3611,7 +3635,7 @@
     ],
     "leaba/26.2.4210/graphene200/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3669,7 +3693,7 @@
     ],
     "leaba/26.2.4210/graphene200/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3727,7 +3751,7 @@
     ],
     "nvda/2505.34/spectrum4": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3753,22 +3777,6 @@
         {
           "test_name_regex": "cpuLatencyBenchmark",
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
         },
         {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
@@ -3781,7 +3789,7 @@
     ],
     "nvda/2505.34/spectrum4/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3807,22 +3815,6 @@
         {
           "test_name_regex": "cpuLatencyBenchmark",
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
         },
         {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
@@ -3835,7 +3827,7 @@
     ],
     "nvda/2505.34/spectrum4/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3861,22 +3853,6 @@
         {
           "test_name_regex": "cpuLatencyBenchmark",
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
         },
         {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
@@ -3889,7 +3865,7 @@
     ],
     "nvda/2511.36/spectrum4": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3915,22 +3891,6 @@
         {
           "test_name_regex": "cpuLatencyBenchmark",
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
         },
         {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
@@ -3943,7 +3903,7 @@
     ],
     "nvda/2511.36/spectrum4/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -3969,22 +3929,6 @@
         {
           "test_name_regex": "cpuLatencyBenchmark",
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
         },
         {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
@@ -3997,7 +3941,7 @@
     ],
     "nvda/2511.36/spectrum4/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -4023,22 +3967,6 @@
         {
           "test_name_regex": "cpuLatencyBenchmark",
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
         },
         {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
@@ -4049,9 +3977,9 @@
           "reason": "Flowlet stats benchmarking is unsupported on chenab"
         }
     ],
-    "nvda/2605.37/spectrum4": [
+    "nvda/2605.38/spectrum4": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -4077,22 +4005,6 @@
         {
           "test_name_regex": "cpuLatencyBenchmark",
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
         },
         {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
@@ -4103,9 +4015,9 @@
           "reason": "Flowlet stats benchmarking is unsupported on chenab"
         }
     ],
-    "nvda/2605.37/spectrum4/mono": [
+    "nvda/2605.38/spectrum4/mono": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -4131,22 +4043,6 @@
         {
           "test_name_regex": "cpuLatencyBenchmark",
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
         },
         {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
@@ -4157,9 +4053,9 @@
           "reason": "Flowlet stats benchmarking is unsupported on chenab"
         }
     ],
-    "nvda/2605.37/spectrum4/multi_switch": [
+    "nvda/2605.38/spectrum4/multi_switch": [
         {
-          "test_name_regex": "HwPbrAclStatsCollectionBenchmark",
+          "test_name_regex": "HwPbrAcl(StatsCollection|MakeBeforeBreak)Benchmark",
           "reason": "PBR ACL support has not landed yet"
         },
         {
@@ -4185,22 +4081,6 @@
         {
           "test_name_regex": "cpuLatencyBenchmark",
           "reason": "D100645979 CpuLatencyManager refactor fails on Spectrum4/chenab"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale128x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteAddHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
-        },
-        {
-          "test_name_regex": "RouteDelHwEcmpGroupScale256x64Benchmark.*",
-          "reason": "New test, needs more debugging, T248319161"
         },
         {
           "test_name_regex": "HwTunManagerProbeAndCleanup",
@@ -5416,6 +5296,64 @@
           ]
         }
     ],
+    "fboss.agent.hw.sai.benchmarks.sai_bench_test.HwPbrAclMakeBeforeBreakBenchmark": [
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwPbrAclMakeBeforeBreakBenchmark",
+              "upper_bound": 358180000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwPbrAclMakeBeforeBreakBenchmark",
+              "upper_bound": 18550000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk6.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwPbrAclMakeBeforeBreakBenchmark",
+              "upper_bound": 6960000000000.0
+            }
+          ]
+        }
+    ],
+    "fboss.agent.hw.sai.benchmarks.sai_bench_test.HwPbrAclStatsCollectionBenchmark": [
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwPbrAclStatsCollectionBenchmark",
+              "upper_bound": 35480000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwPbrAclStatsCollectionBenchmark",
+              "upper_bound": 31330000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk6.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwPbrAclStatsCollectionBenchmark",
+              "upper_bound": 16469999999999.998
+            }
+          ]
+        }
+    ],
     "fboss.agent.hw.sai.benchmarks.sai_bench_test.HwSrv6EcmpGroupScaleBenchmark": [
         {
           "test_config_regex": ".*/26\\.2\\.4210/graphene200.*",
@@ -5441,6 +5379,33 @@
             {
               "metric_key_regex": "HwSrv6EcmpGroupScaleBenchmark",
               "upper_bound": 16050000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6EcmpGroupScaleBenchmark",
+              "upper_bound": 9990000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6EcmpGroupScaleBenchmark",
+              "upper_bound": 21670000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk6.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6EcmpGroupScaleBenchmark",
+              "upper_bound": 17840000000000.0
             }
           ]
         }
@@ -5484,6 +5449,45 @@
               "upper_bound": 2970.0
             }
           ]
+        },
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6FullScaleWarmbootBenchmark",
+              "upper_bound": 39160000000000.0
+            },
+            {
+              "metric_key_regex": "warm_boot_msecs",
+              "upper_bound": 6190.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6FullScaleWarmbootBenchmark",
+              "upper_bound": 39950000000000.0
+            },
+            {
+              "metric_key_regex": "warm_boot_msecs",
+              "upper_bound": 4320.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk6.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6FullScaleWarmbootBenchmark",
+              "upper_bound": 35140000000000.0
+            },
+            {
+              "metric_key_regex": "warm_boot_msecs",
+              "upper_bound": 3990.0
+            }
+          ]
         }
     ],
     "fboss.agent.hw.sai.benchmarks.sai_bench_test.HwSrv6MidpointMySidScaleBenchmark": [
@@ -5511,6 +5515,33 @@
             {
               "metric_key_regex": "HwSrv6MidpointMySidScaleBenchmark",
               "upper_bound": 740000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6MidpointMySidScaleBenchmark",
+              "upper_bound": 12170000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6MidpointMySidScaleBenchmark",
+              "upper_bound": 780000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk6.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6MidpointMySidScaleBenchmark",
+              "upper_bound": 840000000000.0
             }
           ]
         }
@@ -5542,6 +5573,149 @@
               "upper_bound": 12300000000000.0
             }
           ]
+        },
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6MixedRouteScaleBenchmark",
+              "upper_bound": 55170000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6MixedRouteScaleBenchmark",
+              "upper_bound": 18590000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk6.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6MixedRouteScaleBenchmark",
+              "upper_bound": 13110000000000.0
+            }
+          ]
+        }
+    ],
+    "fboss.agent.hw.sai.benchmarks.sai_bench_test.HwSrv6NamedNhgEcmpGroupScaleBenchmark": [
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NamedNhgEcmpGroupScaleBenchmark",
+              "upper_bound": 10540000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NamedNhgEcmpGroupScaleBenchmark",
+              "upper_bound": 21740000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk6.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NamedNhgEcmpGroupScaleBenchmark",
+              "upper_bound": 17530000000000.002
+            }
+          ]
+        }
+    ],
+    "fboss.agent.hw.sai.benchmarks.sai_bench_test.HwSrv6NamedNhgEcmpNextHopScaleBenchmark": [
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NamedNhgEcmpNextHopScaleBenchmark",
+              "upper_bound": 15830000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NamedNhgEcmpNextHopScaleBenchmark",
+              "upper_bound": 30380000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk6.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NamedNhgEcmpNextHopScaleBenchmark",
+              "upper_bound": 25090000000000.0
+            }
+          ]
+        }
+    ],
+    "fboss.agent.hw.sai.benchmarks.sai_bench_test.HwSrv6NamedNhgUcmpGroupScaleBenchmark": [
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NamedNhgUcmpGroupScaleBenchmark",
+              "upper_bound": 10330000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NamedNhgUcmpGroupScaleBenchmark",
+              "upper_bound": 22100000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk6.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NamedNhgUcmpGroupScaleBenchmark",
+              "upper_bound": 17590000000000.0
+            }
+          ]
+        }
+    ],
+    "fboss.agent.hw.sai.benchmarks.sai_bench_test.HwSrv6NamedNhgUcmpNextHopScaleBenchmark": [
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NamedNhgUcmpNextHopScaleBenchmark",
+              "upper_bound": 12280000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NamedNhgUcmpNextHopScaleBenchmark",
+              "upper_bound": 30320000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk6.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NamedNhgUcmpNextHopScaleBenchmark",
+              "upper_bound": 24620000000000.0
+            }
+          ]
         }
     ],
     "fboss.agent.hw.sai.benchmarks.sai_bench_test.HwSrv6NextHopScaleBenchmark": [
@@ -5562,6 +5736,33 @@
               "upper_bound": 34350000000000.0
             }
           ]
+        },
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NextHopScaleBenchmark",
+              "upper_bound": 21860000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NextHopScaleBenchmark",
+              "upper_bound": 47280000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk6.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6NextHopScaleBenchmark",
+              "upper_bound": 36290000000000.0
+            }
+          ]
         }
     ],
     "fboss.agent.hw.sai.benchmarks.sai_bench_test.HwSrv6RouteCounter4kStatsCollectionBenchmark": [
@@ -5580,6 +5781,15 @@
             {
               "metric_key_regex": "HwSrv6RouteCounter4kStatsCollectionBenchmark",
               "upper_bound": 37270000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6RouteCounter4kStatsCollectionBenchmark",
+              "upper_bound": 37840000000000.0
             }
           ]
         }
@@ -5611,6 +5821,33 @@
               "upper_bound": 6570000000000.0
             }
           ]
+        },
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6SingleNextHopRouteScaleBenchmark",
+              "upper_bound": 19910000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6SingleNextHopRouteScaleBenchmark",
+              "upper_bound": 8890000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk6.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6SingleNextHopRouteScaleBenchmark",
+              "upper_bound": 7440000000000.0
+            }
+          ]
         }
     ],
     "fboss.agent.hw.sai.benchmarks.sai_bench_test.HwSrv6V4RouteScaleBenchmark": [
@@ -5640,6 +5877,33 @@
               "upper_bound": 10240000000000.0
             }
           ]
+        },
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6V4RouteScaleBenchmark",
+              "upper_bound": 35450000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6V4RouteScaleBenchmark",
+              "upper_bound": 21300000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk6.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6V4RouteScaleBenchmark",
+              "upper_bound": 12000000000000.0
+            }
+          ]
         }
     ],
     "fboss.agent.hw.sai.benchmarks.sai_bench_test.HwSrv6V6RouteScaleBenchmark": [
@@ -5667,6 +5931,33 @@
             {
               "metric_key_regex": "HwSrv6V6RouteScaleBenchmark",
               "upper_bound": 10870000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/26\\.5\\.4210/graphene200.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6V6RouteScaleBenchmark",
+              "upper_bound": 72840000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk5.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6V6RouteScaleBenchmark",
+              "upper_bound": 15090000000000.0
+            }
+          ]
+        },
+        {
+          "test_config_regex": ".*/16\\.0_ea_odp/tomahawk6.*",
+          "thresholds": [
+            {
+              "metric_key_regex": "HwSrv6V6RouteScaleBenchmark",
+              "upper_bound": 12960000000000.0
             }
           ]
         }
@@ -6249,7 +6540,7 @@
           "thresholds": [
             {
               "metric_key_regex": "max_rss",
-              "upper_bound": 3707334
+              "upper_bound": 4507939
             },
             {
               "metric_key_regex": "program_routes_msecs",
@@ -6262,7 +6553,7 @@
           "thresholds": [
             {
               "metric_key_regex": "max_rss",
-              "upper_bound": 3707334
+              "upper_bound": 4597272
             },
             {
               "metric_key_regex": "program_routes_msecs",
@@ -6275,7 +6566,7 @@
           "thresholds": [
             {
               "metric_key_regex": "max_rss",
-              "upper_bound": 3251472
+              "upper_bound": 4071067
             },
             {
               "metric_key_regex": "program_routes_msecs",
@@ -6784,17 +7075,17 @@
           "test_name_regex": "HwSrv6.*$"
         }
     ],
-    "nvda/2605.37/spectrum4": [
+    "nvda/2605.38/spectrum4": [
         {
           "test_name_regex": "HwSrv6.*$"
         }
     ],
-    "nvda/2605.37/spectrum4/mono": [
+    "nvda/2605.38/spectrum4/mono": [
         {
           "test_name_regex": "HwSrv6.*$"
         }
     ],
-    "nvda/2605.37/spectrum4/multi_switch": [
+    "nvda/2605.38/spectrum4/multi_switch": [
         {
           "test_name_regex": "HwSrv6.*$"
         }

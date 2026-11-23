@@ -40,7 +40,7 @@ class MultiNodeAgentVoqSwitchTest : public AgentHwTest {
 
   std::vector<ProductionFeature> getProductionFeaturesVerified()
       const override {
-    return {ProductionFeature::VOQ};
+    return {ProductionFeature::VOQ_SWITCH_WITH_FABRIC_PORTS};
   }
 
   std::optional<size_t> maxRequiredInterfacePorts() const override {

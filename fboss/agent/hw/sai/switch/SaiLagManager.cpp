@@ -5,10 +5,13 @@
 #include "fboss/agent/hw/HwPortFb303Stats.h"
 #include "fboss/agent/hw/HwTrunkCounters.h"
 #include "fboss/agent/hw/gen-cpp2/hardware_stats_types.h"
+#include "fboss/agent/hw/sai/api/SaiApiTable.h"
 #include "fboss/agent/hw/sai/switch/ConcurrentIndices.h"
 #include "fboss/agent/hw/sai/switch/SaiManagerTable.h"
 #include "fboss/agent/hw/sai/switch/SaiPortManager.h"
 #include "fboss/agent/hw/sai/switch/SaiVlanManager.h"
+#include "fboss/agent/hw/switch_asics/HwAsic.h"
+#include "fboss/agent/platforms/sai/SaiPlatform.h"
 
 #include "fboss/agent/hw/sai/store/SaiStore.h"
 
@@ -89,6 +92,9 @@ LagSaiId SaiLagManager::addLag(
     managerTable_->vlanManager().createVlanMember(
         *vlanID, SaiPortDescriptor(aggregatePort->getID()), false, false);
   }
+  if (aggregatePort->getTTLDisableDecrement().has_value()) {
+    programTtlDecrement(*aggregatePort);
+  }
 
   return lagSaiId;
 }
@@ -166,6 +172,28 @@ void SaiLagManager::changeLag(
     saiLagHandle->counters->reinitialize(
         newAggregatePort->getID(), newAggregatePort->getName());
   }
+  if (newAggregatePort->getTTLDisableDecrement() !=
+      oldAggregatePort->getTTLDisableDecrement()) {
+    programTtlDecrement(*newAggregatePort);
+  }
+}
+
+void SaiLagManager::programTtlDecrement(const AggregatePort& aggregatePort) {
+  const bool disable = aggregatePort.getTTLDisableDecrement().value_or(false);
+  using Attribute = SaiLagTraits::Attributes::DisableTtlDecrement;
+  if (!platform_->getAsic()->isSupported(
+          HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE) ||
+      !Attribute::optionalExtensionAttributeId()) {
+    if (disable) {
+      throw FbossError(
+          "LAG TTL decrement control is unavailable on this ASIC/SDK");
+    }
+    return; // Explicit false is harmless on platforms without this feature.
+  }
+  // Disable TTL decrement on LAG ports.
+  auto handle = getLagHandle(aggregatePort.getID());
+  SaiApiTable::getInstance()->lagApi().setAttribute(
+      handle->lag->adapterKey(), Attribute{disable});
 }
 
 std::pair<PortSaiId, std::shared_ptr<SaiLagMember>> SaiLagManager::addMember(

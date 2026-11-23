@@ -36,13 +36,15 @@ void unprogramRoutes(
 RouteInfo getRouteInfo(
     const folly::IPAddress& ip,
     int prefixLength,
-    AgentEnsemble& ensemble);
+    AgentEnsemble& ensemble,
+    RouterID rid = RouterID(0));
 
 bool isRouteToNexthop(
     const folly::IPAddress& ip,
     int prefixLength,
     const folly::IPAddress& nexthop,
-    facebook::fboss::AgentEnsemble& ensemble);
+    facebook::fboss::AgentEnsemble& ensemble,
+    RouterID rid = RouterID(0));
 
 } // namespace utility
 } // namespace facebook::fboss

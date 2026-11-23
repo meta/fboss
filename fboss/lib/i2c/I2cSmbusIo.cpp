@@ -2,7 +2,6 @@
 
 #include "fboss/lib/i2c/I2cSmbusIo.h"
 #include <errno.h>
-#include <folly/Format.h>
 #include <linux/i2c-dev.h>
 #include <linux/i2c.h>
 #include <stdint.h>

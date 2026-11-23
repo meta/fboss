@@ -192,8 +192,8 @@ CmdShowAggregatePort::RetType CmdShowAggregatePort::sampleModel() {
   cli::AggregatePortRifEntry rif1;
   rif1.osIfName() = "fboss2049";
   rif1.rifID() = 2049;
-  rif1.addresses()->push_back("2001:db8:c::1/127");
-  rif1.addresses()->push_back("fe80::200:11ff:fe22:33aa/64");
+  rif1.addresses()->emplace_back("2001:db8:c::1/127");
+  rif1.addresses()->emplace_back("fe80::200:11ff:fe22:33aa/64");
   entry1.rifs()->push_back(rif1);
 
   model.aggregatePortEntries()->push_back(entry1);
@@ -225,8 +225,8 @@ CmdShowAggregatePort::RetType CmdShowAggregatePort::sampleModel() {
   cli::AggregatePortRifEntry rif2;
   rif2.osIfName() = "fboss2053";
   rif2.rifID() = 2053;
-  rif2.addresses()->push_back("2001:db8:c:2::1/127");
-  rif2.addresses()->push_back("fe80::200:11ff:fe22:33aa/64");
+  rif2.addresses()->emplace_back("2001:db8:c:2::1/127");
+  rif2.addresses()->emplace_back("fe80::200:11ff:fe22:33aa/64");
   entry2.rifs()->push_back(rif2);
 
   model.aggregatePortEntries()->push_back(entry2);

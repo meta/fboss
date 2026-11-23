@@ -17,6 +17,12 @@ find_package(Python3 3.10 COMPONENTS Interpreter REQUIRED)
 message(STATUS "Using Python ${Python3_VERSION} (${Python3_EXECUTABLE}) for distro_cli tests")
 
 include(FBPythonBinary)
+add_fb_python_library(
+  fboss_component_version
+  SOURCES
+    fboss/oss/scripts/component_version.py
+)
+
 file(GLOB DISTRO_CLI_TEST_SOURCES
   "fboss-image/distro_cli/tests/*_test.py"
 )
@@ -67,6 +73,8 @@ add_fb_python_unittest(
     ${DISTRO_CLI_TEST_SOURCES}
     ${DISTRO_CLI_TEST_HELPERS}
     ${DISTRO_CLI_LIB_SOURCES}
+  DEPENDS
+    fboss_component_version
   ENV
     "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/fboss-image"
   PROPERTIES

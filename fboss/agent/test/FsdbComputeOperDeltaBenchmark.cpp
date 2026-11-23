@@ -73,7 +73,7 @@ DEFINE_BENCHMARK(AnticipatedRouteScale);
 } // namespace facebook::fboss
 
 int main(int argc, char** argv) {
-  folly::init(&argc, &argv, true);
+  const folly::Init init(&argc, &argv, true);
   folly::runBenchmarks();
   return 0;
 }

@@ -177,7 +177,7 @@ void initAndExitBenchmarkHelper(
               asic,
               ensemble.masterLogicalPortIds(),
               ensemble.getSw()->getPlatformSupportsAddRemovePort(),
-              asic->desiredLoopbackModes(),
+              utility::kDefaultLoopbackMap(),
               true /*interfaceHasSubnet*/,
               utility::kBaseVlanId,
               true /*optimizePortProfile*/,

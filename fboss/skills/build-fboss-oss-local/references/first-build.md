@@ -28,7 +28,7 @@ much faster.
 ## 1. Get the source
 
 ```bash
-git clone https://github.com/facebook/fboss.git
+git clone https://github.com/meta/fboss.git
 cd fboss
 ```
 

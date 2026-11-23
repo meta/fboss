@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <stdexcept>
 
 using facebook::network::toIPAddress;
 
@@ -138,8 +139,13 @@ namespace facebook::fboss {
 TestThriftHandler::TestThriftHandler(SwSwitch* sw) : ThriftHandler(sw) {}
 
 void TestThriftHandler::gracefullyRestartService(
-    std::unique_ptr<std::string> serviceName) {
+    std::unique_ptr<std::string> serviceName,
+    int32_t delayInSeconds) {
   XLOG(INFO) << __func__;
+
+  if (delayInSeconds < 0) {
+    throw std::invalid_argument("Restart delay cannot be negative");
+  }
 
   if (kServicesSupportingRestart().find(*serviceName) ==
       kServicesSupportingRestart().end()) {
@@ -169,6 +175,9 @@ void TestThriftHandler::gracefullyRestartService(
       cmd += folly::to<std::string>(
           " ; systemctl stop ", kHwAgentTestServicePrefix, index);
     }
+    if (delayInSeconds > 0) {
+      cmd += folly::to<std::string>(" ; sleep ", delayInSeconds);
+    }
     for (auto index : switchIndices) {
       cmd += folly::to<std::string>(
           " ; systemctl start ", kHwAgentTestServicePrefix, index);
@@ -179,7 +188,15 @@ void TestThriftHandler::gracefullyRestartService(
     return;
   }
 
-  auto cmd = folly::to<std::string>("systemctl restart ", actualServiceName);
+  auto cmd = delayInSeconds == 0
+      ? folly::to<std::string>("systemctl restart ", actualServiceName)
+      : folly::to<std::string>(
+            "systemctl stop ",
+            actualServiceName,
+            " ; sleep ",
+            delayInSeconds,
+            " ; systemctl start ",
+            actualServiceName);
   auto unitName = makeAsyncSystemdUnitName(actualServiceName, "restart");
   scheduleAsyncSystemdCommand(unitName, cmd);
 }

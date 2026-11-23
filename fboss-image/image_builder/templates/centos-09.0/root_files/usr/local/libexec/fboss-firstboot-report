@@ -1,0 +1,41 @@
+#!/bin/bash
+set -euo pipefail
+
+marker=${FBOSS_REPORT_MARKER:-/var/lib/fboss/firstboot-reported}
+
+[[ ! -e "$marker" ]] || exit 0
+
+asset_id=''
+event_url=''
+cmdline=$(<"${FBOSS_REPORT_CMDLINE:-/proc/cmdline}")
+read -r -a boot_args <<< "$cmdline"
+for arg in "${boot_args[@]}"; do
+    case "$arg" in
+        fboss.distro.report.asset_id=*) asset_id=${arg#*=} ;;
+        fboss.distro.report.url=*) event_url=${arg#*=} ;;
+    esac
+done
+[[ -n "$asset_id" || -n "$event_url" ]] || exit 0
+[[ "$asset_id" =~ ^[0-9]+$ &&
+   "$event_url" =~ ^https://[^/?#]+([/?#].*)?$ &&
+   "$event_url" != *[[:space:][:cntrl:]]* &&
+   "$event_url" != *\"* && "$event_url" != *\\* ]] || {
+    printf 'Invalid first-boot reporting arguments: both a numeric asset ID and a safe HTTPS URL are required\n' >&2
+    exit 1
+}
+
+# A 2xx response means the endpoint accepted the event. Keep retries in curl
+# so automatic service restarts cannot reset it after persistent failures.
+http_status=$(curl --fail --silent --show-error --max-time 20 \
+    --retry 2 --retry-all-errors --retry-delay 15 \
+    --output /dev/null --write-out '%{http_code}' \
+    --get --data-urlencode 'name=FBOSS_DISTRO.FIRST_BOOT' \
+    --data-urlencode "assetID=$asset_id" \
+    --data-urlencode 'sender=fboss-distro' \
+    "$event_url")
+if [[ "$http_status" != 2[0-9][0-9] ]]; then
+    printf 'First-boot reporting endpoint did not accept the event (HTTP %s)\n' "$http_status" >&2
+    exit 1
+fi
+mkdir -p "${marker%/*}"
+touch "$marker"

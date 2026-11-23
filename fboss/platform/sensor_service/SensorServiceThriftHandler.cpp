@@ -10,19 +10,13 @@
 
 #include "fboss/platform/sensor_service/SensorServiceThriftHandler.h"
 
-#include <algorithm>
-#include <filesystem>
-#include <string_view>
-#include <system_error>
 #include <vector>
 
-#include <fmt/core.h>
-#include <folly/FileUtil.h>
 #include <folly/logging/xlog.h>
 #include <gflags/gflags.h>
-#include <thrift/lib/cpp2/protocol/Serializer.h>
 
 #include "fboss/lib/LogThriftCall.h"
+#include "fboss/platform/reboot_cause_finder/RebootHistory.h"
 #include "fboss/platform/reboot_cause_finder/if/gen-cpp2/reboot_cause_config_constants.h"
 #include "fboss/platform/sensor_service/Utils.h"
 
@@ -54,30 +48,6 @@ void SensorServiceThriftHandler::getSensorValuesByNames(
   }
 }
 
-namespace {
-// A record is a few KiB; anything far larger is not one of ours and is not
-// worth reading into memory.
-constexpr uintmax_t kMaxRecordBytes = 1 << 20; // 1 MiB
-// reboot_cause_finder writes one record per boot and never prunes, so the
-// directory grows without bound. Read only the newest few.
-constexpr size_t kMaxRecords = 64;
-constexpr size_t kMaxWarnings = 8;
-// Matches the filenames reboot_cause_finder writes:
-// reboot-cause-<stamp>-<bootId>.json
-constexpr std::string_view kRecordPrefix = "reboot-cause-";
-constexpr std::string_view kRecordSuffix = ".json";
-
-void addWarning(RebootHistoryResponse& response, const std::string& warning) {
-  auto& warnings = *response.warnings();
-  if (warnings.size() >= kMaxWarnings) {
-    return;
-  }
-  if (std::find(warnings.begin(), warnings.end(), warning) == warnings.end()) {
-    warnings.push_back(warning);
-  }
-}
-} // namespace
-
 // Reads a directory written by a different process on its own schedule. Every
 // failure here is someone else's partial write, a stale file, or a full disk --
 // none of which is a reason for this RPC, let alone sensor_service, to fail.
@@ -89,121 +59,24 @@ void SensorServiceThriftHandler::getRebootHistory(
   response.skippedCount() = 0;
   response.warnings() = {};
 
+  // Filled in place, so a throw below still returns whatever was read first.
+  reboot_cause_finder::RebootHistory history;
   try {
-    namespace fs = std::filesystem;
-    const fs::path historyDir(FLAGS_reboot_history_dir);
-
-    std::error_code ec;
-    if (!fs::is_directory(historyDir, ec) || ec) {
-      // Expected on any switch that has not yet run reboot_cause_finder.
-      addWarning(
-          response,
-          fmt::format(
-              "No reboot history directory at '{}'", FLAGS_reboot_history_dir));
-      return;
-    }
-
-    // Collect paths first so they can be ordered before any file is read, and
-    // the read capped to kMaxRecords.
-    //
-    // `ec` has to be tested after construction and after each increment: on
-    // failure the iterator is reset to end, so the loop condition would
-    // otherwise exit first and a partial scan would look like a complete one.
-    std::vector<fs::path> paths;
-    fs::directory_iterator it(historyDir, ec), end;
-    if (ec) {
-      addWarning(response, "Reboot history directory could not be read");
-      return;
-    }
-    // Stepped by hand rather than with a range-for: increment() resets the
-    // iterator to end on failure, so a for-loop would exit on the condition
-    // before any check in the body could run, and a partial scan would look
-    // like a complete one.
-    while (it != end) {
-      if (it->is_regular_file(ec) && !ec) {
-        // Only our own records. Anything else dropped here is deliberately
-        // not counted as skipped: it was never a record to begin with.
-        const auto name = it->path().filename().string();
-        if (name.starts_with(kRecordPrefix) && name.ends_with(kRecordSuffix)) {
-          paths.push_back(it->path());
-        }
-      }
-      it.increment(ec);
-      if (ec) {
-        addWarning(
-            response, "Reboot history directory could not be fully read");
-        break;
-      }
-    }
-
-    // Filenames embed a local-time stamp, so a lexicographic sort is only a
-    // heuristic for "newest" -- reboot_cause_finder may stamp a record before
-    // NTP has corrected the clock. It is good enough to decide which files to
-    // read when there are more than the cap; the ordering actually returned is
-    // by bootTimeMs below.
-    std::sort(paths.begin(), paths.end());
-    if (paths.size() > kMaxRecords) {
-      *response.skippedCount() +=
-          static_cast<int32_t>(paths.size() - kMaxRecords);
-      addWarning(
-          response,
-          fmt::format(
-              "More than {} records present; read the {} newest by filename",
-              kMaxRecords,
-              kMaxRecords));
-      paths.erase(paths.begin(), paths.end() - kMaxRecords);
-    }
-
-    for (const auto& path : paths) {
-      // Bound the read itself rather than stat-then-read: the file could grow
-      // between the two. Reading one byte past the cap is what distinguishes
-      // "exactly at the limit" from "truncated by it".
-      std::string contents;
-      if (!folly::readFile(path.c_str(), contents, kMaxRecordBytes + 1) ||
-          contents.empty()) {
-        *response.skippedCount() += 1;
-        addWarning(response, "A record could not be read");
-        continue;
-      }
-      if (contents.size() > kMaxRecordBytes) {
-        *response.skippedCount() += 1;
-        addWarning(response, "A record was too large to read");
-        continue;
-      }
-      try {
-        response.records()->push_back(
-            apache::thrift::SimpleJSONSerializer::deserialize<
-                reboot_cause_config::RebootCauseRecord>(contents));
-      } catch (const std::exception& ex) {
-        // A record still being written, or truncated by a full disk.
-        *response.skippedCount() += 1;
-        addWarning(
-            response,
-            fmt::format("A record could not be parsed: {}", ex.what()));
-      }
-    }
-
-    // Newest boot first, like `last reboot`. Ordering by detectedAtMs would
-    // move a boot whose cause was determined late (a manual or redo run) above
-    // later boots. A record with no boot time sorts last.
-    std::sort(
-        response.records()->begin(),
-        response.records()->end(),
-        [](const auto& a, const auto& b) {
-          if (*a.bootTimeMs() != *b.bootTimeMs()) {
-            return *a.bootTimeMs() > *b.bootTimeMs();
-          }
-          return *a.detectedAtMs() > *b.detectedAtMs();
-        });
+    reboot_cause_finder::readRebootHistory(FLAGS_reboot_history_dir, history);
   } catch (const std::exception& ex) {
     // Backstop. Nothing above is expected to throw, but this RPC must not be
     // the reason sensor_service returns an error.
     XLOG(ERR) << "getRebootHistory failed: " << ex.what();
-    addWarning(response, "Reboot history could not be read");
+    reboot_cause_finder::addWarning(
+        history, "Reboot history could not be read");
   } catch (...) {
     XLOG(ERR) << "getRebootHistory failed with a non-standard exception";
-    addWarning(response, "Reboot history could not be read");
+    reboot_cause_finder::addWarning(
+        history, "Reboot history could not be read");
   }
+  response.records() = std::move(history.records);
+  response.skippedCount() = history.skippedCount;
+  response.warnings() = std::move(history.warnings);
 }
 
 } // namespace facebook::fboss::platform::sensor_service

@@ -56,12 +56,10 @@ HwSwitchMatcher localMatcher() {
   return HwSwitchMatcher(std::unordered_set<SwitchID>{kLocalSwitchId});
 }
 
-std::shared_ptr<Interface>
-makeRif(InterfaceID id, folly::CIDRNetwork addr, RouterID vrf = kVrf) {
+std::shared_ptr<Interface> makeRif(InterfaceID id, folly::CIDRNetwork addr) {
   auto name = fmt::format("rif{}", static_cast<int>(id));
   auto rif = std::make_shared<Interface>(
       id,
-      vrf,
       std::optional<VlanID>(std::nullopt),
       folly::StringPiece(name),
       folly::MacAddress("02:00:00:00:00:01"),
@@ -77,10 +75,9 @@ makeRif(InterfaceID id, folly::CIDRNetwork addr, RouterID vrf = kVrf) {
 void addRemoteRif(
     std::shared_ptr<SwitchState>& state,
     InterfaceID id,
-    folly::CIDRNetwork addr,
-    RouterID vrf = kVrf) {
+    folly::CIDRNetwork addr) {
   auto remoteIntfs = state->getRemoteInterfaces()->modify(&state);
-  remoteIntfs->addNode(makeRif(id, addr, vrf), remoteMatcher());
+  remoteIntfs->addNode(makeRif(id, addr), remoteMatcher());
 }
 
 void addLocalRif(

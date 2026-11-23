@@ -81,6 +81,7 @@ struct FakeMirror {
   sai_object_id_t id;
   sai_int32_t type;
   sai_object_id_t monitorPort;
+  sai_object_id_t policer{SAI_NULL_OBJECT_ID};
   sai_int32_t erspanEncapType;
   uint8_t tos;
   folly::IPAddress srcIp;

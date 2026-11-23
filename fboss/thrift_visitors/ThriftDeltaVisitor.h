@@ -172,7 +172,7 @@ struct ThriftDeltaVisitor<apache::thrift::type::map<KeyTag, MappedTag>> {
         f(path,
           MappedTag{},
           std::make_optional(val),
-          std::optional<folly::remove_cvref_t<decltype(val)>>());
+          std::optional<std::remove_cvref_t<decltype(val)>>());
       }
       path.pop_back();
     }
@@ -185,7 +185,7 @@ struct ThriftDeltaVisitor<apache::thrift::type::map<KeyTag, MappedTag>> {
         path.push_back(folly::to<std::string>(key));
         f(path,
           MappedTag{},
-          std::optional<folly::remove_cvref_t<decltype(val)>>(),
+          std::optional<std::remove_cvref_t<decltype(val)>>(),
           std::make_optional(val));
         path.pop_back();
       }

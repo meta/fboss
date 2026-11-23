@@ -12,6 +12,9 @@
 
 #include "fboss/agent/L2Entry.h"
 #include "fboss/agent/MacTableUtils.h"
+#include "fboss/agent/state/ArpTable.h"
+#include "fboss/agent/state/Interface.h"
+#include "fboss/agent/state/Port.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/state/Vlan.h"
 #include "fboss/agent/test/TestUtils.h"
@@ -95,6 +98,37 @@ class MacTableUtilsTest : public ::testing::Test {
         state, L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_DELETE);
   }
 
+  // Port 1: dynamic MACs in VLANs 1 and 55, a static MAC and a static MAC
+  // from config. Port 2: one dynamic MAC.
+  std::shared_ptr<SwitchState> stateWithPortMacs() const {
+    auto learn = [](const auto& state, MacAddress mac, VlanID vlan, PortID p) {
+      return MacTableUtils::updateMacTable(
+          state,
+          L2Entry(
+              mac,
+              vlan,
+              PortDescriptor(p),
+              L2Entry::L2EntryType::L2_ENTRY_TYPE_VALIDATED),
+          L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD);
+    };
+    auto state = testStateA();
+    state = learn(state, kDynamicVlan1, VlanID(1), kPort1);
+    state = learn(state, kDynamicVlan55, VlanID(55), kPort1);
+    state = learn(state, kOtherPortDynamic, VlanID(1), kPort2);
+    state = MacTableUtils::updateOrAddStaticEntry(
+        state, PortDescriptor(kPort1), VlanID(1), kConfiguredStatic, true);
+    return MacTableUtils::updateOrAddStaticEntry(
+        state, PortDescriptor(kPort1), VlanID(1), kStatic);
+  }
+
+  const PortID kPort1{1};
+  const PortID kPort2{2};
+  const MacAddress kDynamicVlan1{"02:00:00:00:00:01"};
+  const MacAddress kDynamicVlan55{"02:00:00:00:00:02"};
+  const MacAddress kStatic{"02:00:00:00:00:03"};
+  const MacAddress kOtherPortDynamic{"02:00:00:00:00:04"};
+  const MacAddress kConfiguredStatic{"02:00:00:00:00:05"};
+
  private:
   std::shared_ptr<SwitchState> verifyAddAndDeleteMacHelper(
       const std::shared_ptr<SwitchState>& state,
@@ -162,6 +196,103 @@ TEST_F(MacTableUtilsTest, VerifyRemoveClassID) {
 TEST_F(MacTableUtilsTest, VerifyRemoveClassIDForAbsentEntry) {
   auto state = testStateA();
   verifyRemoveClassIDHelper(state, false /* macPresent */);
+}
+
+TEST_F(MacTableUtilsTest, RemoveUnconfiguredEntriesForPort) {
+  auto state = MacTableUtils::removeUnconfiguredEntriesForPort(
+      stateWithPortMacs(), PortDescriptor(kPort1));
+
+  auto macTable = [&](VlanID vlan) {
+    return state->getVlans()->getNode(vlan)->getMacTable();
+  };
+  EXPECT_EQ(nullptr, macTable(VlanID(1))->getMacIf(kDynamicVlan1));
+  EXPECT_EQ(nullptr, macTable(VlanID(55))->getMacIf(kDynamicVlan55));
+  EXPECT_EQ(nullptr, macTable(VlanID(1))->getMacIf(kStatic));
+  EXPECT_NE(nullptr, macTable(VlanID(1))->getMacIf(kConfiguredStatic));
+  EXPECT_NE(nullptr, macTable(VlanID(1))->getMacIf(kOtherPortDynamic));
+}
+
+TEST_F(MacTableUtilsTest, NoNeighborStaticMacOnMacLimitErrorDisabledPort) {
+  const InterfaceID intfId{1};
+  const MacAddress kNbrMac{"02:00:00:00:00:10"};
+  auto state = testStateA();
+  state->getPorts()->getNodeIf(kPort1)->modify(&state)->addError(
+      PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
+  state->getInterfaces()
+      ->getNode(intfId)
+      ->getArpTable()
+      ->modify(intfId, &state)
+      ->addEntry(
+          folly::IPAddressV4("10.0.0.10"),
+          kNbrMac,
+          PortDescriptor(kPort1),
+          intfId,
+          NeighborState::REACHABLE);
+
+  EXPECT_EQ(
+      MacTableUtils::updateOrAddStaticEntryIfNbrExists(
+          state, VlanID(1), kNbrMac),
+      state);
+  EXPECT_EQ(
+      MacTableUtils::updateOrAddStaticEntry(
+          state, PortDescriptor(kPort1), VlanID(1), kNbrMac),
+      state);
+
+  // A static MAC from config is still added
+  auto configured = MacTableUtils::updateOrAddStaticEntry(
+      state, PortDescriptor(kPort1), VlanID(1), kNbrMac, true);
+  EXPECT_NE(
+      configured->getVlans()->getNode(VlanID(1))->getMacTable()->getMacIf(
+          kNbrMac),
+      nullptr);
+}
+
+TEST_F(MacTableUtilsTest, ErrorDisablePortForMacLimit) {
+  auto state = MacTableUtils::errorDisablePortForMacLimit(
+      stateWithPortMacs(), PortID(kPort1));
+
+  auto port = state->getPorts()->getNodeIf(kPort1);
+  EXPECT_EQ(port->getAdminState(), cfg::PortState::DISABLED);
+  EXPECT_TRUE(port->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED));
+  EXPECT_EQ(
+      MacTableUtils::countUnconfiguredEntriesForPort(
+          state, PortDescriptor(kPort1)),
+      0);
+
+  // An unknown port leaves the state unchanged
+  auto unchanged = stateWithPortMacs();
+  EXPECT_EQ(
+      MacTableUtils::errorDisablePortForMacLimit(unchanged, PortID(999)),
+      unchanged);
+}
+
+TEST_F(MacTableUtilsTest, CountUnconfiguredEntriesForPort) {
+  auto state = stateWithPortMacs();
+
+  // Two learned MACs and one non-config static MAC; the config static MAC
+  // doesn't count
+  EXPECT_EQ(
+      MacTableUtils::countUnconfiguredEntriesForPort(
+          state, PortDescriptor(kPort1)),
+      3);
+  EXPECT_EQ(
+      MacTableUtils::countUnconfiguredEntriesForPort(
+          state, PortDescriptor(kPort2)),
+      1);
+}
+
+TEST_F(MacTableUtilsTest, ExceedsMacLimit) {
+  auto state = stateWithPortMacs();
+  const PortDescriptor port(kPort1);
+  const MacAddress kNewMac{"02:00:00:00:00:20"};
+
+  EXPECT_TRUE(
+      MacTableUtils::exceedsMacLimit(state, port, VlanID(1), kNewMac, 3));
+  EXPECT_FALSE(
+      MacTableUtils::exceedsMacLimit(state, port, VlanID(1), kNewMac, 4));
+  // A MAC already on the port doesn't add to the count
+  EXPECT_FALSE(
+      MacTableUtils::exceedsMacLimit(state, port, VlanID(1), kStatic, 3));
 }
 
 } // namespace facebook::fboss

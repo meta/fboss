@@ -150,8 +150,18 @@ class AgentEnsembleQsfpFsdbTest : public AgentEnsembleLinkTest {
   }
   std::vector<link_test_production_features::LinkTestProductionFeature>
   getProductionFeatures() const override {
-    return {
-        link_test_production_features::LinkTestProductionFeature::L1_LINK_TEST};
+    std::vector<link_test_production_features::LinkTestProductionFeature>
+        features = {link_test_production_features::LinkTestProductionFeature::
+                        L1_LINK_TEST};
+    const std::string testName =
+        testing::UnitTest::GetInstance()->current_test_info()->name();
+    if (testName == "portStateWithResetHold") {
+      // Holding the transceiver in reset needs BMC-Lite; on BMC-Classic the BMC
+      // arbitrates transceiver reset and releases it under us.
+      features.push_back(
+          link_test_production_features::LinkTestProductionFeature::BMC_LITE);
+    }
+    return features;
   }
   std::unique_ptr<fsdb::FsdbPubSubManager> pubSubMgr_;
 };

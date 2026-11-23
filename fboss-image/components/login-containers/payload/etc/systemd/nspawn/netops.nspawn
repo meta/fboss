@@ -1,9 +1,0 @@
-[Exec]
-PrivateUsers=no
-
-[Files]
-BindReadOnly=/usr
-BindReadOnly=/opt
-
-[Network]
-Private=no

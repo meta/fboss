@@ -47,6 +47,8 @@ class NdpDeleteAttrs : public utils::BaseObjectArgType<std::string> {
 };
 
 struct CmdDeleteInterfaceIpv6NdpTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdDeleteInterfaceIpv6;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     cmd.add_option("ndp_delete_attrs", args, "<attr> [<attr> ...]");

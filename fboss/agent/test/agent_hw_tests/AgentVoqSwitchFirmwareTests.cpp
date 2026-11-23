@@ -59,6 +59,11 @@ class AgentVoqSwitchIsolationFirmwareTest : public AgentVoqSwitchTest {
     return linkDisableFirmware == true;
   }
 
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    return {ProductionFeature::VOQ_SWITCH_WITH_FABRIC_PORTS};
+  }
+
   cfg::SwitchConfig initialConfig(
       const AgentEnsemble& ensemble) const override {
     auto config = utility::onePortPerInterfaceConfig(

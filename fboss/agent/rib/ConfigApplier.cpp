@@ -81,7 +81,9 @@ ConfigApplier::ConfigApplier(
     folly::Range<StaticMySidIterator> staticMySidRange,
     NextHopIDManager* nextHopIDManager,
     MySidTable* mySidTable,
-    uint32_t ecmpWidth)
+    uint32_t ecmpWidth,
+    const RibRouteUpdater::InterfaceToVrf* interfaceVrfs,
+    RibRouteUpdater::RouterIDToRouteTable* crossVrfRouteTables)
     : vrf_(vrf),
       v4NetworkToRoute_(v4NetworkToRoute),
       v6NetworkToRoute_(v6NetworkToRoute),
@@ -97,7 +99,9 @@ ConfigApplier::ConfigApplier(
       staticMySidRange_(staticMySidRange),
       nextHopIDManager_(nextHopIDManager),
       mySidTable_(mySidTable),
-      ecmpWidth_(ecmpWidth) {
+      ecmpWidth_(ecmpWidth),
+      interfaceVrfs_(interfaceVrfs),
+      crossVrfRouteTables_(crossVrfRouteTables) {
   CHECK_NOTNULL(v4NetworkToRoute_);
   CHECK_NOTNULL(v6NetworkToRoute_);
   CHECK_NOTNULL(labelToRoute_);
@@ -110,7 +114,10 @@ void ConfigApplier::apply() {
       labelToRoute_,
       nextHopIDManager_,
       mySidTable_,
-      ecmpWidth_);
+      ecmpWidth_,
+      vrf_,
+      interfaceVrfs_,
+      crossVrfRouteTables_);
 
   // Update static routes
   std::vector<RibRouteUpdater::RouteEntry> staticRoutes;
@@ -179,7 +186,8 @@ void ConfigApplier::apply() {
         [&staticMplsRoutes](const auto& routeRange, const auto& nhopFn) {
           for (const auto& staticRoute : routeRange) {
             staticMplsRoutes.push_back(
-                {LabelID(staticRoute.get_ingressLabel()), nhopFn(staticRoute)});
+                {LabelID(folly::copy(staticRoute.ingressLabel().value())),
+                 nhopFn(staticRoute)});
           }
         };
     fillInStaticMplsRoutes(staticMplsCpuRouteRange_, [](const auto& /*route*/) {

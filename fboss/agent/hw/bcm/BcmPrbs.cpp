@@ -2,7 +2,6 @@
 
 #include "fboss/agent/hw/bcm/BcmPrbs.h"
 #include <fmt/format.h>
-#include <folly/Format.h>
 #include "fboss/agent/hw/bcm/BcmError.h"
 #include "fboss/lib/phy/gen-cpp2/prbs_types.h"
 extern "C" {

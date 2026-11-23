@@ -25,8 +25,8 @@
 #include <optional>
 #include <string>
 
-#include <thrift/lib/cpp/util/EnumUtils.h>
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/test/integration_test/CoppTestUtils.h"
 #include "fboss/cli/fboss2/test/integration_test/Fboss2IntegrationTest.h"
 
 using namespace facebook::fboss;
@@ -57,36 +57,12 @@ class DeleteCoppTest : public Fboss2IntegrationTest {
     return {nullptr};
   }
 
-  // The stream type to create a scratch queue with: `config copp queue`
-  // requires one, and the value is per-platform (XGS ships MULTICAST,
-  // Jericho/Chenab UNICAST). Follow the box's existing cpu queues, falling
-  // back to MULTICAST on a config that carries none.
   std::string scratchStreamType() const {
-    auto config = getRunningConfig();
-    const auto& sw = config["sw"];
-    if (sw.count("cpuQueues") && sw["cpuQueues"].isArray() &&
-        !sw["cpuQueues"].empty()) {
-      const auto& queue = sw["cpuQueues"][0];
-      if (queue.count("streamType")) {
-        const auto& streamType = queue["streamType"];
-        return streamType.isInt()
-            ? apache::thrift::util::enumNameSafe(
-                  static_cast<cfg::StreamType>(streamType.asInt()))
-            : streamType.asString();
-      }
-    }
-    return "MULTICAST";
+    return scratchCpuQueueStreamType(getRunningConfig());
   }
 
-  // Return the smallest queue id in [0, 9] that has no cpuQueues entry, or
-  // std::nullopt when the range is fully populated.
   std::optional<int> findUnusedQueueId() const {
-    for (int id = 0; id <= 9; ++id) {
-      if (findQueue(id).isNull()) {
-        return id;
-      }
-    }
-    return std::nullopt;
+    return findUnusedCpuQueueId(getRunningConfig());
   }
 
   // Look up the rxReason mapping for a numeric reason id in the running

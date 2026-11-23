@@ -7,7 +7,9 @@
 #include <fboss/agent/gen-cpp2/switch_config_types.h>
 #include <fboss/agent/hw/bcm/gen-cpp2/bcm_config_types.h>
 #include <unistd.h>
+#include <chrono>
 #include <functional>
+#include <optional>
 #include "fboss/agent/L2Entry.h"
 #include "fboss/agent/Main.h"
 
@@ -307,8 +309,18 @@ class AgentEnsemble : public TestEnsembleIf {
       const HwPortStats& curPortStats,
       const int secondsBetweenStatsCollection);
 
+  // The timeout defaults to --hwswitch_query_timeout seconds.
   std::unique_ptr<apache::thrift::Client<utility::AgentHwTestCtrl>>
-  getHwAgentTestClient(SwitchID switchId);
+  getHwAgentTestClient(
+      SwitchID switchId,
+      int retries = 2,
+      std::optional<std::chrono::milliseconds> timeout = std::nullopt);
+  // Delivers the event to the test-lifecycle observers of the switch under test
+  // (--switch_id_for_testing): in process in mono mode, and over thrift to its
+  // hardware agent in multi-switch mode. Returns whether they accepted it.
+  bool notifyTestLifecycleEvent(
+      const std::string& attemptUuid,
+      utility::TestLifecycleEvent event);
   BootType getBootType() const;
   static void writeConfig(
       const cfg::AgentConfig& config,

@@ -20,6 +20,7 @@
 #include <fmt/format.h>
 #include <folly/File.h>
 #include <folly/FileUtil.h>
+#include "fboss/lib/CommonFileUtils.h"
 
 namespace facebook::fboss::utils {
 namespace {
@@ -69,15 +70,8 @@ fs::path ensureOutputDirectory(const fs::path& requestedDirectory) {
             kActiveConfigRoot.string()));
   }
 
+  createDir(outputDirectory.string());
   std::error_code error;
-  fs::create_directories(outputDirectory, error);
-  if (error) {
-    throw std::runtime_error(
-        fmt::format(
-            "Failed to create output directory {}: {}",
-            outputDirectory.string(),
-            error.message()));
-  }
   if (!fs::is_directory(outputDirectory, error) || error) {
     throw std::runtime_error(
         fmt::format(

@@ -42,6 +42,7 @@ RUN dnf install -y 'dnf-command(config-manager)' && \
     libsodium-devel libsodium-static libunwind libunwind-devel libusb libusb-devel \
     libzstd libzstd-devel lz4-devel ncurses-devel ninja-build \
     openssl openssl-devel openssl-libs \
+    pcre-devel \
     re2 re2-devel snappy-devel xxhash-devel xz-devel zlib-devel zlib-static \
     libxml2-devel expat-devel wget git sudo lsof `basename "$USER_SHELL"` \
     libcap-devel libmount-devel libpciaccess-devel
@@ -60,6 +61,23 @@ RUN dnf install -y python3.12 python3.12-devel python3.12-pip && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 100
 RUN ln -sf /usr/bin/python3 /usr/bin/python && \
     ln -sf /usr/bin/pip3.12 /usr/bin/pip
+
+# KIWI runs only in a KVM guest. Install the launcher and virtiofs tooling now,
+# rather than modifying dependencies in the image-build runtime container.
+# Boxed plugin 0.2.58 requires KIWI's pre-Typer launcher (10.3.10).
+# The VM still runs image-building KIWI 11.0.1 via --kiwi-version.
+COPY fboss/oss/docker/configure_kiwi_boxed.py /tmp/configure_kiwi_boxed.py
+RUN dnf install -y kiwi policycoreutils python3-kiwi \
+    dracut-kiwi-live dracut-kiwi-overlay dnf-plugin-versionlock \
+    dracut-kiwi-oem-dump kiwi-systemdeps-image-validation \
+    syslinux btrfs-progs mtools glibc-static qemu-kvm-core qemu-img virtiofsd && \
+    KIWI_SITE_PKG=$(python3 -s -c 'import site; print(site.getsitepackages()[0])') && \
+    python3 -m pip install 'kiwi==10.3.10' 'kiwi-boxed-plugin==0.2.58' --target "$KIWI_SITE_PKG" && \
+    python3 -s /tmp/configure_kiwi_boxed.py && \
+    ln -sf "$KIWI_SITE_PKG/bin/kiwi-ng" /usr/local/bin/kiwi-ng-3 && \
+    kiwi-ng-3 system boxbuild --list-boxes && \
+    /usr/libexec/virtiofsd --help | grep -q -- '--inode-file-handles' && \
+    rm /tmp/configure_kiwi_boxed.py
 
 # Necessary for using update-alternatives.
 RUN rpm -e binutils --nodeps
@@ -88,7 +106,7 @@ RUN dnf download libtool && \
     rpm -ivh --nodeps libtool-*.rpm && \
     rm -f libtool-*.rpm
 
-RUN python3 -m pip install setuptools 'Cython>=3.0,<3.2' wheel auditwheel patchelf boto3 botocore gitpython meson jinja2 pyyaml filelock pytest
+RUN python3 -m pip install setuptools 'Cython>=3.0,<3.2' wheel auditwheel patchelf boto3 botocore gitpython meson jinja2 pyyaml filelock pytest pyang
 
 COPY ${GITHUB_ROOT}/.pre-commit-config.yaml /tmp/.pre-commit-config.yaml
 COPY ./fboss/oss/docker/setup_clang.sh /tmp/setup_clang.sh
@@ -104,8 +122,32 @@ RUN if [ "$USE_CLANG" = "true" ]; then \
     rm -rf build
 
 # The following libraries are needed for building SDK
-RUN dnf install -y doxygen aspell aspell-en libyaml-devel vim-common libnsl libnsl2-devel glibc-static libstdc++-static hostname \
-    grpc-devel grpc-plugins protobuf-devel protobuf-compiler abseil-cpp-devel
+RUN dnf install -y doxygen aspell aspell-en libyaml-devel vim-common libnsl libnsl2-devel glibc-static libstdc++-static hostname
+
+# Install gRPC for SDK purposes
+RUN git clone --depth 1 --branch v1.42.0 https://github.com/grpc/grpc.git && \
+    git -C grpc submodule update --init --depth 1 \
+      third_party/abseil-cpp third_party/cares/cares third_party/protobuf && \
+    cmake -S grpc -B grpc/build -G Ninja \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_C_COMPILER=/opt/rh/gcc-toolset-12/root/usr/bin/gcc \
+      -DCMAKE_CXX_COMPILER=/opt/rh/gcc-toolset-12/root/usr/bin/g++ \
+      -DCMAKE_CXX_STANDARD=17 \
+      -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
+      -DBUILD_SHARED_LIBS=ON \
+      -DCMAKE_INSTALL_PREFIX=/opt/grpc \
+      -DCMAKE_INSTALL_LIBDIR=lib \
+      -DCMAKE_INSTALL_RPATH=/opt/grpc/lib \
+      -DgRPC_BUILD_CSHARP_EXT=OFF \
+      -DgRPC_ABSL_PROVIDER=module \
+      -DgRPC_CARES_PROVIDER=module \
+      -DgRPC_PROTOBUF_PROVIDER=module \
+      -DgRPC_RE2_PROVIDER=package \
+      -DgRPC_SSL_PROVIDER=package \
+      -DgRPC_ZLIB_PROVIDER=package && \
+    cmake --build grpc/build && \
+    cmake --install grpc/build && \
+    rm -rf grpc
 
 # Install libyaml.a for SDK purposes
 RUN git clone https://github.com/yaml/libyaml.git && \

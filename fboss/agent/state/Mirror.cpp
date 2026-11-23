@@ -5,6 +5,7 @@
 #include <memory>
 #include "common/network/if/gen-cpp2/Address_types.h"
 #include "fboss/agent/AddressUtil.h"
+#include "fboss/agent/FbossError.h"
 #include "fboss/agent/gen-cpp2/switch_state_types.h"
 #include "fboss/agent/state/NodeBase-defs.h"
 #include "fboss/agent/state/Port.h"
@@ -22,7 +23,8 @@ Mirror::Mirror(
     std::optional<TunnelUdpPorts> udpPorts,
     uint8_t dscp,
     bool truncate,
-    std::optional<uint32_t> samplingRate)
+    std::optional<uint32_t> samplingRate,
+    std::optional<cfg::Policer> policer)
     : ThriftStructNode<Mirror, state::MirrorFields>() {
   // span mirror is resolved as soon as it is created
   // erspan and sflow are resolved when tunnel is set
@@ -51,6 +53,7 @@ Mirror::Mirror(
     set<switch_state_tags::udpSrcPort>(udpPorts->udpSrcPort);
     set<switch_state_tags::udpDstPort>(udpPorts->udpDstPort);
   }
+  setPolicer(std::move(policer));
   markResolved();
 }
 
@@ -186,6 +189,33 @@ std::optional<uint32_t> Mirror::getSamplingRate() const {
     return samplingRate->cref();
   }
   return std::nullopt;
+}
+
+std::optional<cfg::Policer> Mirror::getPolicer() const {
+  if (auto policer = get<switch_state_tags::policer>()) {
+    return policer->toThrift();
+  }
+  return std::nullopt;
+}
+
+void Mirror::setPolicer(std::optional<cfg::Policer> policer) {
+  if (!policer) {
+    remove<switch_state_tags::policer>();
+    return;
+  }
+  if (*policer->committedInformationRate() <= 0 ||
+      *policer->committedBurstSize() <= 0) {
+    throw FbossError(
+        "Mirror ",
+        getID(),
+        " policer committedInformationRate and committedBurstSize must be positive");
+  }
+  if (*policer->meterType() != cfg::PolicerMeterType::PACKETS &&
+      *policer->meterType() != cfg::PolicerMeterType::BYTES) {
+    throw FbossError(
+        "Mirror ", getID(), " policer meterType must be PACKETS or BYTES");
+  }
+  set<switch_state_tags::policer>(*policer);
 }
 
 template struct ThriftStructNode<Mirror, state::MirrorFields>;

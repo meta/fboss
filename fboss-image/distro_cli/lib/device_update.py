@@ -186,13 +186,17 @@ class DeviceUpdater:
                 artifact_path if isinstance(artifact_path, list) else [artifact_path]
             )
             scp_files = [str(a) for a in artifacts] + [str(UPDATE_SCRIPT_PATH)]
+            # scp requires IPv6 hosts in brackets to find the path separator.
+            scp_host = (
+                f"[{self.device_ip}]" if ":" in self.device_ip else self.device_ip
+            )
 
             result = subprocess.run(
                 [
                     "scp",
                     *ssh_opts,
                     *scp_files,
-                    f"{device_user}@{self.device_ip}:{remote_dir}/",
+                    f"{device_user}@{scp_host}:{remote_dir}/",
                 ],
                 capture_output=True,
                 check=False,

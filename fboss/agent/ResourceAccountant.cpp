@@ -14,6 +14,7 @@
 #include "fboss/agent/state/DeltaFunctions.h"
 #include "fboss/agent/state/FlowletSwitchingConfig.h"
 #include "fboss/agent/state/SwitchState.h"
+#include "fboss/agent/state/VrfMap.h"
 
 namespace {
 constexpr auto kHundredPercentage = 100;
@@ -50,7 +51,9 @@ namespace facebook::fboss {
 ResourceAccountant::ResourceAccountant(
     const HwAsicTable* asicTable,
     const SwitchIdScopeResolver* scopeResolver)
-    : asicTable_(asicTable), scopeResolver_(scopeResolver) {
+    : asicTable_(asicTable),
+      scopeResolver_(scopeResolver),
+      aclResourceAccountant_(asicTable) {
   CHECK_EQ(
       asicTable->isFeatureSupportedOnAnyAsic(
           HwAsic::Feature::WEIGHTED_NEXTHOPGROUP_MEMBER),
@@ -743,6 +746,28 @@ bool ResourceAccountant::checkMySidResource(bool intermediateState) {
   return true;
 }
 
+void ResourceAccountant::vrfStateChangedImpl(const StateDelta& delta) {
+  DeltaFunctions::forEachChanged(
+      delta.getVrfsDelta(),
+      [&](const auto& /*oldVrf*/, const auto& /*newVrf*/) {},
+      [&](const auto& /*newVrf*/) { vrfUsage_++; },
+      [&](const auto& /*deletedVrf*/) { vrfUsage_--; });
+}
+
+bool ResourceAccountant::checkVrfResource() const {
+  // +1 for the default VRF
+  const auto numVrfs = vrfUsage_ + 1;
+  for (const auto& [_, hwAsic] : asicTable_->getHwAsics()) {
+    const auto maxVrfs = hwAsic->getMaxVrfs();
+    if (maxVrfs.has_value() && numVrfs > maxVrfs.value()) {
+      XLOG(ERR) << "VRF resource limit exceeded. VRFs: " << numVrfs
+                << " ASIC limit: " << maxVrfs.value();
+      return false;
+    }
+  }
+  return true;
+}
+
 size_t ResourceAccountant::countSrv6NextHops(
     const RouteNextHopSet& nhSet) const {
   size_t count = 0;
@@ -875,15 +900,15 @@ bool ResourceAccountant::checkSrv6NextHopResource(
 
 // get switchId from neighbor entry
 SwitchID ResourceAccountant::getSwitchIdFromNeighborEntry(
-    std::shared_ptr<SwitchState> newState,
+    std::shared_ptr<SwitchState> state,
     const auto& nbrEntry) {
-  const auto& interfaceMap = newState->getInterfaces();
+  const auto& interfaceMap = state->getInterfaces();
   InterfaceID interfaceId = nbrEntry->getIntfID();
   std::shared_ptr<Interface> intf = interfaceMap->getNodeIf(interfaceId);
   if (!intf) {
     throw FbossError("No interface found for interfaceId: ", interfaceId);
   }
-  SwitchID switchId = scopeResolver_->scope(intf, newState).switchId();
+  SwitchID switchId = scopeResolver_->scope(intf, state).switchId();
 
   return switchId;
 }
@@ -1005,7 +1030,7 @@ void ResourceAccountant::neighborStateChangedImpl(const StateDelta& delta) {
         },
         [&](const auto& deleted) {
           auto switchId =
-              getSwitchIdFromNeighborEntry(delta.newState(), deleted);
+              getSwitchIdFromNeighborEntry(delta.oldState(), deleted);
           entriesMap[switchId]--;
           return LoopAction::CONTINUE;
         });
@@ -1116,6 +1141,8 @@ void ResourceAccountant::stateChanged(const StateDelta& delta) {
   if (FLAGS_enable_mysid_resource_protection) {
     mySidStateChangedImpl(delta);
   }
+
+  vrfStateChangedImpl(delta);
 }
 
 // check if the resource is available for the update as per fboss limits
@@ -1133,6 +1160,12 @@ bool ResourceAccountant::isValidUpdate(const StateDelta& delta) {
   if (FLAGS_enable_mysid_resource_protection) {
     mySidStateChangedImpl(delta);
     isValidUpdate &= checkMySidResource(false /* intermediateState */);
+  }
+
+  vrfStateChangedImpl(delta);
+  isValidUpdate &= checkVrfResource();
+  if (FLAGS_enable_pbr_acl_resource_protection) {
+    isValidUpdate &= aclResourceAccountant_.isValidUpdate(delta);
   }
 
   return isValidUpdate;

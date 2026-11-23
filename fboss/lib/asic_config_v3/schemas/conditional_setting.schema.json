@@ -1,6 +1,6 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://github.com/facebook/fboss/blob/main/fboss/lib/asic_config_v3/schemas/conditional_setting.schema.json",
+    "$id": "https://github.com/meta/fboss/blob/main/fboss/lib/asic_config_v3/schemas/conditional_setting.schema.json",
     "title": "Conditional Setting",
     "description": "A conditional setting shared by every ASIC family. The condition grammar is evaluated by BaseAsicConfigGenerator; each generator declares which effects it can execute and rejects the others when it is constructed.",
     "$defs": {

@@ -5,7 +5,7 @@
 #include "fboss/agent/test/TestUtils.h"
 
 #include "fboss/agent/TxPacket.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestAddressConstants.h"
+#include "fboss/agent/test/utils/AgentTestAddressConstants.h"
 #include "fboss/agent/test/utils/PacketTestUtils.h"
 #include "fboss/lib/CommonUtils.h"
 

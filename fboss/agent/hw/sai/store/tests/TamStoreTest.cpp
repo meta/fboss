@@ -43,9 +43,12 @@ class TamStoreTest : public SaiStoreTest {
     SaiTamTransportTraits::AdapterHostKey result;
     std::get<SaiTamTransportTraits::Attributes::Type>(result) =
         SAI_TAM_TRANSPORT_TYPE_UDP;
-    std::get<SaiTamTransportTraits::Attributes::SrcPort>(result) = 10001;
-    std::get<SaiTamTransportTraits::Attributes::DstPort>(result) = 10002;
-    std::get<SaiTamTransportTraits::Attributes::Mtu>(result) = 1500;
+    std::get<std::optional<SaiTamTransportTraits::Attributes::SrcPort>>(
+        result) = 10001;
+    std::get<std::optional<SaiTamTransportTraits::Attributes::DstPort>>(
+        result) = 10002;
+    std::get<std::optional<SaiTamTransportTraits::Attributes::Mtu>>(result) =
+        1500;
     std::get<std::optional<SaiTamTransportTraits::Attributes::SrcMacAddress>>(
         result) = folly::MacAddress("00:00:00:00:00:01");
     std::get<std::optional<SaiTamTransportTraits::Attributes::DstMacAddress>>(
@@ -114,7 +117,14 @@ class TamStoreTest : public SaiStoreTest {
       facebook::fboss::TamEventSaiId event) {
     std::vector<sai_object_id_t> events = {event};
     std::vector<sai_int32_t> bindpoints = {SAI_TAM_BIND_POINT_TYPE_SWITCH};
-    return SaiTamTraits::CreateAttributes{events, bindpoints};
+    return SaiTamTraits::CreateAttributes{
+        events,
+        bindpoints
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+        ,
+        std::vector<sai_object_id_t>{}
+#endif
+    };
   }
 
   facebook::fboss::TamCollectorSaiId createCollector(
@@ -201,7 +211,94 @@ TEST_F(TamStoreTest, loadTam) {
       SaiTamEventTraits::AdapterHostKey>(eventCreateAttrs);
   EXPECT_EQ(eventStore.get(eventAdapterHostKey)->adapterKey(), event);
   EXPECT_EQ(tamStore.get(tamTraits(event))->adapterKey(), tam);
+  EXPECT_EQ(
+      tamStore.setObject(tamTraits(event), tamTraits(event))->adapterKey(),
+      tam);
 }
+
+TEST_F(TamStoreTest, loadTamTransportAndCollectorWithUnsetOptionals) {
+  auto transportAttrs = tamTransportTraits();
+  std::get<std::optional<SaiTamTransportTraits::Attributes::SrcPort>>(
+      transportAttrs) = std::nullopt;
+  std::get<std::optional<SaiTamTransportTraits::Attributes::DstPort>>(
+      transportAttrs) = std::nullopt;
+  std::get<std::optional<SaiTamTransportTraits::Attributes::Mtu>>(
+      transportAttrs) = std::nullopt;
+  std::get<std::optional<SaiTamTransportTraits::Attributes::SrcMacAddress>>(
+      transportAttrs) = std::nullopt;
+  std::get<std::optional<SaiTamTransportTraits::Attributes::DstMacAddress>>(
+      transportAttrs) = std::nullopt;
+  const auto transport =
+      saiApiTable->tamApi().create<SaiTamTransportTraits>(transportAttrs, 0);
+
+  auto collectorAttrs = tamCollectorTraits(transport, true /* ipV4 */);
+  std::get<std::optional<SaiTamCollectorTraits::Attributes::TruncateSize>>(
+      collectorAttrs) = std::nullopt;
+  std::get<std::optional<SaiTamCollectorTraits::Attributes::DscpValue>>(
+      collectorAttrs) = std::nullopt;
+  const auto collector =
+      saiApiTable->tamApi().create<SaiTamCollectorTraits>(collectorAttrs, 0);
+
+  SaiStore store{0};
+  store.reload();
+
+  const auto loadedTransport =
+      store.get<SaiTamTransportTraits>().get(transportAttrs);
+  ASSERT_NE(loadedTransport, nullptr);
+  EXPECT_EQ(loadedTransport->adapterKey(), transport);
+  EXPECT_EQ(loadedTransport->attributes(), transportAttrs);
+  EXPECT_FALSE(
+      std::get<std::optional<SaiTamTransportTraits::Attributes::SrcMacAddress>>(
+          loadedTransport->attributes())
+          .has_value());
+  EXPECT_FALSE(
+      std::get<std::optional<SaiTamTransportTraits::Attributes::DstMacAddress>>(
+          loadedTransport->attributes())
+          .has_value());
+
+  const auto loadedCollector =
+      store.get<SaiTamCollectorTraits>().get(collectorAttrs);
+  ASSERT_NE(loadedCollector, nullptr);
+  EXPECT_EQ(loadedCollector->adapterKey(), collector);
+  EXPECT_FALSE(
+      std::get<std::optional<SaiTamCollectorTraits::Attributes::TruncateSize>>(
+          loadedCollector->attributes())
+          .has_value());
+  EXPECT_FALSE(
+      std::get<std::optional<SaiTamCollectorTraits::Attributes::DscpValue>>(
+          loadedCollector->attributes())
+          .has_value());
+}
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+TEST_F(TamStoreTest, CollectorDefaultReadbackKeepsMacProgrammingUnset) {
+  using Attributes = SaiTamCollectorTraits::Attributes;
+  auto attributes = tamCollectorTraits(createTransport(), true /* ipV4 */);
+  const auto collector =
+      saiApiTable->tamApi().create<SaiTamCollectorTraits>(attributes, 0);
+  auto& sdkCollector =
+      FakeSai::getInstance()->tamCollectorManager.get(collector);
+  sdkCollector.srcMac_ = folly::MacAddress{};
+  sdkCollector.dstMac_ = folly::MacAddress{};
+  sdkCollector.localhost_ = false;
+  auto key = attributes;
+  std::get<std::optional<Attributes::SrcMacAddress>>(key) = folly::MacAddress{};
+  std::get<std::optional<Attributes::DstMacAddress>>(key) = folly::MacAddress{};
+  std::get<std::optional<Attributes::Localhost>>(key) = false;
+
+  SaiStore store{0};
+  store.reload();
+  auto& collectorStore = store.get<SaiTamCollectorTraits>();
+  const auto loaded = collectorStore.get(key);
+  ASSERT_NE(loaded, nullptr);
+  EXPECT_EQ(loaded->adapterKey(), collector);
+  EXPECT_EQ(collectorStore.setObject(key, attributes)->adapterKey(), collector);
+  EXPECT_EQ(loaded->attributes(), attributes);
+  EXPECT_EQ(sdkCollector.srcMac_, folly::MacAddress{});
+  EXPECT_EQ(sdkCollector.dstMac_, folly::MacAddress{});
+  EXPECT_EQ(sdkCollector.localhost_, false);
+}
+#endif
 
 TEST_F(TamStoreTest, tamCtors) {
   auto transport = createTransport();
@@ -219,16 +316,22 @@ TEST_F(TamStoreTest, tamCtors) {
       std::get<SaiTamTransportTraits::Attributes::Type>(tamTransportAhk)
           .value());
   EXPECT_EQ(
-      GET_ATTR(TamTransport, SrcPort, transportObj.attributes()),
-      std::get<SaiTamTransportTraits::Attributes::SrcPort>(tamTransportAhk)
+      GET_OPT_ATTR(TamTransport, SrcPort, transportObj.attributes()),
+      std::get<std::optional<SaiTamTransportTraits::Attributes::SrcPort>>(
+          tamTransportAhk)
+          .value()
           .value());
   EXPECT_EQ(
-      GET_ATTR(TamTransport, DstPort, transportObj.attributes()),
-      std::get<SaiTamTransportTraits::Attributes::DstPort>(tamTransportAhk)
+      GET_OPT_ATTR(TamTransport, DstPort, transportObj.attributes()),
+      std::get<std::optional<SaiTamTransportTraits::Attributes::DstPort>>(
+          tamTransportAhk)
+          .value()
           .value());
   EXPECT_EQ(
-      GET_ATTR(TamTransport, Mtu, transportObj.attributes()),
-      std::get<SaiTamTransportTraits::Attributes::Mtu>(tamTransportAhk)
+      GET_OPT_ATTR(TamTransport, Mtu, transportObj.attributes()),
+      std::get<std::optional<SaiTamTransportTraits::Attributes::Mtu>>(
+          tamTransportAhk)
+          .value()
           .value());
   EXPECT_EQ(
       GET_OPT_ATTR(TamTransport, SrcMacAddress, transportObj.attributes()),
@@ -346,16 +449,23 @@ TEST_F(TamStoreTest, setObject) {
       GET_ATTR(TamTransport, Type, transport->attributes()),
       std::get<SaiTamTransportTraits::Attributes::Type>(transportAhk).value());
   EXPECT_EQ(
-      GET_ATTR(TamTransport, SrcPort, transport->attributes()),
-      std::get<SaiTamTransportTraits::Attributes::SrcPort>(transportAhk)
+      GET_OPT_ATTR(TamTransport, SrcPort, transport->attributes()),
+      std::get<std::optional<SaiTamTransportTraits::Attributes::SrcPort>>(
+          transportAhk)
+          .value()
           .value());
   EXPECT_EQ(
-      GET_ATTR(TamTransport, DstPort, transport->attributes()),
-      std::get<SaiTamTransportTraits::Attributes::DstPort>(transportAhk)
+      GET_OPT_ATTR(TamTransport, DstPort, transport->attributes()),
+      std::get<std::optional<SaiTamTransportTraits::Attributes::DstPort>>(
+          transportAhk)
+          .value()
           .value());
   EXPECT_EQ(
-      GET_ATTR(TamTransport, Mtu, transport->attributes()),
-      std::get<SaiTamTransportTraits::Attributes::Mtu>(transportAhk).value());
+      GET_OPT_ATTR(TamTransport, Mtu, transport->attributes()),
+      std::get<std::optional<SaiTamTransportTraits::Attributes::Mtu>>(
+          transportAhk)
+          .value()
+          .value());
   EXPECT_EQ(
       GET_OPT_ATTR(TamTransport, SrcMacAddress, transport->attributes()),
       std::get<std::optional<SaiTamTransportTraits::Attributes::SrcMacAddress>>(
@@ -519,11 +629,13 @@ TEST_F(TamStoreTest, updateObject) {
       GET_OPT_ATTR(TamEvent, SwitchEventType, updatedEvent->attributes()),
       newEvents);
 
-  std::get<SaiTamTransportTraits::Attributes::DstPort>(transportAhk) = 10003;
+  std::get<std::optional<SaiTamTransportTraits::Attributes::DstPort>>(
+      transportAhk) = 10003;
   auto updatedTransport =
       s.get<SaiTamTransportTraits>().setObject(transportAhk, transportAhk);
   EXPECT_EQ(
-      GET_ATTR(TamTransport, DstPort, updatedTransport->attributes()), 10003);
+      GET_OPT_ATTR(TamTransport, DstPort, updatedTransport->attributes()),
+      10003);
 
   std::get<std::optional<SaiTamCollectorTraits::Attributes::TruncateSize>>(
       collectorAhkV4) = 256;
@@ -542,3 +654,92 @@ TEST_F(TamStoreTest, updateObject) {
       GET_OPT_ATTR(TamCollector, DscpValue, updatedCollectorV6->attributes()),
       2);
 }
+
+TEST_F(TamStoreTest, tamTransportSerDeser) {
+  const auto transport = createTransport();
+  verifyAdapterKeySerDeser<SaiTamTransportTraits>({transport});
+}
+
+TEST_F(TamStoreTest, tamCollectorSerDeser) {
+  const auto transport = createTransport();
+  const auto collector = createCollector(transport, true /* ipV4 */);
+  verifyAdapterKeySerDeser<SaiTamCollectorTraits>({collector});
+}
+
+TEST_F(TamStoreTest, tamTransportToStr) {
+  std::ignore = createTransport();
+  verifyToStr<SaiTamTransportTraits>();
+}
+
+TEST_F(TamStoreTest, tamCollectorToStr) {
+  const auto transport = createTransport();
+  std::ignore = createCollector(transport, true /* ipV4 */);
+  verifyToStr<SaiTamCollectorTraits>();
+}
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1) && !defined(CHENAB_SAI_SDK)
+TEST_F(TamStoreTest, ReloadCsigInt) {
+  using A = SaiTamIntTraits::Attributes;
+  SaiTamIntTraits::CreateAttributes attrs{
+      SAI_TAM_INT_TYPE_CSIG_COMPACT,
+      0,
+      SAI_TAM_INT_PRESENCE_TYPE_ETH_TYPE,
+      true,
+      0x9900,
+      SAI_CSIG_SIGNAL_TYPE_ABW,
+      256,
+      2,
+      std::vector<sai_uint16_t>{7, 3},
+      std::vector<sai_u64_range_t>{
+          {0, 1ULL << 32}, {(1ULL << 32) + 1, 1ULL << 40}},
+      std::nullopt,
+      std::nullopt,
+      false};
+  const auto id = saiApiTable->tamApi().create<SaiTamIntTraits>(attrs, 0);
+  const auto key = tupleProjection<
+      SaiTamIntTraits::CreateAttributes,
+      SaiTamIntTraits::AdapterHostKey>(attrs);
+  SaiStore store(0);
+  store.reload();
+  auto object = store.get<SaiTamIntTraits>().get(key);
+  ASSERT_NE(object, nullptr);
+  EXPECT_EQ(object->adapterKey(), id);
+  const auto& ranges = std::get<std::optional<A::QuantBandUint64RangeList>>(
+      object->attributes());
+  ASSERT_TRUE(ranges.has_value());
+  EXPECT_EQ(
+      ranges->value(),
+      (std::vector<sai_u64_range_t>{
+          {0, 1ULL << 32}, {(1ULL << 32) + 1, 1ULL << 40}}));
+  std::get<std::optional<A::BwTimeInterval>>(attrs) = 512;
+  auto updated = store.get<SaiTamIntTraits>().setObject(key, attrs);
+  EXPECT_EQ(updated->adapterKey(), id);
+  EXPECT_EQ(saiApiTable->tamApi().getAttribute(id, A::BwTimeInterval{}), 512);
+}
+
+TEST_F(TamStoreTest, DistinctCsigTamBindings) {
+  SaiTamTraits::CreateAttributes first{
+      std::vector<sai_object_id_t>{},
+      std::vector<sai_int32_t>{SAI_TAM_BIND_POINT_TYPE_SWITCH},
+      std::vector<sai_object_id_t>{100}};
+  auto second = first;
+  std::get<SaiTamTraits::Attributes::IntObjectList>(second) =
+      std::vector<sai_object_id_t>{200};
+  auto firstId = saiApiTable->tamApi().create<SaiTamTraits>(first, 0);
+  auto secondId = saiApiTable->tamApi().create<SaiTamTraits>(second, 0);
+  SaiStore store(0);
+  store.reload();
+  auto a = store.get<SaiTamTraits>().get(first);
+  auto b = store.get<SaiTamTraits>().get(second);
+  ASSERT_NE(a, nullptr);
+  ASSERT_NE(b, nullptr);
+  EXPECT_EQ(a->adapterKey(), firstId);
+  EXPECT_EQ(b->adapterKey(), secondId);
+  EXPECT_NE(a->adapterKey(), b->adapterKey());
+  EXPECT_EQ(
+      store.get<SaiTamTraits>().setObject(first, first)->adapterKey(), firstId);
+  EXPECT_EQ(
+      store.get<SaiTamTraits>().setObject(second, second)->adapterKey(),
+      secondId);
+}
+#endif

@@ -383,6 +383,80 @@ class TestRunTestsWarmboot:
         assert len(outputs) == 1
         mock_warm_setup.assert_not_called()
 
+    @pytest.mark.parametrize("category", ["known_bad", "unsupported"])
+    @pytest.mark.parametrize("pattern_prefix", [None, "", "warm_boot."])
+    @pytest.mark.parametrize("num_warmboot_iterations", [1, 3])
+    def test_exclusions_preserve_other_test_warmboots(
+        self,
+        runner,
+        mock_args,
+        tmp_path,
+        capsys,
+        category,
+        pattern_prefix,
+        num_warmboot_iterations,
+    ):
+        check_file = tmp_path / "can_warm_boot"
+        check_file.write_text("")
+        runner._get_warmboot_check_file = lambda: str(check_file)
+        args = self._make_args(mock_args, coldboot_only=False)
+        args.filter = None
+        args.profile = None
+        args.num_warmboot_iterations = num_warmboot_iterations
+        runner.args = args
+        patterns = [] if pattern_prefix is None else [pattern_prefix + r"HwT\.t$"]
+        setattr(runner, f"_{category}_test_regexes", patterns)
+        listed = b"HwT.\n  t\n  other\n"
+        filtered = b"HwT.\n  other\n" if pattern_prefix == "" else listed
+        conf = self._make_conf(tmp_path)
+
+        def run_outcome(conf_file, prefix, test, setup_warmboot, log_path):
+            return RunOutcome("", [GtestResult(prefix + test, GtestStatus.OK, 1)])
+
+        with (
+            patch(
+                "subprocess.check_output", side_effect=[listed, filtered]
+            ) as discovery,
+            patch.object(runner, "_run_test_guarded", side_effect=run_outcome) as run,
+            patch.object(runner, "_setup_coldboot_test") as cold_setup,
+            patch.object(runner, "_setup_warmboot_test") as warm_setup,
+        ):
+            selected = runner._get_tests_to_run()
+            results = runner._run_tests(selected, conf, args)
+
+        expected_filter = "HwT.other:" if pattern_prefix == "" else "HwT.t:HwT.other:"
+        assert (
+            discovery.call_args_list[1].args[0][-1]
+            == f"--gtest_filter={expected_filter}"
+        )
+        expected = [] if pattern_prefix == "" else ["cold_boot.HwT.t"]
+        warm_prefixes = (
+            ["warm_boot."]
+            if num_warmboot_iterations == 1
+            else [f"warm_boot.{i}." for i in range(num_warmboot_iterations)]
+        )
+        if pattern_prefix is None:
+            expected.extend(prefix + "HwT.t" for prefix in warm_prefixes)
+        expected.append("cold_boot.HwT.other")
+        expected.extend(prefix + "HwT.other" for prefix in warm_prefixes)
+        assert [result.test_name for result in results] == expected
+        assert cold_setup.call_count == len(selected)
+        expected_warmboots = num_warmboot_iterations * (
+            2 if pattern_prefix is None else 1
+        )
+        assert warm_setup.call_count == expected_warmboots
+        cold_calls = [
+            call for call in run.call_args_list if call.args[1] == "cold_boot."
+        ]
+        assert [(call.args[2], call.args[3]) for call in cold_calls] == (
+            [("HwT.other", True)]
+            if pattern_prefix == ""
+            else [("HwT.t", pattern_prefix is None), ("HwT.other", True)]
+        )
+        if pattern_prefix is not None:
+            label = "known bad" if category == "known_bad" else "unsupported"
+            assert f"SKIPPING ({label})" in capsys.readouterr().out
+
     def test_warmboot_skipped_when_check_file_missing(
         self, runner, mock_args, tmp_path
     ):

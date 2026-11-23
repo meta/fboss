@@ -20,6 +20,10 @@ using folly::to;
 namespace {
 std::map<int32_t, std::pair<std::string, std::size_t>> _SwitchMap{
     SAI_ATTR_MAP(Switch, InitSwitch),
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    SAI_ATTR_MAP(Switch, MaxCsigTimers),
+    SAI_ATTR_MAP(Switch, CsigBwTimeIntervalInUsec),
+#endif
     SAI_ATTR_MAP(Switch, HwInfo),
     SAI_ATTR_MAP(Switch, SrcMac),
     SAI_ATTR_MAP(Switch, SwitchShellEnable),
@@ -97,6 +101,8 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _SwitchMap{
     SAI_ATTR_MAP(Switch, CreditWdTimer),
 #endif
     SAI_ATTR_MAP(Switch, PfcDlrPacketAction),
+    SAI_ATTR_MAP(Switch, VxlanDefaultPort),
+    SAI_ATTR_MAP(Switch, VxlanDefaultRouterMac),
 #if SAI_API_VERSION >= SAI_VERSION(1, 14, 0)
     SAI_ATTR_MAP(Switch, ArsProfile),
 #endif
@@ -186,10 +192,12 @@ void handleExtensionAttributes() {
   SAI_EXT_ATTR_MAP(Switch, AclDropSnoopDisabled);
   SAI_EXT_ATTR_MAP(Switch, PacketDropTypeIngressList);
   SAI_EXT_ATTR_MAP(Switch, PacketDropTypeEgressList);
+  SAI_EXT_ATTR_MAP(Switch, DropReasonList);
+  SAI_EXT_ATTR_MAP(Switch, StaticFdbReplaceDynamic);
 #if defined(BRCM_SAI_SDK_XGS_AND_DNX)
   SAI_EXT_ATTR_MAP(Switch, LocalSystemPortIdRangeList)
 #endif
-#if defined(SAI_BRCM_PAI_IMPL)
+#if defined(BRCM_PAI_SDK)
   SAI_EXT_ATTR_MAP(Switch, SyncLock)
   SAI_EXT_ATTR_MAP(Switch, SyncUnlock)
 #endif

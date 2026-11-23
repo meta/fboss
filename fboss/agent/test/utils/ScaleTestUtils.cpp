@@ -12,6 +12,9 @@
 #include "fboss/agent/AsicUtils.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 
+#include <algorithm>
+#include <limits>
+
 namespace facebook::fboss::utility {
 const int kMaxEcmpGroups = 5000;
 
@@ -55,6 +58,23 @@ uint32_t getMaxUcmpMembers(const std::vector<const HwAsic*>& asics) {
   return maxUcmpMembers;
 }
 
+// Binomial coefficient C(n, k). Returns 0 when k > n.
+uint64_t numDistinctEcmpGroups(size_t numPorts, size_t groupWidth) {
+  if (groupWidth > numPorts) {
+    return 0;
+  }
+  size_t k = std::min(groupWidth, numPorts - groupWidth);
+  // __int128 intermediate, clamped at uint64_t max to avoid wrapping.
+  __int128 result = 1;
+  for (size_t i = 0; i < k; ++i) {
+    result = result * (numPorts - i) / (i + 1);
+    if (result > std::numeric_limits<uint64_t>::max()) {
+      return std::numeric_limits<uint64_t>::max();
+    }
+  }
+  return static_cast<uint64_t>(result);
+}
+
 // Generate all possible combinations of k selections of the input
 // vector.
 // taken from fbcode/axon/common/coro_util.h
@@ -63,6 +83,9 @@ std::vector<std::vector<PortDescriptor>> genCombinations(
     size_t k,
     size_t max_combinations = kMaxEcmpGroups) {
   size_t n = inputs.size();
+  if (k == 0 || k > n) {
+    return {};
+  }
   std::vector<std::vector<PortDescriptor>> output;
   std::vector<bool> picked(n);
   std::fill(picked.begin(), picked.begin() + k, true);
@@ -93,6 +116,10 @@ std::vector<std::vector<PortDescriptor>> generateEcmpGroupScale(
   for (int i = minEcmpGroupSize; i <= maxEcmpGroupSize; i++) {
     currCombination =
         genCombinations(inputs, i, maxEcmpGroups - groupsGenerated);
+    if (currCombination.empty()) {
+      // Width i exceeds the port count; wider widths cannot help either.
+      break;
+    }
     if ((groupsGenerated + currCombination.size()) >= maxEcmpGroups) {
       int remainingGrp = maxEcmpGroups - groupsGenerated;
       allCombinations.insert(
@@ -105,7 +132,12 @@ std::vector<std::vector<PortDescriptor>> generateEcmpGroupScale(
     allCombinations.insert(
         allCombinations.end(), currCombination.begin(), currCombination.end());
   }
-  EXPECT_EQ(allCombinations.size(), maxEcmpGroups);
+  CHECK_EQ(allCombinations.size(), maxEcmpGroups)
+      << "Cannot build " << maxEcmpGroups << " distinct " << minEcmpGroupSize
+      << "-" << maxEcmpGroupSize << "-wide groups from " << inputs.size()
+      << " ports. C(" << inputs.size() << "," << maxEcmpGroupSize
+      << ")=" << numDistinctEcmpGroups(inputs.size(), maxEcmpGroupSize)
+      << " is the ceiling.";
   return allCombinations;
 }
 

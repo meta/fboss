@@ -33,6 +33,11 @@ class AgentVoqSwitchWithFabricPortsTest : public AgentVoqSwitchTest {
     return std::nullopt;
   }
 
+  std::vector<ProductionFeature> getProductionFeaturesVerified()
+      const override {
+    return {ProductionFeature::VOQ_SWITCH_WITH_FABRIC_PORTS};
+  }
+
  protected:
   void assertPortAndDrainState(cfg::SwitchDrainState expectDrainState) const {
     bool expectDrained =

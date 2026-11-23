@@ -56,6 +56,8 @@ class IPv6RouteAdvertiser {
       const folly::IPAddressV6& dstIP);
 
  private:
+  void stop();
+
   /*
    * All of the work is actually done by an IPv6RAImpl object.
    *

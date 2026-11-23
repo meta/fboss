@@ -235,7 +235,7 @@ TEST(Rib, Update) {
   config.interfaces()->resize(1);
   *config.interfaces()[0].intfID() = 1;
   *config.interfaces()[0].vlanID() = 1;
-  *config.interfaces()[0].routerID() = 0;
+  config.interfaces()[0].routerID() = 0;
   config.interfaces()[0].mac() = "00:02:00:00:00:01";
   config.interfaces()[0].ipAddresses()->resize(3);
   config.interfaces()[0].ipAddresses()[0] = "0.0.0.0/0";
@@ -379,7 +379,7 @@ TEST(RibToSwitchStateUpdater, Deduplication) {
   config.interfaces()->resize(1);
   *config.interfaces()[0].intfID() = 1;
   *config.interfaces()[0].vlanID() = 1;
-  *config.interfaces()[0].routerID() = vrfZero;
+  config.interfaces()[0].routerID() = vrfZero;
   config.interfaces()[0].mac() = "00:00:00:00:00:11";
   config.interfaces()[0].ipAddresses()->resize(2);
   config.interfaces()[0].ipAddresses()[0] = "10.120.70.44/31";

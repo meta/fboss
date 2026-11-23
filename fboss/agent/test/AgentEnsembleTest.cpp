@@ -23,6 +23,7 @@ char** argVec{nullptr};
 
 DECLARE_string(config);
 DECLARE_bool(disable_looped_fabric_ports);
+DECLARE_bool(verify_apply_oper_delta);
 DEFINE_bool(
     enable_sdk_dump,
     false,
@@ -63,6 +64,7 @@ void AgentEnsembleTest::setCmdLineFlagOverrides() const {
   FLAGS_hw_agent_connection_timeout_ms = 130000;
   // Link snapshots use a huge amount of logspace and aren't human-readable
   FLAGS_enable_snapshot_debugs = false;
+  FLAGS_verify_apply_oper_delta = true;
 }
 
 void AgentEnsembleTest::TearDown() {

@@ -5,3 +5,16 @@ oncall("fboss_agent")
 export_file(
     name = "meru800bia.sim.agent.materialized_JSON",
 )
+
+# Bootstrap agent configs for NetOS-Lite lab devices (neteng/distro/os).
+export_file(
+    name = "wedge100.agent.materialized_JSON",
+)
+
+export_file(
+    name = "wedge400.agent.materialized_JSON",
+)
+
+export_file(
+    name = "yamp.agent.materialized_JSON",
+)

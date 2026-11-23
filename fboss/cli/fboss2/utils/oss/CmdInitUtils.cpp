@@ -7,47 +7,34 @@
 #include <string>
 #include <vector>
 
+#include "fboss/cli/fboss2/CmdCompletion.h"
+#include "fboss/cli/fboss2/CmdSubcommands.h"
+
 namespace facebook::fboss::utils {
 
-namespace {
-// Walk the already-built CLI11 command tree following the tokens the user has
-// typed so far, then print the names of the sub-commands available at that
-// point (one per line). This is the OSS equivalent of internal FastCLI's
-// `__metadata` endpoint: the shell completion script queries the binary itself,
-// so completion is always in lockstep with the commands compiled into it.
-void printCompletions(
-    const CLI::App& app,
-    const std::vector<std::string>& typedPath) {
-  const CLI::App* current = &app;
-  for (const auto& token : typedPath) {
-    const CLI::App* next = nullptr;
-    for (const auto* sub : current->get_subcommands(nullptr)) {
-      if (sub->get_name() == token) {
-        next = sub;
-        break;
-      }
-    }
-    // Token doesn't resolve to a known sub-command (e.g. it's a positional arg
-    // or a partial word); nothing further to complete.
-    if (next == nullptr) {
-      return;
-    }
-    current = next;
-  }
-  for (const auto* sub : current->get_subcommands(nullptr)) {
-    std::cout << sub->get_name() << "\n";
-  }
-}
-} // namespace
-
+// Hidden `fboss2 __completion <word>...` entry point used by the shell
+// completion script (fboss/oss/scripts/fboss2_completion.bash): the words are
+// the command line typed so far, the last one being the word under the
+// cursor. Prints the candidate completions one per line and exits. This is
+// the OSS equivalent of internal FastCLI's `__metadata` endpoint: the shell
+// asks the binary itself, so completion never goes stale as commands are
+// added.
 void postAppInit(int argc, char* argv[], CLI::App& app) {
   if (argc >= 2 && std::string(argv[1]) == "__completion") {
-    std::vector<std::string> typedPath;
+    std::vector<std::string> words;
     for (int i = 2; i < argc; ++i) {
-      typedPath.emplace_back(argv[i]);
+      words.emplace_back(argv[i]);
     }
-    printCompletions(app, typedPath);
-    std::exit(0);
+    if (words.empty()) {
+      words.emplace_back();
+    }
+    for (const auto& candidate :
+         completeCommandLine(app, *CmdSubcommands::getInstance(), words)) {
+      std::cout << candidate << "\n";
+    }
+    // Single-threaded here: nothing has been parsed yet and no client or
+    // thread has been started, so exiting is safe.
+    std::exit(0); // NOLINT(concurrency-mt-unsafe)
   }
 }
 

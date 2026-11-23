@@ -50,6 +50,8 @@ class AclTableGroupStoreTest : public SaiStoreTest {
             true, // dstIpv6
             std::nullopt, // dstIpv6Word3
             std::nullopt, // dstIpv6Word2
+            std::nullopt, // dstIpv6Word1
+            std::nullopt, // dstIpv6Word0
             true, // srcIpv4
             true, // dstIpv4
             true, // l4SrcPort

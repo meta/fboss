@@ -27,7 +27,11 @@ namespace facebook::fboss {
 class LedEnsemble {
  public:
   void init();
-  ~LedEnsemble() {}
+  ~LedEnsemble() {
+    if (ledManager_) {
+      ledManager_->stop();
+    }
+  }
 
   LedManager* getLedManager();
   const LedManager* getLedManager() const {

@@ -322,46 +322,6 @@ class PortState : public BaseObjectArgType<std::string> {
   }
 };
 
-class FanPwm : public BaseObjectArgType<std::string> {
- public:
-  /* implicit */ FanPwm(std::vector<std::string> v) : BaseObjectArgType(v) {
-    if (v.empty()) {
-      throw std::runtime_error(
-          "Incomplete command, expecting 'fanhold <disable>|0|1|..|100'");
-    }
-    if (v.size() != 1) {
-      throw std::runtime_error(
-          folly::to<std::string>(
-              "Unexpected fanhold '",
-              folly::join<std::string, std::vector<std::string>>(" ", v),
-              "', expecting 'disable|0|1|...|100'"));
-    }
-
-    pwm = getPwm(v[0]);
-  }
-  std::optional<int> pwm;
-  const static ObjectArgTypeId id = ObjectArgTypeId::OBJECT_ARG_TYPE_FAN_PWM;
-
- private:
-  std::optional<int> getPwm(std::string& v) {
-    auto state = boost::to_upper_copy(v);
-    if (state == "DISABLE") {
-      return std::nullopt;
-    }
-    auto asint = folly::tryTo<int>(state);
-    if (asint.hasValue()) {
-      int value = asint.value();
-      if (value >= 0 && value <= 100) {
-        return value;
-      }
-    }
-
-    throw std::runtime_error(
-        folly::to<std::string>(
-            "Unexpected fanhold '", v, "', expecting 'disable|0|1|...|100'"));
-  }
-};
-
 class LinkDirection : public BaseObjectArgType<std::string> {
  public:
   /* implicit */ LinkDirection(std::vector<std::string> v) {

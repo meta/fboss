@@ -57,10 +57,8 @@ class SaiVirtualChannelManager {
   SaiVirtualChannelManager(SaiStore* saiStore, const SaiPlatform* platform);
 
   // Brings the port's virtual channels in line with swPort. Handles creation,
-  // update and removal, so callers do not need to distinguish them. oldPort is
-  // null when the port is being created.
+  // update and removal, so callers do not need to distinguish them.
   void programVirtualChannels(
-      const std::shared_ptr<Port>& oldPort,
       const std::shared_ptr<Port>& swPort,
       PortSaiId portSaiId);
 
@@ -80,10 +78,6 @@ class SaiVirtualChannelManager {
 #if defined(SAI_CBFC_SUPPORTED)
   std::shared_ptr<SaiCbfcCreditProfile> getOrCreateCreditProfile(
       int64_t reservedCreditSize);
-  void programSender(
-      const std::shared_ptr<Port>& oldPort,
-      const std::shared_ptr<Port>& swPort,
-      PortSaiId portSaiId);
 
   folly::F14FastMap<PortID, SaiVirtualChannelHandle> handles_;
 #endif

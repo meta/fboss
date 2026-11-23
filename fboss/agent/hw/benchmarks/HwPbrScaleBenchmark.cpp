@@ -10,7 +10,9 @@
 
 #include <fmt/core.h>
 #include <folly/Benchmark.h>
+#include <folly/IPAddress.h>
 #include <algorithm>
+#include <map>
 #include "fboss/agent/AddressUtil.h"
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/HwAsicTable.h"
@@ -21,7 +23,9 @@
 #include "fboss/agent/if/gen-cpp2/common_types.h"
 #include "fboss/agent/if/gen-cpp2/ctrl_types.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
+#include "fboss/agent/state/AclEntry.h"
 #include "fboss/agent/state/AclMap.h"
+#include "fboss/agent/state/MatchAction.h"
 #include "fboss/agent/state/RouteNextHop.h"
 #include "fboss/agent/state/RouteNextHopEntry.h"
 #include "fboss/agent/state/SwitchState.h"
@@ -29,23 +33,40 @@
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/utils/AclTestUtils.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
+#include "fboss/agent/test/utils/Srv6TestUtils.h"
 
 DEFINE_int32(
     pbr_policy_scale,
     100,
     "Number of PBR class-based policies to program before collecting stats");
 
+DEFINE_int32(
+    pbr_mbb_policy_scale,
+    133,
+    "Number of PBR class-based policies whose NHGs all change in one update");
+
 namespace facebook::fboss {
 
 namespace {
 
 constexpr int kClassesPerPolicy = 4;
+constexpr int kMbbClassesPerPolicy = 3;
 constexpr int kMembersPerNhg = 2;
 constexpr int kMaxNexthops = 64;
 constexpr int kStatsCollectionIterations = 100;
+constexpr auto kSrv6TunnelId = "srv6Tunnel0";
+
+folly::IPAddressV6 makeSid(int index) {
+  return folly::IPAddressV6(
+      fmt::format("3001:db8:{:x}:{:x}::", (index >> 8) + 1, index & 0xFF));
+}
 
 std::string makeNhgName(int index) {
   return fmt::format("pbrNhg{:05d}", index);
+}
+
+std::string makeClassNhgName(int index) {
+  return fmt::format("pbrClassNhg{:05d}", index);
 }
 
 std::string makePolicyName(int index) {
@@ -55,24 +76,29 @@ std::string makePolicyName(int index) {
 std::vector<RouteNextHopSet> makeDistinctNhgSets(
     const utility::EcmpSetupAnyNPorts6& ecmpHelper,
     int numNhops,
-    int count) {
+    int count,
+    int firstGroup = 0) {
   std::vector<RouteNextHopSet> sets;
   sets.reserve(count);
-  auto done = [&]() { return static_cast<int>(sets.size()) == count; };
-  for (int first = 0; first < numNhops && !done(); ++first) {
-    for (int second = first + 1; second < numNhops && !done(); ++second) {
-      std::vector<ResolvedNextHop> members;
-      members.reserve(kMembersPerNhg);
-      for (auto index : {first, second}) {
-        const auto& nhop = ecmpHelper.nhop(index);
-        members.emplace_back(folly::IPAddress(nhop.ip), nhop.intf, ECMP_WEIGHT);
-      }
-      sets.emplace_back(members.begin(), members.end());
+  for (int group = firstGroup; group < firstGroup + count; ++group) {
+    std::vector<UnresolvedNextHop> members;
+    members.reserve(kMembersPerNhg);
+    for (int member = 0; member < kMembersPerNhg; ++member) {
+      auto globalIndex = group * kMembersPerNhg + member;
+      const auto& nhop = ecmpHelper.nhop(globalIndex % numNhops);
+      members.emplace_back(
+          folly::IPAddress(nhop.ip),
+          ECMP_WEIGHT,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::nullopt,
+          std::vector<folly::IPAddressV6>{makeSid(globalIndex)},
+          TunnelType::SRV6_ENCAP,
+          std::string(kSrv6TunnelId));
     }
+    sets.emplace_back(members.begin(), members.end());
   }
-  CHECK_EQ(static_cast<int>(sets.size()), count)
-      << "only " << numNhops << " next hops: cannot build " << count
-      << " distinct " << kMembersPerNhg << "-member groups";
   return sets;
 }
 
@@ -105,10 +131,9 @@ std::vector<ClassBasedPolicy> makePbrPolicy(int numPolicies) {
     ClassBasedPolicy policy;
     policy.name() = makePolicyName(i);
     policy.defaultNexthopGroup() = makeNhgName(i);
-    NextHopGroup redirectGroup;
-    redirectGroup.name() = makeNhgName((i + 1) % numPolicies);
+    const auto redirectGroup = makeNhgName((i + 1) % numPolicies);
     for (int tc = 1; tc <= kClassesPerPolicy; ++tc) {
-      policy.class2NextHopGroup()[static_cast<ForwardingClass>(tc)] =
+      policy.class2NamedNextHopGroup()[static_cast<ForwardingClass>(tc)] =
           redirectGroup;
     }
     policies.push_back(std::move(policy));
@@ -116,11 +141,82 @@ std::vector<ClassBasedPolicy> makePbrPolicy(int numPolicies) {
   return policies;
 }
 
+std::vector<std::pair<std::string, RouteNextHopSet>> makeMbbNhgs(
+    std::vector<RouteNextHopSet> sets,
+    int numPolicies) {
+  CHECK_EQ(sets.size(), static_cast<size_t>(2 * numPolicies));
+  std::vector<std::pair<std::string, RouteNextHopSet>> groups;
+  groups.reserve(sets.size());
+  for (int i = 0; i < numPolicies; ++i) {
+    groups.emplace_back(makeNhgName(i), std::move(sets[i]));
+    groups.emplace_back(makeClassNhgName(i), std::move(sets[numPolicies + i]));
+  }
+  return groups;
+}
+
+std::vector<ClassBasedPolicy> makeMbbPolicies(int numPolicies) {
+  std::vector<ClassBasedPolicy> policies;
+  policies.reserve(numPolicies);
+  for (int i = 0; i < numPolicies; ++i) {
+    ClassBasedPolicy policy;
+    policy.name() = makePolicyName(i);
+    policy.defaultNexthopGroup() = makeNhgName(i);
+    for (int tc = 1; tc <= kMbbClassesPerPolicy; ++tc) {
+      policy.class2NamedNextHopGroup()[static_cast<ForwardingClass>(tc)] =
+          makeClassNhgName((i + tc - 1) % numPolicies);
+    }
+    policies.push_back(std::move(policy));
+  }
+  return policies;
+}
+
+std::map<std::string, int64_t> pbrMatchIds(const AgentEnsemble& ensemble) {
+  std::map<std::string, int64_t> ids;
+  auto acls = ensemble.getSw()->getState()->getAclsForTable(
+      cfg::AclStage::INGRESS,
+      cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE());
+  if (!acls) {
+    return ids;
+  }
+  for (const auto& [name, entry] : std::as_const(*acls)) {
+    ids.emplace(name, entry->getNextHopGroupId().value());
+  }
+  return ids;
+}
+
 size_t programmedPbrEntries(const AgentEnsemble& ensemble) {
   auto acls = ensemble.getSw()->getState()->getAclsForTable(
       cfg::AclStage::INGRESS,
       cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE());
   return acls ? acls->size() : 0;
+}
+
+size_t pbrEntriesCountingPacketsAndBytes(const AgentEnsemble& ensemble) {
+  auto acls = ensemble.getSw()->getState()->getAclsForTable(
+      cfg::AclStage::INGRESS,
+      cfg::switch_config_constants::DEFAULT_PBR_ACL_TABLE());
+  if (!acls) {
+    return 0;
+  }
+  size_t counted = 0;
+  for (const auto& [_, entry] : std::as_const(*acls)) {
+    auto aclAction = entry->getAclAction();
+    if (!aclAction) {
+      continue;
+    }
+    auto counter =
+        MatchAction::fromThrift(aclAction->toThrift()).getTrafficCounter();
+    if (!counter) {
+      continue;
+    }
+    const auto& types = *counter->types();
+    if (std::count(types.begin(), types.end(), cfg::CounterType::PACKETS) ==
+            1 &&
+        std::count(types.begin(), types.end(), cfg::CounterType::BYTES) == 1) {
+      ++counted;
+    }
+  }
+  return counted;
 }
 
 AgentEnsembleSwitchConfigFn makePbrConfigFn() {
@@ -136,34 +232,72 @@ AgentEnsembleSwitchConfigFn makePbrConfigFn() {
         {cfg::AclTableActionType::COUNTER, cfg::AclTableActionType::REDIRECT},
         {cfg::AclTableQualifier::TC,
          cfg::AclTableQualifier::NEXT_HOP_GROUP_ID});
+    cfg.srv6Tunnels() = {utility::makeSrv6TunnelConfig(
+        kSrv6TunnelId, InterfaceID(cfg.interfaces()[0].intfID().value()))};
     return cfg;
   };
 }
 
-void pbrAclStatsCollectionBenchmark(int numPolicies) {
-  folly::BenchmarkSuspender suspender;
-
+std::unique_ptr<AgentEnsemble> createPbrEnsemble() {
   FLAGS_enable_nexthop_id_manager = true;
   FLAGS_enable_stats_update_thread = false;
+  FLAGS_enable_pbr_acl_resource_protection = false;
 
   auto ensemble =
       createAgentEnsemble(makePbrConfigFn(), false /*disableLinkStateToggler*/);
   ensemble->stopStatsThread();
+  return ensemble;
+}
 
-  if (!ensemble->getSw()->getHwAsicTable()->isFeatureSupportedOnAllAsic(
-          HwAsic::Feature::PBR_ACL)) {
+bool pbrAclSupported(const AgentEnsemble& ensemble) {
+  return ensemble.getSw()->getHwAsicTable()->isFeatureSupportedOnAllAsic(
+      HwAsic::Feature::PBR_ACL);
+}
+
+int resolvePbrNextHops(
+    AgentEnsemble& ensemble,
+    const utility::EcmpSetupAnyNPorts6& ecmpHelper) {
+  auto numNhops =
+      std::min(static_cast<int>(ecmpHelper.getNextHops().size()), kMaxNexthops);
+  CHECK_GT(numNhops, 0);
+  ensemble.applyNewState([&](const std::shared_ptr<SwitchState>& in) {
+    return ecmpHelper.resolveNextHops(in, numNhops);
+  });
+  return numNhops;
+}
+
+void addOrUpdateNamedNhgs(
+    AgentEnsemble& ensemble,
+    const std::vector<std::pair<std::string, RouteNextHopSet>>& groups) {
+  ensemble.getSw()->getRib()->addOrUpdateNamedNextHopGroups(
+      ensemble.getSw()->getScopeResolver(),
+      groups,
+      createRibToSwitchStateFunction(),
+      ensemble.getSw());
+}
+
+void programPbrPolicies(
+    AgentEnsemble& ensemble,
+    const std::vector<std::pair<std::string, RouteNextHopSet>>& groups,
+    const std::vector<ClassBasedPolicy>& policies) {
+  addOrUpdateNamedNhgs(ensemble, groups);
+  ensemble.getSw()->getRib()->addOrUpdatePolicies(
+      policies,
+      createNextHopIdStateUpdate(ensemble.getSw(), "addOrUpdatePolicies"));
+  bindRoutesToPolicies(ensemble, static_cast<int>(policies.size()));
+}
+
+void pbrAclStatsCollectionBenchmark(int numPolicies) {
+  folly::BenchmarkSuspender suspender;
+  auto ensemble = createPbrEnsemble();
+  if (!pbrAclSupported(*ensemble)) {
     return;
   }
 
   utility::EcmpSetupAnyNPorts6 ecmpHelper(
       ensemble->getSw()->getState(),
       ensemble->getSw()->needL2EntryForNeighbor());
-  auto numNhops =
-      std::min(static_cast<int>(ecmpHelper.getNextHops().size()), kMaxNexthops);
-  CHECK_GT(numNhops, 0);
-  ensemble->applyNewState([&](const std::shared_ptr<SwitchState>& in) {
-    return ecmpHelper.resolveNextHops(in, numNhops);
-  });
+  auto numNhops = resolvePbrNextHops(*ensemble, ecmpHelper);
 
   if (numPolicies > 0) {
     auto nhgSets = makeDistinctNhgSets(ecmpHelper, numNhops, numPolicies);
@@ -172,20 +306,13 @@ void pbrAclStatsCollectionBenchmark(int numPolicies) {
     for (int i = 0; i < numPolicies; ++i) {
       groups.emplace_back(makeNhgName(i), std::move(nhgSets[i]));
     }
-    ensemble->getSw()->getRib()->addOrUpdateNamedNextHopGroups(
-        ensemble->getSw()->getScopeResolver(),
-        groups,
-        createRibToSwitchStateFunction(),
-        ensemble->getSw());
-
-    ensemble->getSw()->getRib()->addOrUpdatePolicies(
-        makePbrPolicy(numPolicies),
-        createNextHopIdStateUpdate(ensemble->getSw(), "addOrUpdatePolicies"));
-
-    bindRoutesToPolicies(*ensemble, numPolicies);
+    programPbrPolicies(*ensemble, groups, makePbrPolicy(numPolicies));
   }
   CHECK_EQ(
       programmedPbrEntries(*ensemble),
+      static_cast<size_t>(kClassesPerPolicy * numPolicies));
+  CHECK_EQ(
+      pbrEntriesCountingPacketsAndBytes(*ensemble),
       static_cast<size_t>(kClassesPerPolicy * numPolicies));
   suspender.dismiss();
   for (int i = 0; i < kStatsCollectionIterations; ++i) {
@@ -194,10 +321,50 @@ void pbrAclStatsCollectionBenchmark(int numPolicies) {
   suspender.rehire();
 }
 
+void pbrAclMakeBeforeBreakBenchmark(int numPolicies) {
+  folly::BenchmarkSuspender suspender;
+  auto ensemble = createPbrEnsemble();
+  if (!pbrAclSupported(*ensemble)) {
+    return;
+  }
+
+  utility::EcmpSetupAnyNPorts6 ecmpHelper(
+      ensemble->getSw()->getState(),
+      ensemble->getSw()->needL2EntryForNeighbor());
+  auto numNhops = resolvePbrNextHops(*ensemble, ecmpHelper);
+  auto numGroups = 2 * numPolicies;
+  programPbrPolicies(
+      *ensemble,
+      makeMbbNhgs(
+          makeDistinctNhgSets(ecmpHelper, numNhops, numGroups), numPolicies),
+      makeMbbPolicies(numPolicies));
+  const auto numEntries =
+      static_cast<size_t>(kMbbClassesPerPolicy * numPolicies);
+  CHECK_EQ(programmedPbrEntries(*ensemble), numEntries);
+
+  auto oldMatchIds = pbrMatchIds(*ensemble);
+  auto updatedGroups = makeMbbNhgs(
+      makeDistinctNhgSets(
+          ecmpHelper, numNhops, numGroups, numGroups /*firstGroup*/),
+      numPolicies);
+  suspender.dismiss();
+  addOrUpdateNamedNhgs(*ensemble, updatedGroups);
+  suspender.rehire();
+
+  CHECK_EQ(programmedPbrEntries(*ensemble), numEntries);
+  for (const auto& [name, id] : pbrMatchIds(*ensemble)) {
+    CHECK_NE(id, oldMatchIds.at(name)) << name;
+  }
+}
+
 } // namespace
 
 BENCHMARK(HwPbrAclStatsCollectionBenchmark) {
   pbrAclStatsCollectionBenchmark(FLAGS_pbr_policy_scale);
+}
+
+BENCHMARK(HwPbrAclMakeBeforeBreakBenchmark) {
+  pbrAclMakeBeforeBreakBenchmark(FLAGS_pbr_mbb_policy_scale);
 }
 
 } // namespace facebook::fboss

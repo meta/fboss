@@ -166,6 +166,7 @@ uint16_t uplinksCountFromSwitch(PlatformType mode) {
     case PM::PLATFORM_ICECUBE800BC:
     case PM::PLATFORM_ICETEA800BC:
     case PM::PLATFORM_MONTBLANC:
+    case PM::PLATFORM_M4061NHP:
     case PM::PLATFORM_M4062NHP:
     case PM::PLATFORM_M5120CSC:
       return 4;
@@ -195,6 +196,7 @@ cfg::PortSpeed getPortSpeed(PlatformType platformType) {
       portSpeed = cfg::PortSpeed::TWOHUNDREDG;
       break;
     case PlatformType::PLATFORM_MONTBLANC:
+    case PlatformType::PLATFORM_M4061NHP:
       portSpeed = cfg::PortSpeed::FOURHUNDREDG;
       break;
     case PlatformType::PLATFORM_MINIPACK3N:

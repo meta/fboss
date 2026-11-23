@@ -29,7 +29,7 @@ fbcode/fboss/agent/hw/sai/api/fake/FakeSaiExtensions.cpp
 fbcode/fboss/agent/hw/sai/api/fake/saifakeextensions.h
 
 4. Run the SAI store and api tests for the changed APIs, for example:
-```
+```bash
 buck test fbcode//fboss/agent/hw/sai/store/tests:buffer_store_test-fake fbcode//fboss/agent/hw/sai/api/tests:buffer_api_test-fake
 ```
 

@@ -21,9 +21,9 @@ cpp_library(
     labels = ["autodeps2_generated"],
     deps = [
         "fbsource//third-party/fmt:fmt",
+        "fbsource//xplat/folly:string",
         "//fboss/cli/fboss2:table-utils",
         "//fboss/qsfp_service/if:qsfp-cpp2-services",
-        "//folly:string",
     ],
     exported_deps = [
         "//fboss/cli/fboss2:cmd-handler",

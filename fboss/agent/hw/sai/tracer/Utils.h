@@ -166,6 +166,22 @@ void u32ListAttr(
     std::vector<std::string>& attrLines,
     bool logEntry = true);
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+void u16ListAttr(
+    const sai_attribute_t* attr_list,
+    int i,
+    uint32_t listIndex,
+    std::vector<std::string>& attrLines,
+    bool logEntry = true);
+
+void u64RangeListAttr(
+    const sai_attribute_t* attr_list,
+    int i,
+    uint32_t listIndex,
+    std::vector<std::string>& attrLines,
+    bool logEntry = true);
+#endif
+
 void segmentListAttr(
     const sai_attribute_t* attr_list,
     int i,

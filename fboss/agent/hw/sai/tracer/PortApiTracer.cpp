@@ -43,6 +43,10 @@ std::map<int32_t, std::pair<std::string, std::size_t>> _PortMap{
     SAI_ATTR_MAP(Port, InterfaceType),
     SAI_ATTR_MAP(Port, PktTxEnable),
     SAI_ATTR_MAP(Port, TamObject),
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    SAI_ATTR_MAP(Port, IntDelete),
+    SAI_ATTR_MAP(Port, IntMetadata),
+#endif
     SAI_ATTR_MAP(Port, SerdesId),
     SAI_ATTR_MAP(Port, IngressMirrorSession),
     SAI_ATTR_MAP(Port, EgressMirrorSession),
@@ -252,6 +256,7 @@ void handleExtensionAttributes() {
   SAI_EXT_ATTR_MAP(Port, LinkDownDebouncePeriodMs)
   SAI_EXT_ATTR_MAP(Port, LinkUpDebounceRetriggerCount)
   SAI_EXT_ATTR_MAP(Port, LinkDownDebounceRetriggerCount)
+  SAI_EXT_ATTR_MAP(Port, CbfcReceiverCreditLimit)
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 3)
   SAI_EXT_ATTR_MAP(Port, ExtOperStatusLatch)
 #endif
@@ -280,6 +285,9 @@ void handleExtensionAttributes() {
 #endif
 #if SAI_API_VERSION >= SAI_VERSION(1, 16, 0) && defined(BRCM_SAI_SDK_XGS)
   SAI_EXT_ATTR_MAP(Port, ArsLinkState)
+#endif
+#if defined(BRCM_PAI_SDK)
+  SAI_EXT_ATTR_MAP(PortSerdes, RxReach)
 #endif
   SAI_EXT_ATTR_MAP(Port, IsHyperPortMember)
   SAI_EXT_ATTR_MAP(Port, HyperPortMemberList)

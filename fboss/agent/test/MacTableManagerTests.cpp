@@ -15,15 +15,23 @@
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/ApplyThriftConfig.h"
 #include "fboss/agent/L2Entry.h"
+#include "fboss/agent/MacTableManager.h"
+#include "fboss/agent/MacTableUtils.h"
+#include "fboss/agent/NeighborUpdater.h"
 #include "fboss/agent/ResourceAccountant.h"
+#include "fboss/agent/SwitchStats.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/agent/state/ArpTable.h"
+#include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/MacEntry.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/state/Vlan.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/TestUtils.h"
 
+#include <fb303/ThreadCachedServiceData.h>
 #include <folly/MacAddress.h>
+#include <folly/synchronization/Baton.h>
 
 namespace facebook::fboss {
 
@@ -126,6 +134,48 @@ class MacTableManagerTest : public ::testing::Test {
 
   SwSwitch* getSw() {
     return sw_;
+  }
+
+  void enablePortWithMacLimit(int32_t limit) {
+    sw_->updateStateBlocking(
+        "enable port with MAC limit", [this, limit](const auto& state) {
+          auto newState = state->clone();
+          utility::getFirstNodeIf(newState->getSwitchSettings())
+              ->modify(&newState)
+              ->setMaxL2EntriesPerPort(limit);
+          newState->getPorts()
+              ->getNodeIf(kPortID())
+              ->modify(&newState)
+              ->setAdminState(cfg::PortState::ENABLED);
+          return newState;
+        });
+  }
+
+  std::shared_ptr<Port> getPort() const {
+    return sw_->getState()->getPorts()->getNodeIf(kPortID());
+  }
+
+  uint32_t dynamicMacsOnPort() const {
+    uint32_t count{0};
+    for (const auto& [_, macEntry] : std::as_const(
+             *sw_->getState()->getVlans()->getNode(kVlan())->getMacTable())) {
+      if (macEntry->getPort() == PortDescriptor(kPortID()) &&
+          macEntry->getType() == MacEntryType::DYNAMIC_ENTRY) {
+        ++count;
+      }
+    }
+    return count;
+  }
+
+  // TLTimeseries values are buffered per-thread; flush before reading.
+  int64_t errorDisables() const {
+    fb303::ThreadCachedServiceData::get()->publishStats();
+    return sw_->stats()->getL2LearnPortLimitErrorDisables();
+  }
+
+  int64_t limitDrops() const {
+    fb303::ThreadCachedServiceData::get()->publishStats();
+    return sw_->stats()->getL2LearnPortLimitDrops();
   }
 
  private:
@@ -263,6 +313,209 @@ TEST_F(MacTableManagerTest, MacLearnedBulkCb) {
   deleted += batchSize;
   // expect 70 mac entries in switchState and resourceAccountant
   verifyMacEntryCount(getSw()->getResourceAccountant()->l2Entries_);
+}
+
+TEST_F(MacTableManagerTest, MacLimitErrorDisablesPort) {
+  const MacAddress kNbrStatic{"02:00:00:00:00:10"};
+  const MacAddress kConfiguredStatic{"02:00:00:00:00:11"};
+  enablePortWithMacLimit(2);
+  getSw()->updateStateBlocking("add static MACs", [=, this](const auto& state) {
+    auto newState = MacTableUtils::updateOrAddStaticEntry(
+        state, PortDescriptor(kPortID()), kVlan(), kNbrStatic);
+    return MacTableUtils::updateOrAddStaticEntry(
+        newState, PortDescriptor(kPortID()), kVlan(), kConfiguredStatic, true);
+  });
+  const auto errorDisablesBefore = errorDisables();
+
+  // Queued together, so none is committed when the next one is received.
+  triggerMacBulkLearnedCb(
+      {MacAddress("02:00:00:00:00:01"),
+       MacAddress("02:00:00:00:00:02"),
+       MacAddress("02:00:00:00:00:03")});
+
+  EXPECT_EQ(getPort()->getAdminState(), cfg::PortState::DISABLED);
+  EXPECT_TRUE(getPort()->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED));
+  EXPECT_EQ(dynamicMacsOnPort(), 0);
+  auto macTable =
+      getSw()->getState()->getVlans()->getNode(kVlan())->getMacTable();
+  EXPECT_EQ(macTable->getMacIf(kNbrStatic), nullptr);
+  EXPECT_NE(macTable->getMacIf(kConfiguredStatic), nullptr);
+  EXPECT_EQ(errorDisables() - errorDisablesBefore, 1);
+}
+
+TEST_F(MacTableManagerTest, MacLimitDropsLearnsOnErrorDisabledPort) {
+  enablePortWithMacLimit(1);
+  triggerMacBulkLearnedCb(
+      {MacAddress("02:00:00:00:00:01"), MacAddress("02:00:00:00:00:02")});
+  ASSERT_TRUE(getPort()->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED));
+  const auto dropsBefore = limitDrops();
+
+  triggerMacBulkLearnedCb({MacAddress("02:00:00:00:00:03")});
+
+  EXPECT_EQ(dynamicMacsOnPort(), 0);
+  EXPECT_EQ(limitDrops() - dropsBefore, 1);
+}
+
+TEST_F(MacTableManagerTest, MacLimitIgnoresRelearnOfKnownMac) {
+  const MacAddress kMac1{"02:00:00:00:00:01"};
+  enablePortWithMacLimit(2);
+  triggerMacBulkLearnedCb({kMac1, MacAddress("02:00:00:00:00:02")});
+
+  triggerMacBulkLearnedCb({kMac1});
+
+  EXPECT_EQ(getPort()->getAdminState(), cfg::PortState::ENABLED);
+  EXPECT_FALSE(
+      getPort()->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED));
+  EXPECT_EQ(dynamicMacsOnPort(), 2);
+}
+
+TEST_F(MacTableManagerTest, MacLimitAgedMacFreesRoomForNewMac) {
+  const MacAddress kMac1{"02:00:00:00:00:01"};
+  enablePortWithMacLimit(2);
+  triggerMacBulkLearnedCb({kMac1, MacAddress("02:00:00:00:00:02")});
+
+  triggerMacBulkAgedCb({kMac1});
+  triggerMacBulkLearnedCb({MacAddress("02:00:00:00:00:03")});
+
+  EXPECT_EQ(getPort()->getAdminState(), cfg::PortState::ENABLED);
+  EXPECT_FALSE(
+      getPort()->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED));
+  EXPECT_EQ(dynamicMacsOnPort(), 2);
+}
+
+// SwSwitch::stop() destroys the manager before draining queued updates.
+TEST_F(MacTableManagerTest, QueuedLearnOutlivesManager) {
+  FLAGS_enable_hw_update_protection = false;
+  folly::Baton<> updateThreadBlocked;
+  folly::Baton<> releaseUpdateThread;
+  getSw()->getUpdateEvb()->runInFbossEventBaseThread([&] {
+    updateThreadBlocked.post();
+    releaseUpdateThread.wait();
+  });
+  updateThreadBlocked.wait();
+
+  auto manager = std::make_unique<MacTableManager>(getSw());
+  manager->handleL2LearningUpdate(
+      L2Entry(
+          kMacAddress(),
+          kVlan(),
+          PortDescriptor(kPortID()),
+          L2Entry::L2EntryType::L2_ENTRY_TYPE_PENDING),
+      L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_ADD);
+  manager.reset();
+  releaseUpdateThread.post();
+  waitForStateUpdates(getSw());
+
+  verifyMacIsAdded();
+}
+
+class StaticMacForNeighborReaddTest : public MacTableManagerTest {
+ protected:
+  // Neighbor on port 1 with static MAC kNbrMac, plus a learned MAC on port 1.
+  void SetUp() override {
+    MacTableManagerTest::SetUp();
+    enablePortWithMacLimit(0);
+    getSw()->getNeighborUpdater()->receivedArpMineForIntf(
+        InterfaceID(1),
+        kNbrIp,
+        kNbrMac,
+        PortDescriptor(kPortID()),
+        ArpOpCode::ARP_OP_REPLY);
+    waitForNeighborUpdates();
+    triggerMacBulkLearnedCb({kLearned});
+    ASSERT_NE(getMac(kNbrMac), nullptr);
+    ASSERT_EQ(getMac(kNbrMac)->getType(), MacEntryType::STATIC_ENTRY);
+    ASSERT_NE(getArpEntry(), nullptr);
+  }
+
+  // HW reports the neighbor's static MAC as aged, so it is removed and the
+  // observer tries to re-add it.
+  void ageNeighborMac() {
+    getSw()->l2LearningUpdateReceived(
+        L2Entry(
+            kNbrMac,
+            kVlan(),
+            PortDescriptor(kPortID()),
+            L2Entry::L2EntryType::L2_ENTRY_TYPE_VALIDATED),
+        L2EntryUpdateType::L2_ENTRY_UPDATE_TYPE_DELETE);
+    waitForBackgroundThread(getSw());
+    waitForStateUpdates(getSw());
+    waitForNeighborUpdates();
+  }
+
+  void waitForNeighborUpdates() {
+    getSw()->getNeighborUpdater()->waitForPendingUpdates();
+    waitForStateUpdates(getSw());
+    getSw()->getNeighborUpdater()->waitForPendingUpdates();
+    waitForStateUpdates(getSw());
+  }
+
+  std::shared_ptr<MacEntry> getMac(folly::MacAddress mac) {
+    return getSw()
+        ->getState()
+        ->getVlans()
+        ->getNode(kVlan())
+        ->getMacTable()
+        ->getMacIf(mac);
+  }
+
+  std::shared_ptr<ArpEntry> getArpEntry() {
+    return getSw()
+        ->getState()
+        ->getInterfaces()
+        ->getNode(InterfaceID(1))
+        ->getArpTable()
+        ->getEntryIf(kNbrIp);
+  }
+
+  int64_t readdsRejected() {
+    fb303::ThreadCachedServiceData::get()->publishStats();
+    return getSw()->stats()->getNeighborStaticMacReaddRejected();
+  }
+
+  const folly::IPAddressV4 kNbrIp{"10.0.0.2"};
+  const MacAddress kNbrMac{"02:00:00:00:00:10"};
+  const MacAddress kLearned{"02:00:00:00:00:01"};
+  gflags::FlagSaver flagSaver_;
+};
+
+TEST_F(StaticMacForNeighborReaddTest, ReaddedWhenItFits) {
+  const auto rejectedBefore = readdsRejected();
+
+  ageNeighborMac();
+
+  ASSERT_NE(getMac(kNbrMac), nullptr);
+  EXPECT_EQ(getMac(kNbrMac)->getType(), MacEntryType::STATIC_ENTRY);
+  EXPECT_NE(getArpEntry(), nullptr);
+  EXPECT_EQ(readdsRejected() - rejectedBefore, 0);
+}
+
+TEST_F(StaticMacForNeighborReaddTest, OverPortLimitFlushesNeighbor) {
+  // Port 1 still has the learned MAC, so the neighbor's MAC no longer fits
+  enablePortWithMacLimit(1);
+  const auto rejectedBefore = readdsRejected();
+
+  ageNeighborMac();
+
+  EXPECT_EQ(getMac(kNbrMac), nullptr);
+  EXPECT_EQ(getArpEntry(), nullptr);
+  EXPECT_EQ(getPort()->getAdminState(), cfg::PortState::ENABLED);
+  EXPECT_EQ(readdsRejected() - rejectedBefore, 1);
+}
+
+TEST_F(
+    StaticMacForNeighborReaddTest,
+    RejectedByResourceAccountantFlushesNeighbor) {
+  // The learned MAC alone fills the table once the neighbor's MAC is removed
+  FLAGS_max_l2_entries = 1;
+  const auto rejectedBefore = readdsRejected();
+
+  ageNeighborMac();
+
+  EXPECT_EQ(getMac(kNbrMac), nullptr);
+  EXPECT_EQ(getArpEntry(), nullptr);
+  EXPECT_NE(getMac(kLearned), nullptr);
+  EXPECT_EQ(readdsRejected() - rejectedBefore, 1);
 }
 
 /*

@@ -38,8 +38,8 @@ specifications linked above is not met.
 
 BSP Tests use the `platform_manager.json` file to know which devices to test,
 but some additional information needs to be provided to the `bsp_tests.json`
-configuration file. More details can be found in the [thrift file](https://github.com/facebook/fboss/blob/main/fboss/platform/bsp_tests/bsp_tests_config.thrift)
-and [the sample bsp_tests.json](https://github.com/facebook/fboss/tree/main/fboss/configs/platforms/generic/sample/platform_stack/bsp_tests.json)
+configuration file. More details can be found in the [thrift file](https://github.com/meta/fboss/blob/main/fboss/platform/bsp_tests/bsp_tests_config.thrift)
+and [the sample bsp_tests.json](https://github.com/meta/fboss/tree/main/fboss/configs/platforms/generic/sample/platform_stack/bsp_tests.json)
 
 ### Versioned PmUnits
 
@@ -85,4 +85,4 @@ reach out to your Meta contact.
 ## Contributing
 
 Vendors are welcome to contribute to the test suite. The test suite lives
-at [fboss/platform/bsp_tests](https://github.com/facebook/fboss/tree/main/fboss/platform/bsp_tests)
+at [fboss/platform/bsp_tests](https://github.com/meta/fboss/tree/main/fboss/platform/bsp_tests)

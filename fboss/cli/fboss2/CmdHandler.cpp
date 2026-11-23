@@ -10,12 +10,14 @@
 
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include <thrift/lib/cpp2/op/Get.h>
+#include "fboss/cli/fboss2/CmdArgsLists.h"
 #include "fboss/cli/fboss2/CmdGlobalOptions.h"
 #include "fboss/cli/fboss2/CmdList.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_types.h"
 #include "fboss/cli/fboss2/utils/AggregateOp.h"
 #include "fboss/cli/fboss2/utils/AggregateUtils.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
+#include "fboss/cli/fboss2/utils/CommandExit.h"
 #include "thrift/lib/cpp/util/EnumUtils.h"
 #include "thrift/lib/cpp2/protocol/Serializer.h"
 
@@ -23,10 +25,12 @@
 #include <folly/Conv.h>
 #include <folly/Demangle.h>
 #include <folly/ScopeGuard.h>
-#include <folly/Traits.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/json/dynamic.h>
+#include <folly/json/json.h>
 #include <folly/logging/xlog.h>
 #include <folly/stop_watch.h>
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
@@ -39,6 +43,7 @@
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -94,9 +99,20 @@ void printJson(
     }
   }
 
-  out << apache::thrift::SimpleJSONSerializer::serialize<std::string>(
-             hostResults)
-      << std::endl;
+  if constexpr (std::is_same_v<typename CmdTypeT::RetType, folly::dynamic>) {
+    // The thrift serializer cannot handle folly::dynamic (it throws
+    // "expected dynamic type 'array', but had type 'object'"), so render the
+    // per-host map with folly's own JSON writer.
+    folly::dynamic hostObj = folly::dynamic::object;
+    for (auto& [host, data] : hostResults) {
+      hostObj[host] = std::move(data);
+    }
+    out << folly::toJson(hostObj) << std::endl;
+  } else {
+    out << apache::thrift::SimpleJSONSerializer::serialize<std::string>(
+               hostResults)
+        << std::endl;
+  }
 }
 
 template <typename CmdTypeT>
@@ -253,12 +269,10 @@ void CmdHandler<CmdTypeT, CmdTypeTraits>::runHelper() {
 
   auto hosts = getHosts();
 
-  if (hosts.size() > 1 &&
-      CmdTypeT::Traits::CLI_READ_WRITE_MODE ==
-          CliReadWriteMode::CLI_MODE_WRITE) {
+  if (hosts.size() > 1 && !CmdTypeT::Traits::ALLOW_MULTI_HOST) {
     throw std::invalid_argument(
         folly::to<std::string>(
-            "multi host operation is supported on read-only commands"));
+            "multi host operation is not supported for this command"));
   }
 
   std::vector<std::shared_future<std::tuple<std::string, RetType, std::string>>>
@@ -364,7 +378,9 @@ void CmdHandler<CmdTypeT, CmdTypeTraits>::run() {
 
     runHelper();
   } catch (const std::exception& e) {
-    std::cerr << e.what() << std::endl;
+    if (!utils::commandExitThrows()) {
+      std::cerr << e.what() << std::endl;
+    }
     // Rethrow so the caller can handle appropriately (e.g., tests can catch and
     // check exit codes, CLI main() can exit with non-zero status)
     throw;
@@ -476,7 +492,7 @@ CmdHandler<CmdTypeT, CmdTypeTraits>::getValidFilters() {
             // Use the field name directly as map key - get_name_v returns a
             // folly::StringPiece pointing to static storage (string literal)
             const auto& field_name_view =
-                apache::thrift::op::get_name_v<NestedType, InnerId>;
+                apache::thrift::op::get_field_name<NestedType, InnerId>();
             // Create a string for TypeVerifier constructor
             std::string field_name_str(field_name_view);
 
@@ -551,7 +567,7 @@ const ValidAggMapType CmdHandler<CmdTypeT, CmdTypeTraits>::getValidAggs() {
             // Use the field name directly as map key - get_name_v returns a
             // folly::StringPiece pointing to static storage (string literal)
             const auto& field_name_view =
-                apache::thrift::op::get_name_v<NestedType, InnerId>;
+                apache::thrift::op::get_field_name<NestedType, InnerId>();
             // Create a string for AggInfo constructor
             std::string field_name_str(field_name_view);
 

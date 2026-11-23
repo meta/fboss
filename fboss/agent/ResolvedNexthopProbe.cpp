@@ -48,11 +48,11 @@ void ResolvedNextHopProbe::timeoutExpired() noexcept {
 
   if (ip.isV4()) {
     // send arp request
-    ArpHandler::sendArpRequest(sw_, ip.asV4());
+    ArpHandler::sendArpRequest(sw_, intf, ip.asV4());
     sw_->sentArpRequest(intf, ip.asV4());
   } else {
     // send ndp request
-    IPv6Handler::sendMulticastNeighborSolicitation(sw_, ip.asV6());
+    IPv6Handler::sendMulticastNeighborSolicitation(sw_, intf, ip.asV6());
     sw_->sentNeighborSolicitation(intf, ip.asV6());
   }
   // exponential back-off

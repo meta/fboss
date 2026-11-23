@@ -95,12 +95,12 @@ template <typename IOStatsType>
 std::string ioStatsString(const IOStatsType& stats) {
   return fmt::format(
       "numReadAttempted = {}, numReadFailed = {}, numWriteAttempted = {}, numWriteFailed = {}, readDownTime = {}, writeDownTime = {}",
-      stats.get_numReadAttempted(),
-      stats.get_numReadFailed(),
-      stats.get_numWriteAttempted(),
-      stats.get_numWriteFailed(),
-      stats.get_readDownTime(),
-      stats.get_writeDownTime());
+      folly::copy(stats.numReadAttempted().value()),
+      folly::copy(stats.numReadFailed().value()),
+      folly::copy(stats.numWriteAttempted().value()),
+      folly::copy(stats.numWriteFailed().value()),
+      folly::copy(stats.readDownTime().value()),
+      folly::copy(stats.writeDownTime().value()));
 }
 } // namespace
 
@@ -493,18 +493,35 @@ TEST_F(PhyIOTest, phyIOStats) {
         }
         return true;
       };
+  auto allStatsCollectionDone = [this, &availableXphyPorts]() {
+    for (const auto& [portId, _] : availableXphyPorts) {
+      if (!getHwQsfpEnsemble()->getPhyManager()->isXphyStatsCollectionDone(
+              portId)) {
+        return false;
+      }
+    }
+    return true;
+  };
   auto waitForAllPhyStatsToBeUpdated =
-      [allPhyStatsUpdated](
+      [this, allPhyStatsUpdated, allStatsCollectionDone](
           std::unordered_map<PortID, phy::PhyInfo>& phyInfoToCompare) {
         WITH_RETRIES_N_TIMED(
             20 /* retries */,
             std::chrono::milliseconds(10000) /* msBetweenRetry */,
-            { ASSERT_EVENTUALLY_TRUE(allPhyStatsUpdated(phyInfoToCompare)); });
+            {
+              getHwQsfpEnsemble()
+                  ->getQsfpServiceHandler()
+                  ->updateAllXphyPortsStats();
+              ASSERT_EVENTUALLY_TRUE(allPhyStatsUpdated(phyInfoToCompare));
+            });
+        // The last refresh request may still be running. Let it finish so no
+        // collection callback outlives the test (teardown use-after-free).
+        WITH_RETRIES_N_TIMED(
+            20 /* retries */,
+            std::chrono::milliseconds(1000) /* msBetweenRetry */,
+            { ASSERT_EVENTUALLY_TRUE(allStatsCollectionDone()); });
       };
 
-  getHwQsfpEnsemble()->getQsfpServiceHandler()->updateAllXphyPortsStats();
-  // updateAllXphyPortsStats asynchronously updates phy stats, so wait until
-  // stats are updated
   waitForAllPhyStatsToBeUpdated(phyInfoBefore);
 
   for (auto [portId, _] : availableXphyPorts) {
@@ -513,9 +530,6 @@ TEST_F(PhyIOTest, phyIOStats) {
     phyInfoBefore[portId] = phyInfo;
   }
 
-  getHwQsfpEnsemble()->getQsfpServiceHandler()->updateAllXphyPortsStats();
-  // updateAllXphyPortsStats asynchronously updates phy stats, so wait until
-  // stats are updated
   waitForAllPhyStatsToBeUpdated(phyInfoBefore);
   for (auto [portId, _] : availableXphyPorts) {
     phy::PhyInfo phyInfo;

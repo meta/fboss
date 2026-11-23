@@ -15,11 +15,15 @@ cpp_unittest(
         "QsfpUtilTest.h",
     ],
     deps = [
+        "fbsource//xplat/folly:file_util",
         "fbsource//xplat/folly:singleton",
         "fbsource//xplat/folly/logging:logging",
+        "fbsource//xplat/folly/testing:test_util",
         "//common/init:init",
+        "//fboss/lib/platforms:platform_descriptor",
         "//fboss/util:wedge_qsfp_util_module",
     ],
+    external_deps = ["gflags"],
 )
 
 cpp_unittest(

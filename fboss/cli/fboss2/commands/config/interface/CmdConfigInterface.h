@@ -42,12 +42,17 @@ class InterfacesConfig : public InterfaceAttrArgsBase {
 };
 
 struct CmdConfigInterfaceTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     cmd.add_option(
         "interface_config",
         args,
         "<port-list> [<attr> <value> ...] where <attr> is one "
-        "of: description, mtu, ip-address, ipv6-address, ...");
+        "of: description, mtu, ip-address, ipv6-address, mirror-ingress, "
+        "mirror-egress, ... "
+        "A loopback name (loopback0, loopback1, ...) creates the virtual "
+        "loopback interface on first use.");
   }
   using ObjectArgType = InterfacesConfig;
   using RetType = std::string;

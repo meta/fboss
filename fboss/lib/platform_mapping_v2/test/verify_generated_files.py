@@ -97,6 +97,20 @@ class TestVerifyPlatformMappingGeneratedFiles(unittest.TestCase):
             )
             relative_dir = os.path.relpath(aggregate_dir, self._TMP_GENERATED_DIR)
             for filename, path in self._get_relative_files(generated_dir).items():
+                if (
+                    filename == "raw_platform_mapping.json"
+                    and platform_name != platform_input.base_platform
+                ):
+                    base_raw_path = os.path.join(
+                        vendor_data_map[platform_input.base_platform].input_dir,
+                        "generated",
+                        filename,
+                    )
+                    if os.path.exists(base_raw_path) and filecmp.cmp(
+                        path, base_raw_path, shallow=False
+                    ):
+                        continue
+
                 relative_path = os.path.join(relative_dir, filename)
                 generated_files[relative_path] = path
         return generated_files

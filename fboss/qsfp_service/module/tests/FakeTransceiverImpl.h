@@ -193,6 +193,18 @@ class Cmis2x400GFr4Transceiver : public FakeTransceiverImpl {
   explicit Cmis2x400GFr4Transceiver(int module, TransceiverManager* mgr);
 };
 
+// Advertises IB NDR (AppSel 1) and 800GAUI-8 (AppSel 6) with 400G-FR4 media
+// ahead of 400GAUI-4-L (AppSel 7)
+class Cmis2x400GFr4IbFirstTransceiver : public Cmis2x400GFr4Transceiver {
+ public:
+  explicit Cmis2x400GFr4IbFirstTransceiver(int module, TransceiverManager* mgr);
+};
+
+class CmisNvidia2x400GFr4Transceiver : public FakeTransceiverImpl {
+ public:
+  explicit CmisNvidia2x400GFr4Transceiver(int module, TransceiverManager* mgr);
+};
+
 class Cmis2x400GFr4LiteTransceiver : public FakeTransceiverImpl {
  public:
   explicit Cmis2x400GFr4LiteTransceiver(int module, TransceiverManager* mgr);
@@ -324,6 +336,14 @@ class CmisCpo6P4TDrReadyTransceiver : public CmisCpo6P4TDrTransceiver {
 class CmisCredo800AEC : public FakeTransceiverImpl {
  public:
   explicit CmisCredo800AEC(int module, TransceiverManager* mgr);
+};
+
+// 200G/lane active electrical cable: advertises the Annex 176E host interface
+// block (200GAUI-1 / 400GAUI-2 / 800GAUI-4 / 1.6TAUI-8) rather than the
+// 100G/lane codes the 800G part uses. Comes up in its 8x200G default.
+class Cmis1600GAec : public FakeTransceiverImpl {
+ public:
+  explicit Cmis1600GAec(int module, TransceiverManager* mgr);
 };
 
 class InvalidDatapathLaneStateTransceiver : public FakeTransceiverImpl {

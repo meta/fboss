@@ -10,6 +10,7 @@
 #include "fboss/agent/HwAgentMain.h"
 
 #include "fboss/agent/HwSwitch.h"
+#include "fboss/agent/InstrumentationHooks.h"
 #include "fboss/agent/platforms/sai/SaiPlatformInit.h"
 
 #include <memory>
@@ -17,12 +18,15 @@
 using namespace facebook::fboss;
 
 int main(int argc, char* argv[]) {
+  startCoverageCollection();
   setSDKVersionInfo();
-  return facebook::fboss::hwAgentMain(
+  const int rc = facebook::fboss::hwAgentMain(
       argc,
       argv,
       (HwSwitch::FeaturesDesired::PACKET_RX_DESIRED |
        HwSwitch::FeaturesDesired::LINKSCAN_DESIRED |
        HwSwitch::FeaturesDesired::TAM_EVENT_NOTIFY_DESIRED),
       initSaiPlatform);
+  stopCoverageCollection();
+  return rc;
 }

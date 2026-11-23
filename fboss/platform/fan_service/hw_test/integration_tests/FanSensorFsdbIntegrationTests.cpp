@@ -10,50 +10,42 @@
 #include "fboss/platform/helpers/Init.h"
 
 DEFINE_bool(run_forever, false, "run the test forever");
+DEFINE_string(
+    fsdb_service_unit,
+    "fsdb_service_for_testing",
+    "systemd unit of the fsdb that the test stops and restarts");
+DEFINE_string(
+    sensor_service_unit,
+    "sensor_service_for_testing",
+    "systemd unit of the sensor_service that the test restarts");
 
 using namespace facebook::fboss::platform::fan_service;
 using namespace facebook::fboss::platform;
 
 namespace {
 
-const std::vector<std::string> kStopFsdb = {
-    "/bin/systemctl",
-    "stop",
-    "fsdb_service_for_testing"};
-
-const std::vector<std::string> kStartFsdb = {
-    "/bin/systemctl",
-    "start",
-    "fsdb_service_for_testing"};
-
-const std::vector<std::string> kRestartFsdb = {
-    "/bin/systemctl",
-    "restart",
-    "fsdb_service_for_testing"};
-
-const std::vector<std::string> kRestartSensorSvc = {
-    "/bin/systemctl",
-    "restart",
-    "sensor_service_for_testing"};
+void systemctl(const std::string& action, const std::string& unit) {
+  folly::Subprocess({"/bin/systemctl", action, unit}).waitChecked();
+}
 
 void stopFsdbService() {
   XLOG(INFO) << "Stopping FSDB Service";
-  folly::Subprocess(kStopFsdb).waitChecked();
+  systemctl("stop", FLAGS_fsdb_service_unit);
 }
 
 void startFsdbService() {
   XLOG(INFO) << "Starting FSDB Service";
-  folly::Subprocess(kStartFsdb).waitChecked();
+  systemctl("start", FLAGS_fsdb_service_unit);
 }
 
 void restartFsdbService() {
   XLOG(INFO) << "Restarting FSDB Service";
-  folly::Subprocess(kRestartFsdb).waitChecked();
+  systemctl("restart", FLAGS_fsdb_service_unit);
 }
 
 void restartSensorService() {
   XLOG(INFO) << "Restarting Sensor Service";
-  folly::Subprocess(kRestartSensorSvc).waitChecked();
+  systemctl("restart", FLAGS_sensor_service_unit);
 }
 
 class FanSensorFsdbIntegrationTests : public ::testing::Test {

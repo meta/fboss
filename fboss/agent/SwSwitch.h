@@ -410,6 +410,31 @@ class SwSwitch : public HwSwitchCallback {
       const cfg::SwitchConfig& newConfig);
 
   /*
+   * Moves interfaces to other VRFs in one switch state update: the interface
+   * VRFs, the interface to VRF map, the flushed neighbors of moved interfaces
+   * and the routes of the changed VRFs. VRF 0 is the default VRF.
+   */
+  void updateInterfaceVrfs(
+      const std::map<InterfaceID, RouterID>& interfaceVrfs);
+
+  /*
+   * Adds or deletes VRFs and their route tables in one switch state update. A
+   * deleted VRF must have no interfaces and no routes.
+   */
+  void addVrfs(const std::vector<VrfEntry>& vrfs);
+  void deleteVrfs(const std::vector<RouterID>& vrfIds);
+
+  /*
+   * Replaces all VRFs and interface VRFs in one switch state update: adds the
+   * VRFs not in the state, moves the interfaces, renames VRFs, and deletes the
+   * VRFs not in vrfs. Interfaces not in interfaceVrfs go back to VRF 0. The
+   * VNI of an existing VRF cannot change.
+   */
+  void syncVrfs(
+      const std::vector<VrfEntry>& vrfs,
+      const std::map<InterfaceID, RouterID>& interfaceVrfs);
+
+  /*
    * Get config applied information which include last config applied time(ms).
    * NOTE: If no config has ever been applied, the default timestamp is 0.
    */
@@ -935,15 +960,17 @@ class SwSwitch : public HwSwitchCallback {
 
   void publishPhyInfoSnapshots(PortID portID) const;
 
-  bool sendArpRequestHelper(
-      std::shared_ptr<Interface> intf,
-      std::shared_ptr<SwitchState> state,
-      folly::IPAddressV4 source,
-      folly::IPAddressV4 target);
+  bool resolveArpHelper(
+      const std::shared_ptr<Interface>& intf,
+      const folly::IPAddressV4& target);
 
   bool sendNdpSolicitationHelper(
       std::shared_ptr<Interface> intf,
       std::shared_ptr<SwitchState> state,
+      const folly::IPAddressV6& target);
+
+  bool resolveNdpHelper(
+      const std::shared_ptr<Interface>& intf,
       const folly::IPAddressV6& target);
 
   TeFlowStats getTeFlowStats();
@@ -1061,10 +1088,21 @@ class SwSwitch : public HwSwitchCallback {
   template <typename VlanOrIntfT>
   std::optional<VlanID> getVlanIDForTx(
       const std::shared_ptr<VlanOrIntfT>& vlanOrIntf) const;
-  bool hasQualifiedConfiguredDesiredPeer(const InterfaceID& intfId);
+  bool hasQualifiedConfiguredDesiredPeer(
+      const InterfaceID& intfId,
+      const folly::IPAddress& ip);
   const ResourceAccountant* getResourceAccountant() const;
 
  private:
+  void updateVrfs(
+      const std::vector<VrfEntry>& toAdd,
+      const std::map<InterfaceID, RouterID>& interfaceVrfs,
+      const std::vector<RouterID>& toDelete);
+  std::shared_ptr<SwitchState> applyVrfChanges(
+      const std::shared_ptr<SwitchState>& in,
+      const std::vector<VrfEntry>& toAdd,
+      const std::map<InterfaceID, RouterID>& interfaceVrfs,
+      const std::vector<RouterID>& toDelete);
   void initAgentInfo();
   void createAndProbeTunManager();
   void initializeTunManager(bool useBlocking);
@@ -1160,6 +1198,13 @@ class SwSwitch : public HwSwitchCallback {
   std::vector<StateDelta> reconstructStateFromManagers(
       const std::shared_ptr<SwitchState>& emptyState,
       const std::shared_ptr<SwitchState>& initialState);
+
+  // On warm boot, applies the RIB to the state if RIB reconstruct merged or
+  // backfilled NextHop ids, so the state carries the RIB's ids.
+  std::shared_ptr<SwitchState> syncNextHopIDsToFIB(
+      const std::shared_ptr<SwitchState>& state);
+  // Copies ECMP overrides that manager reconstruct changed into the RIB.
+  void syncRibEcmpOverrides(const StateDelta& delta);
 
   void logLinkStateEvent(PortID port, bool up);
 
@@ -1473,6 +1518,7 @@ class SwSwitch : public HwSwitchCallback {
   RxPacketHandlerQueues rxPacketHandlerQueues_;
 #endif
   std::atomic<bool> packetRxRunning_{false};
+  std::atomic<bool> vrfsSynced_{false};
   std::condition_variable rxPktThreadCV_;
   std::mutex rxPktMutex_;
 };

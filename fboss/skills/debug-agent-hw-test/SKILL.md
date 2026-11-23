@@ -179,7 +179,7 @@ Categorize every test into one of these 7 outcomes:
 | FAIL: Test hung or timed out | `FAIL_TIMEOUT` | Test did not complete within allowed time, possible deadlock |
 | TODO: assess ASIC chip config change | `TODO_ASIC_CONFIG` | May need ASIC config (lane map, MMU, etc.) change |
 
-For `FAIL_VENDOR` (or `PASS_VENDOR_FIX`), produce a vendor-escalation package — SAI Replayer log + hw_config + a case report the vendor can reproduce from — using `references/vendor-escalation.md`. It is vendor-generic (Broadcom CSP / Cisco TAC / NVIDIA support).
+For `FAIL_VENDOR` (or `PASS_VENDOR_FIX`), produce a vendor-escalation package — SAI Replayer log + hw_config + a case report the vendor can reproduce from — using the `vendor-escalation` skill (`../vendor-escalation/SKILL.md`). It is vendor-generic (Broadcom CSP / Cisco TAC / NVIDIA support).
 
 ## Scripts
 
@@ -191,7 +191,6 @@ These scripts run **on the switch**. Upload them once per session, then run in t
 |--------|---------|------|
 | `scripts/run_mono_test.sh` | Mono cold+warm boot cycle | `<binary> <config> <filter> <user> [ld_library_path]` |
 | `scripts/run_multi_test.sh` | Multi-switch cold+warm boot for one switch_id | `<hw_agent> <test_binary> <config> <filter> <switch_id>` |
-| `scripts/collect_vendor_escalation.sh` | Collect a vendor-escalation package (SAI replayer log + hw_config), with optional packet-send logging | `<mono\|multi> <hw_agent\|-> <test_binary> <config> <filter> <switch_id> <out_dir> <pkt_log:0\|1> [get_attr_log:0\|1] [suffix]` |
 
 ### Local Helper Scripts (run on build host only)
 
@@ -237,4 +236,4 @@ This routing is client-agnostic:
 | Vendor diagnostic shell — counters, routes, neighbors, techsupport dumps | `facebook/vendor-diag-shell.md` | `references/vendor-diag-shell.md` |
 | Insert XLOGs, re-run, validate hypotheses | — | `references/hypothesis-driven-debug.md` |
 | Full categorization guide and tracking template | — | `references/test-categorization.md` |
-| Build a vendor-escalation package (SAI replayer log + hw_config + case report) for `FAIL_VENDOR` | — | `references/vendor-escalation.md` |
+| Build a vendor-escalation package (SAI replayer log + hw_config + case report) for `FAIL_VENDOR` | — | the `vendor-escalation` skill (`../vendor-escalation/SKILL.md`) |

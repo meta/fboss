@@ -108,6 +108,33 @@ TEST(ExplorationErrorsTest, IsExpectedErrorIdprom) {
       montblancConfig, ExplorationErrorType::I2C_DEVICE_EXPLORE, "/[IDPROM]"));
 }
 
+TEST(ExplorationErrorsTest, IsExpectedErrorM5120cscPsuIdprom) {
+  PlatformConfig m5120cscConfig;
+  m5120cscConfig.platformName() = "M5120CSC";
+  EXPECT_TRUE(isExpectedError(
+      m5120cscConfig,
+      ExplorationErrorType::IDPROM_READ,
+      "/SMB_SLOT@0/PSU_SLOT@0/[IDPROM]"));
+  EXPECT_TRUE(isExpectedError(
+      m5120cscConfig,
+      ExplorationErrorType::IDPROM_READ,
+      "/SMB_SLOT@0/PSU_SLOT@3/[IDPROM]"));
+
+  // Non-PSU IDPROMs are still unexpected
+  EXPECT_FALSE(isExpectedError(
+      m5120cscConfig,
+      ExplorationErrorType::IDPROM_READ,
+      "/SMB_SLOT@0/[IDPROM]"));
+
+  // Other platforms are unaffected
+  PlatformConfig otherConfig;
+  otherConfig.platformName() = "OTHER_PLATFORM";
+  EXPECT_FALSE(isExpectedError(
+      otherConfig,
+      ExplorationErrorType::IDPROM_READ,
+      "/SMB_SLOT@0/PSU_SLOT@0/[IDPROM]"));
+}
+
 TEST(ExplorationErrorsTest, IsExpectedErrorDarwinIdprom) {
   // Test IDPROM error on DARWIN platform with specific device paths
   PlatformConfig darwinConfig;

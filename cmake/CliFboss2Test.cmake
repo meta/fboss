@@ -11,9 +11,12 @@ add_executable(fboss2_framework_test
   fboss/cli/fboss2/test/AggregationParsingTest.cpp
   # fboss/cli/fboss2/test/AggregationTest.cpp - excluded (requires bundled schema)
   # fboss/cli/fboss2/test/AggregationValidationTest.cpp - excluded (requires bundled schema)
+  fboss/cli/fboss2/test/ArgCompletionTest.cpp
   fboss/cli/fboss2/test/CmdArgsTest.cpp
   # fboss/cli/fboss2/test/CmdHelpTest.cpp - excluded (requires bundled schema)
+  fboss/cli/fboss2/test/CmdReadWriteModeTest.cpp
   fboss/cli/fboss2/test/CmdSubCommandsTest.cpp
+  fboss/cli/fboss2/test/CmdUtilsTest.cpp
   # fboss/cli/fboss2/test/FilterTest.cpp - excluded (requires bundled schema)
   # fboss/cli/fboss2/test/FilterValidationTest.cpp - excluded (requires bundled schema)
 )
@@ -28,7 +31,7 @@ target_link_libraries(fboss2_framework_test
   Folly::folly
   Folly::follybenchmark
   Folly::folly_test_util
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 gtest_discover_tests(fboss2_framework_test)
@@ -37,10 +40,13 @@ gtest_discover_tests(fboss2_framework_test)
 add_executable(fboss2_cmd_test
   fboss/util/oss/TestMain.cpp
   fboss/cli/fboss2/oss/config/CmdListImpl.cpp
+  fboss/cli/fboss2/test/CmdCompletionTest.cpp
+  fboss/cli/fboss2/test/CmdClearArpNdpTest.cpp
   fboss/cli/fboss2/test/CmdConfigSessionClearTest.cpp
   fboss/cli/fboss2/test/CmdGetPcapTest.cpp
   fboss/cli/fboss2/test/CmdListConfigTest.cpp
   fboss/cli/fboss2/commands/config/gen/agent/tests/CmdConfigGenAgentTest.cpp
+  fboss/cli/fboss2/test/CmdSetInterfaceAdminStateTest.cpp
   fboss/cli/fboss2/test/CmdSetPortStateTest.cpp
   fboss/cli/fboss2/test/CmdShowAclTest.cpp
   fboss/cli/fboss2/test/CmdShowAgentBootTypeTest.cpp
@@ -100,6 +106,7 @@ add_executable(fboss2_cmd_test
   fboss/cli/fboss2/test/CmdShowInterfaceTransceiverEepromTest.cpp
   fboss/cli/fboss2/test/CmdShowTransceiverLoopbackTest.cpp
   # fboss/cli/fboss2/test/CmdShowTransceiverTest.cpp - excluded (depends on configerator bgp namespace)
+  fboss/cli/fboss2/test/CmdShowVersionDistroTest.cpp
   # fboss/cli/fboss2/test/CmdShowVersionAgentTest.cpp - excluded (facebook-only command; depends on configerator)
   fboss/cli/fboss2/test/CmdBgpTestUtils.cpp
   fboss/cli/fboss2/test/CanonicalRibResolverTest.cpp
@@ -117,6 +124,7 @@ add_executable(fboss2_cmd_test
   fboss/cli/fboss2/test/CmdShowBgpNeighborsReceivedRejectedTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpNeighborsByNameTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpPolicyTest.cpp
+  fboss/cli/fboss2/test/CmdShowBgpPolicyQueryTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpProfilerTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpNeighborsTest.cpp
   fboss/cli/fboss2/test/CmdShowBgpNexthopInfoWikiDocsTest.cpp
@@ -156,7 +164,8 @@ target_link_libraries(fboss2_cmd_test
   Folly::folly
   Folly::follybenchmark
   Folly::folly_test_util
-  FBThrift::thriftcpp2
+  thrift::rpc
+  Boost::filesystem
 )
 
 gtest_discover_tests(fboss2_cmd_test)
@@ -174,5 +183,5 @@ target_link_libraries(thrift_latency_test
   ctrl_cpp2
   thrift_service_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )

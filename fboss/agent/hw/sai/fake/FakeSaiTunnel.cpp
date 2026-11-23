@@ -29,13 +29,16 @@ sai_status_t create_tunnel_fn(
   std::optional<sai_int32_t> encapDscpMode;
   std::optional<sai_int32_t> encapEcnMode;
   std::optional<sai_object_id_t> decapQosDscpToTcMap;
+  std::vector<sai_object_id_t> encapMappers;
+  std::vector<sai_object_id_t> decapMappers;
   for (int i = 0; i < attr_count; i++) {
     switch (attr_list[i].id) {
       case SAI_TUNNEL_ATTR_TYPE:
         type = static_cast<sai_tunnel_type_t>(attr_list[i].value.s32);
         break;
       case SAI_TUNNEL_ATTR_UNDERLAY_INTERFACE:
-        if (type == SAI_TUNNEL_TYPE_IPINIP || type == SAI_TUNNEL_TYPE_SRV6) {
+        if (type == SAI_TUNNEL_TYPE_IPINIP || type == SAI_TUNNEL_TYPE_SRV6 ||
+            type == SAI_TUNNEL_TYPE_VXLAN) {
           underlay = attr_list[i].value.oid;
         } else {
           return SAI_STATUS_INVALID_PARAMETER;
@@ -73,6 +76,16 @@ sai_status_t create_tunnel_fn(
       case SAI_TUNNEL_ATTR_DECAP_QOS_DSCP_TO_TC_MAP:
         decapQosDscpToTcMap = attr_list[i].value.oid;
         break;
+      case SAI_TUNNEL_ATTR_ENCAP_MAPPERS:
+        encapMappers.assign(
+            attr_list[i].value.objlist.list,
+            attr_list[i].value.objlist.list + attr_list[i].value.objlist.count);
+        break;
+      case SAI_TUNNEL_ATTR_DECAP_MAPPERS:
+        decapMappers.assign(
+            attr_list[i].value.objlist.list,
+            attr_list[i].value.objlist.list + attr_list[i].value.objlist.count);
+        break;
       default:
         return SAI_STATUS_INVALID_PARAMETER;
     }
@@ -94,6 +107,8 @@ sai_status_t create_tunnel_fn(
   tunnel.encapDscpMode = encapDscpMode;
   tunnel.encapEcnMode = encapEcnMode;
   tunnel.decapQosDscpToTcMap = decapQosDscpToTcMap;
+  tunnel.encapMappers = encapMappers;
+  tunnel.decapMappers = decapMappers;
   return SAI_STATUS_SUCCESS;
 }
 
@@ -156,6 +171,28 @@ sai_status_t get_tunnel_attribute_fn(
             ? tunnel.decapQosDscpToTcMap.value()
             : SAI_NULL_OBJECT_ID;
         break;
+      case SAI_TUNNEL_ATTR_ENCAP_MAPPERS: {
+        if (tunnel.encapMappers.size() > attr[i].value.objlist.count) {
+          attr[i].value.objlist.count = tunnel.encapMappers.size();
+          return SAI_STATUS_BUFFER_OVERFLOW;
+        }
+        attr[i].value.objlist.count = tunnel.encapMappers.size();
+        int j = 0;
+        for (const auto& mapper : tunnel.encapMappers) {
+          attr[i].value.objlist.list[j++] = mapper;
+        }
+      } break;
+      case SAI_TUNNEL_ATTR_DECAP_MAPPERS: {
+        if (tunnel.decapMappers.size() > attr[i].value.objlist.count) {
+          attr[i].value.objlist.count = tunnel.decapMappers.size();
+          return SAI_STATUS_BUFFER_OVERFLOW;
+        }
+        attr[i].value.objlist.count = tunnel.decapMappers.size();
+        int j = 0;
+        for (const auto& mapper : tunnel.decapMappers) {
+          attr[i].value.objlist.list[j++] = mapper;
+        }
+      } break;
       default:
         return SAI_STATUS_INVALID_PARAMETER;
     }
@@ -202,6 +239,16 @@ sai_status_t set_tunnel_attribute_fn(
       break;
     case SAI_TUNNEL_ATTR_DECAP_QOS_DSCP_TO_TC_MAP:
       tunnel.decapQosDscpToTcMap = attr->value.oid;
+      break;
+    case SAI_TUNNEL_ATTR_ENCAP_MAPPERS:
+      tunnel.encapMappers.assign(
+          attr->value.objlist.list,
+          attr->value.objlist.list + attr->value.objlist.count);
+      break;
+    case SAI_TUNNEL_ATTR_DECAP_MAPPERS:
+      tunnel.decapMappers.assign(
+          attr->value.objlist.list,
+          attr->value.objlist.list + attr->value.objlist.count);
       break;
     default:
       return SAI_STATUS_INVALID_PARAMETER;
@@ -351,6 +398,175 @@ sai_status_t get_tunnel_term_table_entry_attribute_fn(
   return SAI_STATUS_SUCCESS;
 }
 
+sai_status_t create_tunnel_map_fn(
+    sai_object_id_t* tunnel_map_id,
+    sai_object_id_t /* switch_id */,
+    uint32_t attr_count,
+    const sai_attribute_t* attr_list) {
+  auto fs = FakeSai::getInstance();
+  sai_tunnel_map_type_t type{};
+  for (int i = 0; i < attr_count; i++) {
+    switch (attr_list[i].id) {
+      case SAI_TUNNEL_MAP_ATTR_TYPE:
+        type = static_cast<sai_tunnel_map_type_t>(attr_list[i].value.s32);
+        break;
+      default:
+        return SAI_STATUS_INVALID_PARAMETER;
+    }
+  }
+  *tunnel_map_id = fs->tunnelMapManager.create(type);
+  return SAI_STATUS_SUCCESS;
+}
+
+sai_status_t remove_tunnel_map_fn(sai_object_id_t tunnel_map_id) {
+  auto fs = FakeSai::getInstance();
+  fs->tunnelMapManager.remove(tunnel_map_id);
+  return SAI_STATUS_SUCCESS;
+}
+
+sai_status_t get_tunnel_map_attribute_fn(
+    sai_object_id_t tunnel_map_id,
+    uint32_t attr_count,
+    sai_attribute_t* attr) {
+  auto fs = FakeSai::getInstance();
+  auto& map = fs->tunnelMapManager.get(tunnel_map_id);
+  for (int i = 0; i < attr_count; i++) {
+    switch (attr[i].id) {
+      case SAI_TUNNEL_MAP_ATTR_TYPE:
+        attr[i].value.s32 = map.type;
+        break;
+      default:
+        return SAI_STATUS_INVALID_PARAMETER;
+    }
+  }
+  return SAI_STATUS_SUCCESS;
+}
+
+sai_status_t set_tunnel_map_attribute_fn(
+    sai_object_id_t tunnel_map_id,
+    const sai_attribute_t* attr) {
+  auto fs = FakeSai::getInstance();
+  auto& map = fs->tunnelMapManager.get(tunnel_map_id);
+  switch (attr->id) {
+    case SAI_TUNNEL_MAP_ATTR_TYPE:
+      map.type = static_cast<sai_tunnel_map_type_t>(attr->value.s32);
+      break;
+    default:
+      return SAI_STATUS_INVALID_PARAMETER;
+  }
+  return SAI_STATUS_SUCCESS;
+}
+
+sai_status_t create_tunnel_map_entry_fn(
+    sai_object_id_t* tunnel_map_entry_id,
+    sai_object_id_t /* switch_id */,
+    uint32_t attr_count,
+    const sai_attribute_t* attr_list) {
+  auto fs = FakeSai::getInstance();
+  sai_tunnel_map_type_t type{};
+  sai_object_id_t mapId{};
+  sai_uint32_t vniKey{};
+  sai_uint32_t vniValue{};
+  sai_object_id_t vrKey{};
+  sai_object_id_t vrValue{};
+  for (int i = 0; i < attr_count; i++) {
+    switch (attr_list[i].id) {
+      case SAI_TUNNEL_MAP_ENTRY_ATTR_TUNNEL_MAP_TYPE:
+        type = static_cast<sai_tunnel_map_type_t>(attr_list[i].value.s32);
+        break;
+      case SAI_TUNNEL_MAP_ENTRY_ATTR_TUNNEL_MAP:
+        mapId = attr_list[i].value.oid;
+        break;
+      case SAI_TUNNEL_MAP_ENTRY_ATTR_VNI_ID_KEY:
+        vniKey = attr_list[i].value.u32;
+        break;
+      case SAI_TUNNEL_MAP_ENTRY_ATTR_VNI_ID_VALUE:
+        vniValue = attr_list[i].value.u32;
+        break;
+      case SAI_TUNNEL_MAP_ENTRY_ATTR_VIRTUAL_ROUTER_ID_KEY:
+        vrKey = attr_list[i].value.oid;
+        break;
+      case SAI_TUNNEL_MAP_ENTRY_ATTR_VIRTUAL_ROUTER_ID_VALUE:
+        vrValue = attr_list[i].value.oid;
+        break;
+      default:
+        return SAI_STATUS_INVALID_PARAMETER;
+    }
+  }
+  *tunnel_map_entry_id = fs->tunnelMapEntryManager.create(
+      type, mapId, vniKey, vniValue, vrKey, vrValue);
+  return SAI_STATUS_SUCCESS;
+}
+
+sai_status_t remove_tunnel_map_entry_fn(sai_object_id_t tunnel_map_entry_id) {
+  auto fs = FakeSai::getInstance();
+  fs->tunnelMapEntryManager.remove(tunnel_map_entry_id);
+  return SAI_STATUS_SUCCESS;
+}
+
+sai_status_t get_tunnel_map_entry_attribute_fn(
+    sai_object_id_t tunnel_map_entry_id,
+    uint32_t attr_count,
+    sai_attribute_t* attr) {
+  auto fs = FakeSai::getInstance();
+  auto& entry = fs->tunnelMapEntryManager.get(tunnel_map_entry_id);
+  for (int i = 0; i < attr_count; i++) {
+    switch (attr[i].id) {
+      case SAI_TUNNEL_MAP_ENTRY_ATTR_TUNNEL_MAP_TYPE:
+        attr[i].value.s32 = entry.type;
+        break;
+      case SAI_TUNNEL_MAP_ENTRY_ATTR_TUNNEL_MAP:
+        attr[i].value.oid = entry.mapId;
+        break;
+      case SAI_TUNNEL_MAP_ENTRY_ATTR_VNI_ID_KEY:
+        attr[i].value.u32 = entry.vniKey;
+        break;
+      case SAI_TUNNEL_MAP_ENTRY_ATTR_VNI_ID_VALUE:
+        attr[i].value.u32 = entry.vniValue;
+        break;
+      case SAI_TUNNEL_MAP_ENTRY_ATTR_VIRTUAL_ROUTER_ID_KEY:
+        attr[i].value.oid = entry.vrKey;
+        break;
+      case SAI_TUNNEL_MAP_ENTRY_ATTR_VIRTUAL_ROUTER_ID_VALUE:
+        attr[i].value.oid = entry.vrValue;
+        break;
+      default:
+        return SAI_STATUS_INVALID_PARAMETER;
+    }
+  }
+  return SAI_STATUS_SUCCESS;
+}
+
+sai_status_t set_tunnel_map_entry_attribute_fn(
+    sai_object_id_t tunnel_map_entry_id,
+    const sai_attribute_t* attr) {
+  auto fs = FakeSai::getInstance();
+  auto& entry = fs->tunnelMapEntryManager.get(tunnel_map_entry_id);
+  switch (attr->id) {
+    case SAI_TUNNEL_MAP_ENTRY_ATTR_TUNNEL_MAP_TYPE:
+      entry.type = static_cast<sai_tunnel_map_type_t>(attr->value.s32);
+      break;
+    case SAI_TUNNEL_MAP_ENTRY_ATTR_TUNNEL_MAP:
+      entry.mapId = attr->value.oid;
+      break;
+    case SAI_TUNNEL_MAP_ENTRY_ATTR_VNI_ID_KEY:
+      entry.vniKey = attr->value.u32;
+      break;
+    case SAI_TUNNEL_MAP_ENTRY_ATTR_VNI_ID_VALUE:
+      entry.vniValue = attr->value.u32;
+      break;
+    case SAI_TUNNEL_MAP_ENTRY_ATTR_VIRTUAL_ROUTER_ID_KEY:
+      entry.vrKey = attr->value.oid;
+      break;
+    case SAI_TUNNEL_MAP_ENTRY_ATTR_VIRTUAL_ROUTER_ID_VALUE:
+      entry.vrValue = attr->value.oid;
+      break;
+    default:
+      return SAI_STATUS_INVALID_PARAMETER;
+  }
+  return SAI_STATUS_SUCCESS;
+}
+
 sai_status_t set_tunnel_term_table_entry_attribute_fn(
     sai_object_id_t tunnel_term_table_entry_id,
     const sai_attribute_t* attr) {
@@ -411,6 +627,18 @@ void populate_tunnel_api(sai_tunnel_api_t** tunnel_api) {
       &get_tunnel_term_table_entry_attribute_fn;
   _tunnel_api.set_tunnel_term_table_entry_attribute =
       &set_tunnel_term_table_entry_attribute_fn;
+
+  _tunnel_api.create_tunnel_map = &create_tunnel_map_fn;
+  _tunnel_api.remove_tunnel_map = &remove_tunnel_map_fn;
+  _tunnel_api.get_tunnel_map_attribute = &get_tunnel_map_attribute_fn;
+  _tunnel_api.set_tunnel_map_attribute = &set_tunnel_map_attribute_fn;
+
+  _tunnel_api.create_tunnel_map_entry = &create_tunnel_map_entry_fn;
+  _tunnel_api.remove_tunnel_map_entry = &remove_tunnel_map_entry_fn;
+  _tunnel_api.get_tunnel_map_entry_attribute =
+      &get_tunnel_map_entry_attribute_fn;
+  _tunnel_api.set_tunnel_map_entry_attribute =
+      &set_tunnel_map_entry_attribute_fn;
 
   *tunnel_api = &_tunnel_api;
 }

@@ -11,7 +11,7 @@ target_link_libraries(xcvr_lib_test
   xcvr_lib
   platform_config_lib
   platform_manager_config_cpp2
-  FBThrift::thriftcpp2
+  thrift::rpc
   ${GTEST}
   ${LIBGMOCK_LIBRARIES}
 )

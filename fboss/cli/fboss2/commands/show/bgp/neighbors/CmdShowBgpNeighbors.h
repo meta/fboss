@@ -30,7 +30,10 @@ struct CmdShowBgpNeighborsTraits : public ReadCommandTraits {
   using RetType = std::vector<TBgpSession>;
 
   std::vector<utils::LocalOption> LocalOptions = {
-      {kGar, "Show decoded GAR link bandwidth ext community"}};
+#ifndef IS_OSS
+      {kGar, "Show decoded GAR link bandwidth ext community"},
+#endif
+  };
 
   // Human-authored guide prose for the CLI reference wiki. Superset of the
   // one-line help string registered in the command tree.
@@ -65,7 +68,9 @@ class CmdShowBgpNeighbors
       std::cout << "Displaying information from neighbor: " << queriedIps[0]
                 << ", session id: " << queriedIps[1] << std::endl;
       client->sync_getBgpNeighborsFromSession(
-          sessions, /*p_peerId=*/queriedIps[0], /*sessionBgpId=*/queriedIps[1]);
+          sessions,
+          /*p_peerId=*/queriedIps[0],
+          /*p_sessionBgpId=*/queriedIps[1]);
     } else {
       client->sync_getBgpNeighbors(sessions, queriedIps);
     }

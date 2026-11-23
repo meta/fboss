@@ -1,0 +1,15 @@
+[connection]
+id=eth0.4088
+type=vlan
+interface-name=eth0.4088
+autoconnect=true
+
+[vlan]
+parent=eth0
+id=4088
+
+[ipv4]
+method=disabled
+
+[ipv6]
+method=link-local

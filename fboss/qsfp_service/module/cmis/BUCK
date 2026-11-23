@@ -1,6 +1,9 @@
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 load("@fbcode_macros//build_defs:thrift_library.bzl", "thrift_library")
 
 oncall("fboss_optics_phy")
+
+export_file(name = "CmisModule.cpp")
 
 thrift_library(
     name = "cmis",

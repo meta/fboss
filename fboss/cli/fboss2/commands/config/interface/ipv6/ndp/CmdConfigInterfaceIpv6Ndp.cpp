@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/interface/ipv6/ndp/CmdConfigInterfaceIpv6Ndp.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -294,5 +295,13 @@ void CmdConfigInterfaceIpv6Ndp::printOutput(const RetType& logMsg) {
 // Explicit template instantiation
 template void
 CmdHandler<CmdConfigInterfaceIpv6Ndp, CmdConfigInterfaceIpv6NdpTraits>::run();
+
+std::vector<std::string> CmdConfigInterfaceIpv6NdpTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs = utils::completion::toWords(ndpAttrNames()),
+       .valueless = {kValuelessNdpAttrs.begin(), kValuelessNdpAttrs.end()}});
+}
 
 } // namespace facebook::fboss

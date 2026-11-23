@@ -21,9 +21,13 @@ extern "C" {
 namespace facebook::fboss {
 
 struct FakeFdb {
-  explicit FakeFdb(const sai_object_id_t bridgePortId, sai_uint32_t metadata)
-      : bridgePortId(bridgePortId), metadata(metadata) {}
+  FakeFdb(
+      const sai_object_id_t bridgePortId,
+      sai_int32_t type,
+      sai_uint32_t metadata)
+      : bridgePortId(bridgePortId), type(type), metadata(metadata) {}
   sai_object_id_t bridgePortId;
+  sai_int32_t type{SAI_FDB_ENTRY_TYPE_STATIC};
   sai_uint32_t metadata{0};
 };
 

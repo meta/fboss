@@ -17,14 +17,14 @@ cpp_library(
         "SimSwitch.h",
     ],
     deps = [
+        "fbsource//xplat/folly:conv",
+        "fbsource//xplat/folly:memory",
+        "fbsource//xplat/folly/json:dynamic",
         "//fboss/agent:fboss-error",
         "//fboss/agent:handler",
         "//fboss/agent/hw/mock:pkt",
         "//fboss/agent/state:state",
         "//fboss/lib/platforms:product-info",
-        "//folly:conv",
-        "//folly:memory",
-        "//folly/json:dynamic",
     ],
     exported_deps = [
         "//fboss/agent:fboss-types",

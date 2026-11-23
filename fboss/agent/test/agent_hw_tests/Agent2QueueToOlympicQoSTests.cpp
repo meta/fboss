@@ -15,8 +15,8 @@
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/ResourceLibUtil.h"
 #include "fboss/agent/test/TestUtils.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestAddressConstants.h"
-#include "fboss/agent/test/agent_hw_tests/AgentTestEcmpConstants.h"
+#include "fboss/agent/test/utils/AgentTestAddressConstants.h"
+#include "fboss/agent/test/utils/AgentTestEcmpConstants.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/OlympicTestUtils.h"
 #include "fboss/agent/test/utils/PacketTestUtils.h"
@@ -29,12 +29,23 @@ namespace facebook::fboss {
 
 class Agent2QueueToOlympicQoSTest : public AgentHwTest {
  private:
-  cfg::SwitchConfig initialConfig(
-      const AgentEnsemble& ensemble) const override {
-    auto cfg = utility::onePortPerInterfaceConfig(
+  cfg::SwitchConfig baseConfig(const AgentEnsemble& ensemble) const {
+    return utility::onePortPerInterfaceConfig(
         ensemble.getSw(),
         ensemble.masterLogicalPortIds(),
         true /*interfaceHasSubnet*/);
+  }
+
+  cfg::SwitchConfig initialConfig(
+      const AgentEnsemble& ensemble) const override {
+    auto cfg = baseConfig(ensemble);
+    auto asic = checkSameAndGetAsicForTesting(ensemble.getL3Asics());
+    utility::add2QueueConfig(
+        &cfg,
+        *(asic->getQueueStreamTypes(cfg::PortType::INTERFACE_PORT).begin()),
+        asic->scalingFactorBasedDynamicThresholdSupported(),
+        asic);
+    utility::add2QueueQosMaps(cfg, asic);
     return cfg;
   }
 
@@ -110,19 +121,7 @@ class Agent2QueueToOlympicQoSTest : public AgentHwTest {
     auto setup = [=, this]() {
       utility::EcmpSetupAnyNPorts6 ecmpHelper(
           getProgrammedState(), getSw()->needL2EntryForNeighbor());
-      auto portId = ecmpHelper.ecmpPortDescriptorAt(0).phyPortID();
-      auto switchId = getSw()->getScopeResolver()->scope(portId).switchId();
-      auto asic = getSw()->getHwAsicTable()->getHwAsic(switchId);
       resolveNeighborAndProgramRoutes(ecmpHelper, kDefaultEcmpWidth);
-      auto newCfg{initialConfig(*getAgentEnsemble())};
-      auto streamType =
-          *(asic->getQueueStreamTypes(cfg::PortType::INTERFACE_PORT).begin());
-      utility::add2QueueConfig(
-          &newCfg,
-          streamType,
-          asic->scalingFactorBasedDynamicThresholdSupported());
-      utility::add2QueueQosMaps(newCfg, asic);
-      applyNewConfig(newCfg);
     };
 
     auto verify = [=, this]() {
@@ -133,7 +132,7 @@ class Agent2QueueToOlympicQoSTest : public AgentHwTest {
     };
 
     auto setupPostWarmboot = [=, this]() {
-      auto newCfg{initialConfig(*getAgentEnsemble())};
+      auto newCfg{baseConfig(*getAgentEnsemble())};
       utility::addOlympicQueueConfig(
           &newCfg, getSw()->getHwAsicTable()->getL3Asics());
       utility::addOlympicQosMaps(

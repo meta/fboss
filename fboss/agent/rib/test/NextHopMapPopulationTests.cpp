@@ -53,6 +53,16 @@ HwSwitchMatcher scope() {
   return HwSwitchMatcher{std::unordered_set<SwitchID>{SwitchID(0)}};
 }
 
+// {1.1.1.10, 2.2.2.10} as they land in a FIB route's fwd entry: recursive
+// resolution stamps the egress interface onto each nexthop.
+RouteNextHopSet resolvedNextHopsVia1And2() {
+  return RouteNextHopSet{
+      ResolvedNextHop(
+          folly::IPAddress("1.1.1.10"), InterfaceID(1), ECMP_WEIGHT),
+      ResolvedNextHop(
+          folly::IPAddress("2.2.2.10"), InterfaceID(2), ECMP_WEIGHT)};
+}
+
 } // namespace
 
 class NextHopMapPopulationTest : public ::testing::Test {
@@ -2422,6 +2432,66 @@ TEST_F(NextHopMapPopulationTest, RejectedEcmpWidthChangeDoesNotDesyncRib) {
   // The RIB must still hold the original width, not the rejected 400.
   EXPECT_EQ(getEcmpWidth(sw_->getState()), 200u);
   EXPECT_EQ(sw_->getRib()->getEcmpWidth(), 200u);
+}
+
+// drop_inline_nexthops_with_id strips the inline nexthops off both the
+// resolved fwd entry and the per-client entries. The set IDs survive, so
+// ID-aware readers still see the full sets.
+TEST_F(NextHopMapPopulationTest, DropInlineNextHopsOffFwdAndClientEntries) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_resolve_nexthops_from_id = true;
+  FLAGS_drop_inline_nexthops_with_id = true;
+
+  auto updater = sw_->getRouteUpdater();
+  addV4RouteForClient(
+      updater, kClientA, "10.0.0.0/24", {"1.1.1.10", "2.2.2.10"});
+  updater.program();
+
+  auto manager = sw_->getRib()->getNextHopIDManagerCopy();
+  ASSERT_NE(manager, nullptr);
+  auto fibContainer = getFibInfo()->getFibContainerIf(kRid0);
+  ASSERT_NE(fibContainer, nullptr);
+  auto route =
+      fibContainer->getFibV4()->exactMatch(makePrefixV4("10.0.0.0/24"));
+  ASSERT_NE(route, nullptr);
+  ASSERT_TRUE(route->isResolved());
+
+  const auto& fwd = route->getForwardInfo();
+  EXPECT_EQ(fwd.getAction(), RouteForwardAction::NEXTHOPS);
+  EXPECT_TRUE(fwd.getNextHopSet().empty());
+  ASSERT_TRUE(fwd.getResolvedNextHopSetID().has_value());
+  EXPECT_EQ(
+      getResolvedNextHopsFromRib(manager.get(), fwd),
+      resolvedNextHopsVia1And2());
+
+  // The per-client entry is dropped too, and recovered via its own ID.
+  auto entry = route->getEntryForClient(kClientA);
+  ASSERT_NE(entry, nullptr);
+  EXPECT_TRUE(entry->getNextHopSet().empty());
+  ASSERT_TRUE(entry->getClientNextHopSetID().has_value());
+  EXPECT_EQ(
+      getClientNextHopsFromRib(manager.get(), *entry),
+      makeNextHops({"1.1.1.10", "2.2.2.10"}));
+}
+
+// With the flag off the fwd entry keeps its inline nexthops, so the drop is
+// opt-in rather than implied by the ID manager being on.
+TEST_F(NextHopMapPopulationTest, InlineNextHopsRetainedWithoutDropFlag) {
+  gflags::FlagSaver flagSaver;
+  FLAGS_resolve_nexthops_from_id = true;
+
+  auto updater = sw_->getRouteUpdater();
+  addV4RouteForClient(
+      updater, kClientA, "10.0.0.0/24", {"1.1.1.10", "2.2.2.10"});
+  updater.program();
+
+  auto fibContainer = getFibInfo()->getFibContainerIf(kRid0);
+  ASSERT_NE(fibContainer, nullptr);
+  auto route =
+      fibContainer->getFibV4()->exactMatch(makePrefixV4("10.0.0.0/24"));
+  ASSERT_NE(route, nullptr);
+  EXPECT_EQ(
+      route->getForwardInfo().getNextHopSet(), resolvedNextHopsVia1And2());
 }
 
 } // namespace facebook::fboss

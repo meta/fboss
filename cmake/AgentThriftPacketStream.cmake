@@ -12,7 +12,7 @@ add_library(bidirectional_packet_stream
 
 target_link_libraries(bidirectional_packet_stream
     Folly::folly
-    FBThrift::thriftcpp2
+    thrift::rpc
     async_packet_transport
     packet_stream_cpp2
     fboss_cpp2

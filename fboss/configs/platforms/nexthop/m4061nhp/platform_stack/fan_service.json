@@ -1,0 +1,288 @@
+{
+  "pwmBoostOnNumDeadFan": 1,
+  "pwmBoostOnNumDeadSensor": 0,
+  "pwmBoostOnNoQsfpAfterInSec": 90,
+  "pwmBoostValue": 100,
+  "pwmTransitionValue": 60,
+  "pwmLowerThreshold": 60,
+  "pwmUpperThreshold": 100,
+  "controlInterval": {
+    "sensorReadInterval": 5,
+    "pwmUpdateInterval": 5
+  },
+  "optics": [
+    {
+      "opticName": "osfp_group",
+      "aggregationType": "OPTIC_AGGREGATION_TYPE_MAX",
+      "tempToPwmMaps": {
+        "OPTIC_TYPE_1600_GENERIC": {
+          "0": 60,
+          "58": 80,
+          "62": 90,
+          "65": 100
+        },
+        "OPTIC_TYPE_800_GENERIC": {
+          "0": 60,
+          "58": 80,
+          "62": 90,
+          "65": 100
+        },
+        "OPTIC_TYPE_800_ZR": {
+          "0": 60,
+          "58": 80,
+          "62": 90,
+          "65": 100
+        },
+        "OPTIC_TYPE_400_GENERIC": {
+          "0": 60,
+          "58": 80,
+          "62": 90,
+          "65": 100
+        },
+        "OPTIC_TYPE_200_GENERIC": {
+          "0": 60,
+          "58": 80,
+          "62": 90,
+          "65": 100
+        },
+        "OPTIC_TYPE_100_GENERIC": {
+          "0": 60,
+          "58": 80,
+          "62": 90,
+          "65": 100
+        }
+      }
+    }
+  ],
+  "sensors": [],
+  "shutdownCmd": "/usr/sbin/shutdown -h now",
+  "shutdownCondition": {
+    "numOvertempSensorForShutdown": 2,
+    "conditions": [
+      {
+        "sensorName": "ASIC_DIODE_0",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_TEMP_MAX_C",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "ASIC_TEMP_MIN_C",
+        "overtempThreshold": 112.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "SWITCH_CARD_TMP464_LOCAL",
+        "overtempThreshold": 92.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "SWITCH_CARD_NEAR_ASIC",
+        "overtempThreshold": 92.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "SWITCH_CARD_PDC_INTAKE",
+        "overtempThreshold": 122.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "CPU_TCTL_TEMP",
+        "overtempThreshold": 120.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "CPU_TCCD1_TEMP",
+        "overtempThreshold": 120.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "CPU_TCCD2_TEMP",
+        "overtempThreshold": 120.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "DIMM1_TEMP",
+        "overtempThreshold": 95.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "DIMM2_TEMP",
+        "overtempThreshold": 95.0,
+        "slidingWindowSize": 10
+      },
+      {
+        "sensorName": "NVME_COMPOSITE_TEMP",
+        "overtempThreshold": 95.0,
+        "slidingWindowSize": 10
+      }
+    ]
+  },
+  "zones": [
+    {
+      "zoneType": "ZONE_TYPE_MAX",
+      "zoneName": "zone1",
+      "sensorNames": [
+        "osfp_group"
+      ],
+      "fanNames": [
+        "fan_1_inner",
+        "fan_1_outer",
+        "fan_2_inner",
+        "fan_2_outer",
+        "fan_3_inner",
+        "fan_3_outer",
+        "fan_4_inner",
+        "fan_4_outer",
+        "fan_5_inner",
+        "fan_5_outer"
+      ],
+      "slope": 2
+    }
+  ],
+  "fans": [
+    {
+      "fanName": "fan_1_inner",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan1_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm1",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan1_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan1_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan1_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 4500,
+      "rpmMax": 22000
+    },
+    {
+      "fanName": "fan_1_outer",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan2_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm1",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan1_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan1_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan1_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 4500,
+      "rpmMax": 22000
+    },
+    {
+      "fanName": "fan_2_inner",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan3_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm2",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan2_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan2_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan2_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 4500,
+      "rpmMax": 22000
+    },
+    {
+      "fanName": "fan_2_outer",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan4_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm2",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan2_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan2_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan2_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 4500,
+      "rpmMax": 22000
+    },
+    {
+      "fanName": "fan_3_inner",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan5_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm3",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan3_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan3_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan3_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 4500,
+      "rpmMax": 22000
+    },
+    {
+      "fanName": "fan_3_outer",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan6_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm3",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan3_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan3_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan3_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 4500,
+      "rpmMax": 22000
+    },
+    {
+      "fanName": "fan_4_inner",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan7_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm4",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan4_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan4_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan4_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 4500,
+      "rpmMax": 22000
+    },
+    {
+      "fanName": "fan_4_outer",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan8_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm4",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan4_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan4_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan4_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 4500,
+      "rpmMax": 22000
+    },
+    {
+      "fanName": "fan_5_inner",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan9_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm5",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan5_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan5_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan5_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 4500,
+      "rpmMax": 22000
+    },
+    {
+      "fanName": "fan_5_outer",
+      "rpmSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan10_input",
+      "pwmSysfsPath": "/run/devmap/sensors/FAN_CTRL/pwm5",
+      "presenceSysfsPath": "/run/devmap/sensors/FAN_CTRL/fan5_present",
+      "goodLedSysfsPath": "/sys/class/leds/fan5_led:blue:status",
+      "failLedSysfsPath": "/sys/class/leds/fan5_led:amber:status",
+      "pwmMin": 1,
+      "pwmMax": 255,
+      "fanPresentVal": 1,
+      "fanMissingVal": 0,
+      "rpmMin": 4500,
+      "rpmMax": 22000
+    }
+  ]
+}

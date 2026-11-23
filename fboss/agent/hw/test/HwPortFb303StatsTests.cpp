@@ -580,10 +580,92 @@ TEST(HwPortFb303StatsTest, HwProtectionSwitchoverCounters) {
       7);
 }
 
+TEST(
+    HwPortFb303StatsTest,
+    LinkDownDuringWarmBootCounterPublishesBooleanWhenSupported) {
+  const std::string portName = "eth1/1/10";
+  HwPortFb303Stats portStats(
+      portName,
+      {} /*queueId2Name*/,
+      {} /*enabledPfcPriorities*/,
+      std::nullopt /*pfcCfg*/,
+      false /*inCongestionDiscardCountSupported*/,
+      false /*inCongestionDiscardSeenSupported*/,
+      false /*srv6MysidDiscardCounterSupported*/,
+      false /*mplsLabelLookupFailCounterSupported*/,
+      false /*linkDebounceRetriggerCounterSupported*/,
+      false /*sllHllDiscardCounterSupported*/,
+      true /*portLatchStatusSupported*/);
+
+  portStats.updateLinkDownDuringWarmBootCounter(true);
+  EXPECT_EQ(
+      fbData
+          ->getCounterIfExists(
+              HwPortFb303Stats::statName(kLinkDownDuringWarmBoot(), portName))
+          .value_or(-1),
+      1);
+
+  portStats.updateLinkDownDuringWarmBootCounter(false);
+  EXPECT_EQ(
+      fbData
+          ->getCounterIfExists(
+              HwPortFb303Stats::statName(kLinkDownDuringWarmBoot(), portName))
+          .value_or(-1),
+      0);
+}
+
+TEST(
+    HwPortFb303StatsTest,
+    LinkDownDuringWarmBootCounterInitializedOnlyWhenSupported) {
+  const std::string supportedPortName = "latch_supported_init";
+  HwPortFb303Stats supportedPortStats(
+      supportedPortName,
+      {} /*queueId2Name*/,
+      {} /*enabledPfcPriorities*/,
+      std::nullopt /*pfcCfg*/,
+      false /*inCongestionDiscardCountSupported*/,
+      false /*inCongestionDiscardSeenSupported*/,
+      false /*srv6MysidDiscardCounterSupported*/,
+      false /*mplsLabelLookupFailCounterSupported*/,
+      false /*linkDebounceRetriggerCounterSupported*/,
+      false /*sllHllDiscardCounterSupported*/,
+      true /*portLatchStatusSupported*/);
+  const auto supportedCounter = fbData->getCounterIfExists(
+      HwPortFb303Stats::statName(kLinkDownDuringWarmBoot(), supportedPortName));
+  ASSERT_TRUE(supportedCounter.has_value());
+  EXPECT_EQ(*supportedCounter, 0);
+
+  const std::string unsupportedPortName = "latch_unsupported_init";
+  HwPortFb303Stats unsupportedPortStats(unsupportedPortName);
+  EXPECT_FALSE(fbData
+                   ->getCounterIfExists(
+                       HwPortFb303Stats::statName(
+                           kLinkDownDuringWarmBoot(), unsupportedPortName))
+                   .has_value());
+}
+
+TEST(
+    HwPortFb303StatsTest,
+    LinkDownDuringWarmBootCounterNotCreatedWhenUnsupported) {
+  const std::string portName = "eth1/1/10";
+  HwPortFb303Stats portStats(portName);
+
+  portStats.updateLinkDownDuringWarmBootCounter(true);
+  EXPECT_FALSE(
+      fbData
+          ->getCounterIfExists(
+              HwPortFb303Stats::statName(kLinkDownDuringWarmBoot(), portName))
+          .has_value());
+}
+
 TEST(HwPortFb303StatsTest, StatName) {
   EXPECT_EQ(
       HwPortFb303Stats::statName(kOutBytes(), kPortName),
       folly::to<std::string>(kPortName, '.', kOutBytes()));
+  EXPECT_EQ(kLinkDownDuringWarmBoot().str(), "link_down_during_warmboot");
+  EXPECT_EQ(
+      HwPortFb303Stats::statName(kLinkDownDuringWarmBoot(), "eth1/1/10"),
+      "eth1/1/10.link_down_during_warmboot");
   EXPECT_EQ(
       HwPortFb303Stats::statName(kOutBytes(), kPortName, 1, "gold"),
       folly::to<std::string>(kPortName, '.', "queue1.gold.", kOutBytes()));
@@ -1046,4 +1128,77 @@ TEST(HwPortFb303StatsTest, ChangePfcConfig) {
     EXPECT_TRUE(fbData->getStatMap()->contains(
         HwPortFb303Stats::statName(statKey, kPortName)));
   }
+}
+
+TEST(HwPortFb303StatsTest, DisablePfcDurationWithStaleStats) {
+  cfg::PortPfc pfc;
+  pfc.txPfcDurationEnable() = true;
+  pfc.rxPfcDurationEnable() = true;
+  HwPortFb303Stats stats(
+      kPortName,
+      kQueue2Name,
+      kEnabledPfcPriorities,
+      pfc,
+      true /* inCongestionDiscardCountSupported */,
+      true /* inCongestionDiscardSeenSupported */);
+  auto portStats = getInitedStats();
+  for (const auto& priority : kEnabledPfcPriorities) {
+    portStats.txPfcDurationUsec_()[priority] = 10;
+    portStats.rxPfcDurationUsec_()[priority] = 20;
+  }
+  stats.updateStats(portStats, seconds(1));
+  for (const auto& priority : kEnabledPfcPriorities) {
+    EXPECT_TRUE(fbData->getStatMap()->contains(
+        HwPortFb303Stats::statName(kTxPfcDurationUsec(), kPortName, priority)));
+    EXPECT_TRUE(fbData->getStatMap()->contains(
+        HwPortFb303Stats::statName(kRxPfcDurationUsec(), kPortName, priority)));
+  }
+
+  // Disabling removes the counters, but stats collected before the disable
+  // still carry duration values: updating them must not abort.
+  pfc.txPfcDurationEnable() = false;
+  pfc.rxPfcDurationEnable() = false;
+  stats.pfcConfigChanged(kEnabledPfcPriorities, pfc);
+  stats.updateStats(portStats, seconds(2));
+  for (const auto& priority : kEnabledPfcPriorities) {
+    EXPECT_FALSE(fbData->getStatMap()->contains(
+        HwPortFb303Stats::statName(kTxPfcDurationUsec(), kPortName, priority)));
+    EXPECT_FALSE(fbData->getStatMap()->contains(
+        HwPortFb303Stats::statName(kRxPfcDurationUsec(), kPortName, priority)));
+  }
+}
+
+TEST(HwPortFb303StatsTest, ChangePfcPrioritiesWithDurationEnabled) {
+  cfg::PortPfc pfc;
+  pfc.txPfcDurationEnable() = true;
+  pfc.rxPfcDurationEnable() = true;
+  HwPortFb303Stats stats(
+      kPortName,
+      kQueue2Name,
+      kEnabledPfcPriorities,
+      pfc,
+      true /* inCongestionDiscardCountSupported */,
+      true /* inCongestionDiscardSeenSupported */);
+  std::vector<PfcPriority> newPriorities(
+      {static_cast<PfcPriority>(5), static_cast<PfcPriority>(6)});
+  stats.pfcConfigChanged(newPriorities, pfc);
+  for (auto statKey : {kTxPfcDurationUsec(), kRxPfcDurationUsec()}) {
+    for (const auto& priority : kEnabledPfcPriorities) {
+      EXPECT_FALSE(fbData->getStatMap()->contains(
+          HwPortFb303Stats::statName(statKey, kPortName, priority)));
+    }
+    for (const auto& priority : newPriorities) {
+      EXPECT_TRUE(fbData->getStatMap()->contains(
+          HwPortFb303Stats::statName(statKey, kPortName, priority)));
+    }
+  }
+
+  // Duration stats are collected for every priority, so publishing them for
+  // the newly enabled priorities must find their counters.
+  auto portStats = getInitedStats();
+  for (int priority = 0; priority <= 7; ++priority) {
+    portStats.txPfcDurationUsec_()[priority] = 10;
+    portStats.rxPfcDurationUsec_()[priority] = 20;
+  }
+  stats.updateStats(portStats, seconds(1));
 }

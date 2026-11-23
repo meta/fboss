@@ -31,9 +31,9 @@ std::unordered_map<std::string, InterfaceID> buildPortNameToInterfaceIdMap(
 
 // Convert MySidConfig (switch_config.thrift) to (MySid state, unresolved
 // next-hop set) pairs using a precomputed port-name → InterfaceID map (see
-// buildPortNameToInterfaceIdMap). The next-hop set is empty for
-// DECAPSULATE_AND_LOOKUP and ADJACENCY_MICRO_SID entries; populated for
-// NODE_MICRO_SID.
+// buildPortNameToInterfaceIdMap), one per (locator, function ID). The next-hop
+// set is empty for DECAPSULATE_AND_LOOKUP and ADJACENCY_MICRO_SID entries;
+// populated for NODE_MICRO_SID.
 std::vector<MySidWithNextHops> convertMySidConfig(
     const cfg::MySidConfig& config,
     const std::unordered_map<std::string, InterfaceID>& portNameToInterfaceId);

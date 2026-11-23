@@ -2,7 +2,6 @@
 
 #include "fboss/lib/bsp/BspPhyIO.h"
 
-#include <folly/Format.h>
 #include <folly/Range.h>
 #include <folly/logging/xlog.h>
 #include "fboss/lib/bsp/BspResetUtils.h"

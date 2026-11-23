@@ -136,7 +136,8 @@ reconstructStateAndRib(
         state->getLabelForwardingInformationBase(),
         state->getMySids(),
         getEcmpWidth(state),
-        state->getClassBasedPolicies());
+        state->getClassBasedPolicies(),
+        state->getInterfaceVrfs());
   } else {
     state = SwitchState::fromThrift(state::SwitchState{});
     /* cold boot, setup default rib */

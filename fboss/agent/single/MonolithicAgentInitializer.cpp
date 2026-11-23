@@ -24,6 +24,7 @@
 #include "fboss/agent/FbossInit.h"
 #include "fboss/agent/HwAgent.h"
 #include "fboss/agent/HwSwitch.h"
+#include "fboss/agent/InstrumentationHooks.h"
 #include "fboss/agent/Platform.h"
 #include "fboss/agent/SetupThrift.h"
 #include "fboss/agent/SwAgentInitializer.h"
@@ -150,6 +151,7 @@ void MonolithicAgentInitializer::handleExitSignal(bool gracefulExit) {
 #endif
 #endif
   initializer_.reset();
+  stopCoverageCollection();
   // Delay exit if agent_exit_delay_s is set
   if (FLAGS_agent_exit_delay_s > 0) {
     XLOG(INFO) << "[Exit] Delaying exit by " << FLAGS_agent_exit_delay_s

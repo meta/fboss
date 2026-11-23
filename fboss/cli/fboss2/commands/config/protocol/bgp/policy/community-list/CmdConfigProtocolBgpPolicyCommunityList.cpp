@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/community-list/CmdConfigProtocolBgpPolicyCommunityList.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -274,5 +275,23 @@ void CmdConfigProtocolBgpPolicyCommunityList::printOutput(
 template void CmdHandler<
     CmdConfigProtocolBgpPolicyCommunityList,
     CmdConfigProtocolBgpPolicyCommunityListTraits>::run();
+
+std::vector<std::string>
+CmdConfigProtocolBgpPolicyCommunityListTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completeAttrGrammar(
+      typed,
+      {.attrs =
+           {std::string(kBooleanOperator),
+            std::string(kCommunity),
+            std::string(kDescription),
+            std::string(kExactMatch)},
+       .values =
+           {{std::string(kBooleanOperator),
+             {std::string(kBooleanOperatorAnd),
+              std::string(kBooleanOperatorOr)}},
+            {std::string(kExactMatch), {"true", "false"}}},
+       .minObjects = 1});
+}
 
 } // namespace facebook::fboss

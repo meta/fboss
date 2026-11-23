@@ -45,6 +45,8 @@ class BgpGlobalConfig : public utils::BaseObjectArgType<std::string> {
 // its value(s); dispatch and per-attribute parsing live in the .cpp so adding
 // a new global tunable is a one-entry change rather than a new command class.
 struct CmdConfigProtocolBgpGlobalTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigProtocolBgp;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     // Stop CLI11's parent-chain subcommand fallthrough from stealing value

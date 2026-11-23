@@ -67,7 +67,7 @@ void readIdprom(
 // a later adapter is a mux behind it.
 void deleteCreatedAdapters(const std::vector<CreatedI2CAdapter>& adapters) {
   for (const auto& created : adapters) {
-    if (const auto& pci = created.adapter.pciAdapterInfo()) {
+    if (auto pci = created.adapter.pciAdapterInfo()) {
       try {
         CdevUtils::deleteDevice(*pci->pciInfo(), *pci->auxData(), created.id);
       } catch (const std::exception& e) {

@@ -34,7 +34,8 @@ class HwPortFb303Stats : public HwBasePortFb303Stats {
       bool srv6MysidDiscardCounterSupported = false,
       bool mplsLabelLookupFailCounterSupported = false,
       bool linkDebounceRetriggerCounterSupported = false,
-      bool sllHllDiscardCounterSupported = false)
+      bool sllHllDiscardCounterSupported = false,
+      bool portLatchStatusSupported = false)
       : HwBasePortFb303Stats(
             portName,
             std::move(queueId2Name),
@@ -45,7 +46,8 @@ class HwPortFb303Stats : public HwBasePortFb303Stats {
             srv6MysidDiscardCounterSupported,
             mplsLabelLookupFailCounterSupported,
             linkDebounceRetriggerCounterSupported,
-            sllHllDiscardCounterSupported) {
+            sllHllDiscardCounterSupported,
+            portLatchStatusSupported) {
     portStats_.portName_() = portName;
     reinitStats(std::nullopt);
   }
@@ -54,6 +56,7 @@ class HwPortFb303Stats : public HwBasePortFb303Stats {
   void updateStats(
       const HwPortStats& latestStats,
       const std::chrono::seconds& retrievedAt);
+  void updateLinkDownDuringWarmBootCounter(bool linkDownDuringWarmBoot);
 
   virtual void portNameChanged(const std::string& newName) override {
     portStats_.portName_() = newName;

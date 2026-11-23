@@ -10,7 +10,7 @@ cpp_unittest(
     ],
     network_access = network_access_utils.none(),
     deps = [
+        "fbsource//xplat/folly/io:iobuf",
         "//fboss/agent/packet/tajo:tajo_punt_header",
-        "//folly/io:iobuf",
     ],
 )

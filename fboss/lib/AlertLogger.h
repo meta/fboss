@@ -10,7 +10,6 @@
 #pragma once
 
 #include <fmt/format.h>
-#include <folly/Format.h>
 #include <folly/logging/xlog.h>
 
 #include <ostream>

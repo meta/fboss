@@ -19,21 +19,21 @@
 # ──────────────────────────────────────────────────────────────────────
 # Default — catches any file not matched by a more specific rule below.
 # ──────────────────────────────────────────────────────────────────────
-*                                       @facebook/fboss-oss
+*                                       @meta/fboss-oss
 
 # ──────────────────────────────────────────────────────────────────────
 # Agent — the core FBOSS daemon that programs the switching ASIC.
 # Includes HW abstraction, state management, routing, and packet I/O.
 # Path: fboss/agent/
 # ──────────────────────────────────────────────────────────────────────
-/fboss/agent/                           @facebook/fboss-agent
+/fboss/agent/                           @meta/fboss-agent
 
 # ──────────────────────────────────────────────────────────────────────
 # QSFP Service — manages QSFP/OSFP optical transceiver modules.
 # Handles optics detection, configuration, monitoring, and diagnostics.
 # Path: fboss/qsfp_service/
 # ──────────────────────────────────────────────────────────────────────
-/fboss/qsfp_service/                    @facebook/fboss-optics
+/fboss/qsfp_service/                    @meta/fboss-optics
 
 # ──────────────────────────────────────────────────────────────────────
 # Platform — platform-specific services and hardware support.
@@ -41,71 +41,71 @@
 # data_corral_service, and firmware utilities.
 # Path: fboss/platform/
 # ──────────────────────────────────────────────────────────────────────
-/fboss/platform/                        @facebook/fboss-platform
+/fboss/platform/                        @meta/fboss-platform
 
 # ──────────────────────────────────────────────────────────────────────
 # Shared Libraries — reusable code used across FBOSS components.
 # Includes PHY layer libs, BSP, I2C, ASIC config, and platform mapping.
 # Path: fboss/lib/
 # ──────────────────────────────────────────────────────────────────────
-/fboss/lib/                             @facebook/fboss-lib
+/fboss/lib/                             @meta/fboss-lib
 
 # ──────────────────────────────────────────────────────────────────────
 # CLI — the fboss2 command-line interface for switch management.
 # Provides operational commands for querying and configuring switches.
 # Path: fboss/cli/
 # ──────────────────────────────────────────────────────────────────────
-/fboss/cli/                             @facebook/fboss-cli
+/fboss/cli/                             @meta/fboss-cli
 
 # ──────────────────────────────────────────────────────────────────────
 # FSDB — FBOSS State Database for configuration and state storage.
 # Provides a pub-sub interface for structured switch state data.
 # Path: fboss/fsdb/
 # ──────────────────────────────────────────────────────────────────────
-/fboss/fsdb/                            @facebook/fboss-fsdb
+/fboss/fsdb/                            @meta/fboss-fsdb
 
 # ──────────────────────────────────────────────────────────────────────
 # LED Service — controls front-panel LED indicators on switch platforms.
 # Path: fboss/led_service/
 # ──────────────────────────────────────────────────────────────────────
-/fboss/led_service/                     @facebook/fboss-optics
+/fboss/led_service/                     @meta/fboss-optics
 
 # ──────────────────────────────────────────────────────────────────────
 # MDIO — Management Data Input/Output interface for PHY communication.
 # Path: fboss/mdio/
 # ──────────────────────────────────────────────────────────────────────
-/fboss/mdio/                            @facebook/fboss-optics
+/fboss/mdio/                            @meta/fboss-optics
 
 # ──────────────────────────────────────────────────────────────────────
 # Firmware — firmware images and update utilities for switch components.
 # Path: fboss/firmware/
 # ──────────────────────────────────────────────────────────────────────
-/fboss/firmware/                        @facebook/fboss-optics
+/fboss/firmware/                        @meta/fboss-optics
 
 # ──────────────────────────────────────────────────────────────────────
 # Thrift COW — Copy-on-Write data structures for Thrift-defined state.
 # Used by the agent for efficient, versioned state management.
 # Path: fboss/thrift_cow/
 # ──────────────────────────────────────────────────────────────────────
-/fboss/thrift_cow/                      @facebook/fboss-thrift
+/fboss/thrift_cow/                      @meta/fboss-thrift
 
 # ──────────────────────────────────────────────────────────────────────
 # Thrift Visitors — visitor pattern implementations for traversing
 # Thrift-defined data structures (used with thrift_cow).
 # Path: fboss/thrift_visitors/
 # ──────────────────────────────────────────────────────────────────────
-/fboss/thrift_visitors/                 @facebook/fboss-thrift
+/fboss/thrift_visitors/                 @meta/fboss-thrift
 
 # ──────────────────────────────────────────────────────────────────────
 # OSS — open-source packaging, scripts, and build definitions for
 # syncing FBOSS to the public GitHub repository.
 # Path: fboss/oss/
 # ──────────────────────────────────────────────────────────────────────
-/fboss/oss/                             @facebook/fboss-oss
+/fboss/oss/                             @meta/fboss-oss
 
 # ──────────────────────────────────────────────────────────────────────
 # GitHub / Build — open-source build infrastructure, CMake configs,
 # CI workflows, and GitHub-specific packaging.
 # Path: fboss/github/
 # ──────────────────────────────────────────────────────────────────────
-/fboss/github/                          @facebook/fboss-oss
+/fboss/github/                          @meta/fboss-oss

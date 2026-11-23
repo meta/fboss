@@ -26,7 +26,7 @@ Dynamic dependencies the vendor's hosts must provide:
 ## Building
 
 Set up the FBOSS OSS container and dependencies per the FBOSS OSS build
-instructions: https://facebook.github.io/fboss/ . Then build just the
+instructions: https://meta.github.io/fboss/ . Then build just the
 `fsdb_cgo_pub_sub_wrapper` target (rather than all of FBOSS) and bundle it:
 
 ```bash

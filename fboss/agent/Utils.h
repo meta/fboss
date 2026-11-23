@@ -133,9 +133,11 @@ folly::IPAddressV4 getSwitchIntfIP(
     InterfaceID intfID);
 
 /**
- * Helper function to get an IPv4 address of any(first) interface.
+ * Helper function to get an IPv4 address of any(first) interface in vrf.
  */
-folly::IPAddressV4 getAnyIntfIP(const std::shared_ptr<SwitchState>& state);
+folly::IPAddressV4 getAnyIntfIP(
+    const std::shared_ptr<SwitchState>& state,
+    RouterID vrf);
 
 /**
  * Helper function to get an IPv6 address for a particular vlan
@@ -156,9 +158,11 @@ folly::IPAddressV6 getSwitchIntfIPv6(
     InterfaceID intfID);
 
 /**
- * Helper function to get an IPvv6 address of any(first) interface.
+ * Helper function to get an IPv6 address of any(first) interface in vrf.
  */
-folly::IPAddressV6 getAnyIntfIPv6(const std::shared_ptr<SwitchState>& state);
+folly::IPAddressV6 getAnyIntfIPv6(
+    const std::shared_ptr<SwitchState>& state,
+    RouterID vrf);
 
 /*
  * Increases the nice value of the calling thread by increment. Note that this
@@ -324,17 +328,15 @@ InterfaceID getInterfaceIDForPort(
  * solicitation or advertisement is injected via pipeline lookup, ASIC would
  * not know which port(s) to send it out on, and thus would drop the packet.
  * Thus, for VOQ switch:
- *  - determine the interface for the given IP address
- *  - compute corresponding system port ID
+ *  - compute the system port ID of the interface
  *  - get corresponding portID
  *
- * This helper function takes the ipAddress as argument and returns
- * PortDescriptor for the systemPort to send otu the packet with pipeline
- * bypass on.
+ * Returns the port to send out of with pipeline bypass on, or nullopt for a
+ * VLAN interface.
  */
-std::optional<PortID> getInterfacePortToReach(
+std::optional<PortID> getInterfacePort(
     const std::shared_ptr<SwitchState>& state,
-    const folly::IPAddress& ipAddr);
+    const std::shared_ptr<Interface>& intf);
 
 class StopWatch {
  public:
@@ -414,6 +416,12 @@ std::shared_ptr<NeighborEntryT> getNeighborEntryForIPAndIntf(
 
 template <typename VlanOrIntfT>
 std::optional<VlanID> getVlanIDFromVlanOrIntf(
+    const std::shared_ptr<VlanOrIntfT>& vlanOrIntf);
+
+// VRF of the ingress VLAN or interface of a received packet
+template <typename VlanOrIntfT>
+RouterID getVrfFromVlanOrIntf(
+    const std::shared_ptr<SwitchState>& state,
     const std::shared_ptr<VlanOrIntfT>& vlanOrIntf);
 
 template <typename NTableT>

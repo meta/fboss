@@ -36,6 +36,7 @@ class SwitchState;
 class MultiSwitchFibInfoMap;
 class MultiSwitchMySidMap;
 class MultiSwitchClassBasedPolicyMap;
+class MultiSwitchInterfaceVrfMap;
 class SwitchIdScopeResolver;
 class StateDelta;
 
@@ -51,12 +52,10 @@ void reconstructMySidTableFromSwitchState(
     const std::shared_ptr<MultiSwitchMySidMap>& mySidMap,
     MySidTable* mySidTable);
 
+// Programs the routes of all given VRFs in one switch state update
 using RibToSwitchStateFunction = std::function<StateDelta(
     const SwitchIdScopeResolver* resolver,
-    RouterID vrf,
-    const IPv4NetworkToRouteMap& v4NetworkToRoute,
-    const IPv6NetworkToRouteMap& v6NetworkToRoute,
-    const LabelToRouteMap& labelToRoute,
+    const std::vector<RibVrfFib>& vrfFibs,
     const NextHopIDManager* nextHopIDManager,
     const MySidTable& mySidTable,
     void* cookie)>;
@@ -168,7 +167,7 @@ class RibRouteTables {
       RouterID routerID,
       ClientID clientID,
       AdminDistance adminDistanceFromClientID,
-      const std::vector<RouteType>& toAddRoutes,
+      std::vector<RouteType> toAddRoutes,
       const std::vector<RouteIdType>& toDelPrefixes,
       bool resetClientsRoutes,
       folly::StringPiece updateType,
@@ -210,11 +209,14 @@ class RibRouteTables {
       const std::unordered_map<
           folly::CIDRNetwork,
           std::optional<cfg::SwitchingMode>>& prefix2EcmpMode);
+  struct OverrideNhops {
+    std::optional<RouteNextHopSet> nhops;
+    std::optional<NextHopSetID> setId;
+  };
   void setOverrideEcmpNhops(
       RouterID rid,
-      const std::unordered_map<
-          folly::CIDRNetwork,
-          std::optional<RouteNextHopSet>>& prefix2Nhops);
+      const std::unordered_map<folly::CIDRNetwork, OverrideNhops>&
+          prefix2Nhops);
   /*
    * VrfAndNetworkToInterfaceRoute is conceptually a mapping from the pair
    * (RouterID, folly::CIDRNetwork) to the pair (Interface(1),
@@ -228,6 +230,7 @@ class RibRouteTables {
       flat_map<folly::CIDRNetwork, std::pair<InterfaceID, folly::IPAddress>>;
   using RouterIDAndNetworkToInterfaceRoutes =
       boost::container::flat_map<RouterID, PrefixToInterfaceIDAndIP>;
+  using InterfaceToVrf = std::unordered_map<InterfaceID, RouterID>;
 
   void reconfigure(
       const SwitchIdScopeResolver* resolver,
@@ -251,6 +254,19 @@ class RibRouteTables {
   void setEcmpWidth(uint32_t ecmpWidth);
   uint32_t getEcmpWidth() const;
 
+  // Copies ECMP overrides of routes changed in delta into the RIB, all VRFs.
+  void updateEcmpOverrides(const StateDelta& delta);
+  // Runs ribToSwitchStateFunc on every VRF outside any route update.
+  void syncStateFromRib(
+      const SwitchIdScopeResolver* resolver,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie) const;
+  // Whether warm boot reconstruct folded or backfilled NextHop ids, or dropped
+  // or restored inline nexthops.
+  bool nextHopIdsChangedAtWarmboot() const {
+    return nextHopIdsChangedAtWarmboot_;
+  }
+
   void updateRemoteInterfaceRoutes(
       const SwitchIdScopeResolver* resolver,
       const RouterIDAndNetworkToInterfaceRoutes& toAdd,
@@ -259,6 +275,21 @@ class RibRouteTables {
           std::vector<
               std::pair<folly::CIDRNetwork, facebook::fboss::InterfaceID>>>&
           toDel,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie);
+
+  void updateVrfs(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<VrfEntry>& toAdd,
+      const InterfaceToVrf& interfaceToVrf,
+      const std::vector<RouterID>& toDelete,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie);
+
+  void syncVrfs(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<VrfEntry>& vrfs,
+      const InterfaceToVrf& interfaceToVrf,
       const RibToSwitchStateFunction& ribToSwitchStateFunc,
       void* cookie);
 
@@ -275,7 +306,9 @@ class RibRouteTables {
       const std::shared_ptr<MultiSwitchMySidMap>& mySidMap,
       uint32_t ecmpWidth,
       const std::shared_ptr<MultiSwitchClassBasedPolicyMap>&
-          classBasedPolicyMaps);
+          classBasedPolicyMaps,
+      const std::shared_ptr<MultiSwitchInterfaceVrfMap>& interfaceVrfs =
+          nullptr);
 
   void ensureVrf(RouterID rid);
   std::vector<RouterID> getVrfList() const;
@@ -318,10 +351,43 @@ class RibRouteTables {
       RouterID vrf,
       const RibToSwitchStateFunction& ribToSwitchStateFunc,
       void* cookie,
+      bool ecmpModeChanged = false,
+      bool vrfDeleted = false);
+  void updateFib(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<RouterID>& vrfs,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie,
+      bool ecmpModeChanged = false);
+  void updateVrfsImpl(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<VrfEntry>& vrfEntries,
+      const InterfaceToVrf& interfaceToVrf,
+      const std::vector<RouterID>& vrfIdsToDelete,
+      bool sync,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie);
+  struct VrfFibUpdate {
+    RouterID vrf;
+    bool deleted{false};
+    // Added in this update, so it has no FIB to roll back to
+    bool added{false};
+  };
+  // Programs the FIBs of all vrfs in one switch state update
+  void updateFib(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<VrfFibUpdate>& vrfs,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie,
       bool ecmpModeChanged = false);
   template <typename RibUpdateFn>
   void updateRib(RouterID vrf, const RibUpdateFn& updateRib);
-  void updateEcmpOverrides(RouterID vrf, const StateDelta& delta);
+  // Like updateRib(vrf, ...), for changes across VRFs
+  template <typename RibUpdateFn>
+  void updateRib(const RibUpdateFn& updateRib);
+  void updateEcmpOverrides(
+      const std::vector<RouterID>& vrfs,
+      const StateDelta& delta);
 
   /*
    * MySid updates
@@ -358,9 +424,24 @@ class RibRouteTables {
         FLAGS_enable_nexthop_id_manager ? std::make_unique<NextHopIDManager>()
                                         : nullptr};
     uint32_t ecmpWidth{FLAGS_ecmp_width};
+    // VRFs of the interfaces that are not in VRF 0. Interface-scoped next
+    // hops of client routes resolve only through interfaces of their VRF.
+    InterfaceToVrf interfaceVrfs;
   };
 
   using SynchronizedRouteTables = folly::Synchronized<RouteTables>;
+
+  // After a change in changedVrf, re-resolves the VRFs whose next hops may
+  // resolve in it and adds them to vrfsToProgram
+  static void resolveDependentVrfs(
+      RouterID changedVrf,
+      RouterIDToRouteTable& routeTables,
+      const InterfaceToVrf& interfaceVrfs,
+      NextHopIDManager* nextHopIDManager,
+      MySidTable* mySidTable,
+      uint32_t ecmpWidth,
+      std::size_t* cyclesDetectedOut,
+      std::vector<RouterID>& vrfsToProgram);
 
   void importFibs(
       const SynchronizedRouteTables::WLockedPtr& lockedRouteTables,
@@ -376,19 +457,18 @@ class RibRouteTables {
       const RibMySidToSwitchStateFunction& ribMySidToSwitchStateFunc,
       void* cookie);
 
-  RouterIDToRouteTable constructRouteTables(
-      const SynchronizedRouteTables::WLockedPtr& lockedRouteTables,
-      const RouterIDAndNetworkToInterfaceRoutes&
-          configRouterIDToInterfaceRoutes) const;
-
   // Stamps missing clientNextHopSetID, resolvedNextHopSetID, and
   // normalizedResolvedNextHopSetID on routes from a pre-feature warmboot
-  // snapshot. No-op when manager is null or IDs are already set.
+  // snapshot, then drops their inline nexthops under
+  // FLAGS_drop_inline_nexthops_with_id, or restores dropped ones from their ids
+  // when the flag is off. No-op when manager is null. Returns whether it
+  // changed any route.
   // TODO: remove once FLAGS_enable_nexthop_id_manager is permanently on.
-  static void backfillNextHopIds(
+  static bool backfillNextHopIds(
       const SynchronizedRouteTables::WLockedPtr& lockedRouteTables);
 
   SynchronizedRouteTables synchronizedRouteTables_;
+  bool nextHopIdsChangedAtWarmboot_{false};
 };
 
 class RoutingInformationBase {
@@ -440,6 +520,19 @@ class RoutingInformationBase {
       ClientID clientID,
       AdminDistance adminDistanceFromClientID,
       const std::vector<UnicastRoute>& toAdd,
+      const std::vector<IpPrefix>& toDelete,
+      bool resetClientsRoutes,
+      folly::StringPiece updateType,
+      RibToSwitchStateFunction ribToSwitchStateFunc,
+      void* cookie);
+
+  // As above, but frees each thrift route once it is converted.
+  UpdateStatistics update(
+      const SwitchIdScopeResolver* resolver,
+      RouterID routerID,
+      ClientID clientID,
+      AdminDistance adminDistanceFromClientID,
+      std::vector<UnicastRoute>&& toAdd,
       const std::vector<IpPrefix>& toDelete,
       bool resetClientsRoutes,
       folly::StringPiece updateType,
@@ -537,6 +630,7 @@ class RoutingInformationBase {
    */
   using RouterIDAndNetworkToInterfaceRoutes =
       RibRouteTables::RouterIDAndNetworkToInterfaceRoutes;
+  using InterfaceToVrf = RibRouteTables::InterfaceToVrf;
 
   void reconfigure(
       const SwitchIdScopeResolver* resolver,
@@ -560,6 +654,19 @@ class RoutingInformationBase {
   void setEcmpWidth(uint32_t ecmpWidth);
   uint32_t getEcmpWidth() const;
 
+  // Syncs ECMP overrides changed outside any fib update, e.g. by warm boot
+  // reconstruct, into the RIB.
+  void updateEcmpOverrides(const StateDelta& delta);
+  // Applies the RIB to a state outside any route update, e.g. to bring a warm
+  // boot state's NextHop ids in line with the RIB's.
+  void syncStateFromRib(
+      const SwitchIdScopeResolver* resolver,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie);
+  bool nextHopIdsChangedAtWarmboot() const {
+    return ribTables_.nextHopIdsChangedAtWarmboot();
+  }
+
   void updateRemoteInterfaceRoutes(
       const SwitchIdScopeResolver* resolver,
       const RouterIDAndNetworkToInterfaceRoutes& toAdd,
@@ -568,6 +675,30 @@ class RoutingInformationBase {
           std::vector<
               std::pair<folly::CIDRNetwork, facebook::fboss::InterfaceID>>>&
           toDel,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie);
+
+  // Adds the route tables of toAdd, moves the interfaces in interfaceToVrf
+  // with their interface routes, and removes the route tables of toDelete, in
+  // one switch state update that ribToSwitchStateFunc can extend. A deleted
+  // VRF must have no interfaces after the moves, and only the routes of the
+  // interfaces that move out of it.
+  void updateVrfs(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<VrfEntry>& toAdd,
+      const InterfaceToVrf& interfaceToVrf,
+      const std::vector<RouterID>& toDelete,
+      const RibToSwitchStateFunction& ribToSwitchStateFunc,
+      void* cookie);
+
+  // Makes vrfs the only VRFs and interfaceToVrf the interface VRFs in one
+  // update, computed on the RIB thread: adds the missing VRFs, moves the
+  // interfaces, moves interfaces not listed to VRF 0, and deletes the VRFs
+  // not listed.
+  void syncVrfs(
+      const SwitchIdScopeResolver* resolver,
+      const std::vector<VrfEntry>& vrfs,
+      const InterfaceToVrf& interfaceToVrf,
       const RibToSwitchStateFunction& ribToSwitchStateFunc,
       void* cookie);
 
@@ -607,7 +738,10 @@ class RoutingInformationBase {
       const std::shared_ptr<MultiSwitchMySidMap>& mySidMap,
       uint32_t ecmpWidth,
       const std::shared_ptr<MultiSwitchClassBasedPolicyMap>&
-          classBasedPolicyMaps);
+          classBasedPolicyMaps,
+      // Interface VRFs of the warm boot state
+      const std::shared_ptr<MultiSwitchInterfaceVrfMap>& interfaceVrfs =
+          nullptr);
 
   void ensureVrf(RouterID rid) {
     ribTables_.ensureVrf(rid);
@@ -723,13 +857,14 @@ class RoutingInformationBase {
       void* cookie,
       bool async);
 
-  template <typename TraitsType>
+  // Frees each thrift route once converted when toAdd is passed as an rvalue.
+  template <typename TraitsType, typename RoutesT>
   UpdateStatistics updateImpl(
       const SwitchIdScopeResolver* resolver,
       RouterID routerID,
       ClientID clientID,
       AdminDistance adminDistanceFromClientID,
-      const std::vector<typename TraitsType::ThriftRoute>& toAdd,
+      RoutesT&& toAdd,
       const std::vector<typename TraitsType::ThriftRouteId>& toDelete,
       bool resetClientsRoutes,
       folly::StringPiece updateType,

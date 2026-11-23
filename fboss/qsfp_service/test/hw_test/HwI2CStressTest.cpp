@@ -226,7 +226,7 @@ TEST_F(HwTest, cmisPageChange) {
   addVerifiedProductionFeatures(
       {qsfp_production_features::QsfpProductionFeature::I2C_ACCESS});
   // Switch between page 0x10 and page 0x11 on CMIS modules on all ports and
-  // ensure that page 0x10 reads back the same every time
+  // ensure that bytes 128-232 of page 0x10 read back the same every time
   auto transceivers = utility::legacyTransceiverIds(
       utility::getCabledPortTranceivers(getHwQsfpEnsemble()));
   addTestedTransceiverIds(transceivers);
@@ -276,11 +276,15 @@ TEST_F(HwTest, cmisPageChange) {
             previousResponses[page].end()) {
           previousResponses[page][tcvrId] = currentResponse[tcvrId];
         }
-        for (int i = 0; i < 128; i++) {
+        // Only compare bytes 128-232; bytes 233-255 are reserved or custom
+        for (int i = 0; i <= 232 - 128; i++) {
           // Expect the previous response and the new response to be the same
           EXPECT_EQ(
               *(previousResponses[page][tcvrId].data()->data() + i),
-              *(currentResponse[tcvrId].data()->data() + i));
+              *(currentResponse[tcvrId].data()->data() + i))
+              << "Transceiver " << tcvrId << " page 0x" << std::hex << page
+              << " byte " << std::dec << 128 + i << " changed on iteration "
+              << iteration;
         }
       }
     }

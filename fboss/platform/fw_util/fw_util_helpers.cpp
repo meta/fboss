@@ -1,5 +1,4 @@
 #include "fw_util_helpers.h"
-#include <folly/Format.h>
 #include <folly/String.h>
 #include <folly/logging/xlog.h>
 #include <cstdlib>

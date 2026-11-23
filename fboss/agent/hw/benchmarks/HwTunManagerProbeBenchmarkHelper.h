@@ -203,10 +203,12 @@ inline void runTunManagerProbeBenchmark() {
 
   {
     // Hold mutex_ so a concurrent sync() can't walk intfs_ mid-cleanup.
-    std::lock_guard<std::mutex> lock(tunMgr->mutex_);
-    tunMgr->probeDone_ = false;
-    tunMgr->doProbe(lock);
-    tunMgr->deleteAllProbedData();
+    tunMgr->evb_->runInFbossEventBaseThreadAndWait([tunMgr] {
+      std::lock_guard<std::mutex> lock(tunMgr->mutex_);
+      tunMgr->probeDone_ = false;
+      tunMgr->doProbe(lock);
+      tunMgr->deleteAllProbedData();
+    });
   }
 
   const auto endTs = std::chrono::steady_clock::now();

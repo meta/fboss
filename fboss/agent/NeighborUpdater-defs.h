@@ -27,6 +27,7 @@ NEIGHBOR_UPDATER_METHOD(public, receivedNdpMine, void, (VlanID vlan, folly::IPAd
 NEIGHBOR_UPDATER_METHOD(public, receivedNdpNotMine, void, (VlanID vlan, folly::IPAddressV6 ip, folly::MacAddress mac, PortDescriptor port, ICMPv6Type type, uint32_t flags))
 
 NEIGHBOR_UPDATER_METHOD(public, sentNeighborSolicitationForIntf, void, (InterfaceID intfID, folly::IPAddressV6 ip))
+NEIGHBOR_UPDATER_METHOD(public, resolveNdpForIntf, void, (InterfaceID intfID, folly::IPAddressV6 ip))
 NEIGHBOR_UPDATER_METHOD(public, receivedNdpMineForIntf, void, (InterfaceID intfID, folly::IPAddressV6 ip, folly::MacAddress mac, PortDescriptor port, ICMPv6Type type, uint32_t flags))
 NEIGHBOR_UPDATER_METHOD(public, receivedNdpNotMineForIntf, void, (InterfaceID intfID, folly::IPAddressV6 ip, folly::MacAddress mac, PortDescriptor port, ICMPv6Type type, uint32_t flags))
 
@@ -37,6 +38,7 @@ NEIGHBOR_UPDATER_METHOD(public, receivedArpMine, void, (VlanID vlan, folly::IPAd
 NEIGHBOR_UPDATER_METHOD(public, receivedArpNotMine, void, (VlanID vlan, folly::IPAddressV4 ip, folly::MacAddress mac, PortDescriptor port, ArpOpCode op))
 
 NEIGHBOR_UPDATER_METHOD(public, sentArpRequestForIntf, void, (InterfaceID intfID, folly::IPAddressV4 ip))
+NEIGHBOR_UPDATER_METHOD(public, resolveArpForIntf, void, (InterfaceID intfID, folly::IPAddressV4 ip))
 NEIGHBOR_UPDATER_METHOD(public, receivedArpMineForIntf, void, (InterfaceID intfID, folly::IPAddressV4 ip, folly::MacAddress mac, PortDescriptor port, ArpOpCode op))
 NEIGHBOR_UPDATER_METHOD(public, receivedArpNotMineForIntf, void, (InterfaceID intfID, folly::IPAddressV4 ip, folly::MacAddress mac, PortDescriptor port, ArpOpCode op))
 

@@ -52,7 +52,7 @@ Patch awaitPatch(PatchGenerator& patchSubStream, bool isInitial = false) {
       folly::coro::timeout(
           consumeOne(patchSubStream), std::chrono::seconds(5)));
   SubscriberMessage patchMsg = std::move(element.val);
-  auto patchGroups = *patchMsg.get_chunk().patchGroups();
+  auto patchGroups = *patchMsg.chunk().as_const()->patchGroups();
   EXPECT_EQ(patchGroups.size(), 1);
   auto patches = patchGroups.begin()->second;
   EXPECT_EQ(patches.size(), 1);

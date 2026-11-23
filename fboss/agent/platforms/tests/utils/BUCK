@@ -16,8 +16,6 @@ bcm_test_platforms_common_srcs = [
     "BcmTestMinipackPort.cpp",
     "BcmTestYampPlatform.cpp",
     "BcmTestYampPort.cpp",
-    "FakeBcmTestPlatform.cpp",
-    "FakeBcmTestPort.cpp",
     "CreateTestPlatform.cpp",
     "BcmTestTomahawk4Platform.cpp",
     "BcmTestFujiPlatform.cpp",
@@ -32,7 +30,6 @@ cpp_library(
     + [
         "BcmTestWedgeTomahawk3Platform.cpp",
         "BcmTestWedgeTomahawkPlatform.cpp",
-        "FakeBcmTestPlatform.cpp",
     ],
     headers = [
         "BcmTestDarwinPlatform.h",
@@ -56,8 +53,6 @@ cpp_library(
         "BcmTestYampPlatform.h",
         "BcmTestYampPort.h",
         "CreateTestPlatform.h",
-        "FakeBcmTestPlatform.h",
-        "FakeBcmTestPort.h",
     ],
     deps = [
         "//fboss/agent:fboss-error",
@@ -65,7 +60,6 @@ cpp_library(
         "//fboss/agent/hw/test:config_factory",
         "//fboss/agent/platforms/common/darwin:darwin_platform_mapping",
         "//fboss/agent/platforms/common/elbert:elbert_platform_mapping",
-        "//fboss/agent/platforms/common/fake_test:fake_test_platform_mapping",
         "//fboss/agent/platforms/common/fuji:fuji_platform_mapping",
         "//fboss/agent/platforms/common/minipack:minipack_platform_mapping",
         "//fboss/agent/platforms/common/utils:wedge-led-utils",
@@ -75,6 +69,8 @@ cpp_library(
         "//fboss/lib/config:fboss_config_utils",
     ],
     exported_deps = [
+        "fbsource//xplat/folly:network_address",
+        "fbsource//xplat/folly/testing:test_util",
         ":test_platform_types",
         "//fboss/agent:fboss-types",
         "//fboss/agent:switch_config-cpp2-types",
@@ -83,74 +79,6 @@ cpp_library(
         "//fboss/agent/platforms/wedge/utils:bcm-led-utils",  # @manual
         "//fboss/lib/fpga/facebook/fuji:fuji_container",
         "//fboss/lib/platforms:product-info",
-        "//folly:network_address",
-        "//folly/testing:test_util",
-    ],
-    exported_external_deps = [
-        ("boost", None, "boost_container"),
-    ],
-)
-
-cpp_library(
-    # @autodeps-skip
-    name = "fake_bcm_test_platforms",
-    srcs = bcm_test_platforms_common_srcs
-    + [
-        "BcmTestWedgeTomahawk3Platform.cpp",
-        "BcmTestWedgeTomahawkPlatform.cpp",
-        "FakeBcmTestPlatform.cpp",
-    ],
-    headers = [
-        "BcmTestDarwinPlatform.h",
-        "BcmTestDarwinPort.h",
-        "BcmTestElbertPlatform.h",
-        "BcmTestElbertPort.h",
-        "BcmTestFujiPlatform.h",
-        "BcmTestFujiPort.h",
-        "BcmTestMinipackPlatform.h",
-        "BcmTestMinipackPort.h",
-        "BcmTestPlatform.h",
-        "BcmTestPort.h",
-        "BcmTestTomahawk4Platform.h",
-        "BcmTestWedge100Platform.h",
-        "BcmTestWedge100Port.h",
-        "BcmTestWedge400Platform.h",
-        "BcmTestWedge400Port.h",
-        "BcmTestWedgePlatform.h",
-        "BcmTestWedgeTomahawk3Platform.h",
-        "BcmTestWedgeTomahawkPlatform.h",
-        "BcmTestYampPlatform.h",
-        "BcmTestYampPort.h",
-        "CreateTestPlatform.h",
-        "FakeBcmTestPlatform.h",
-        "FakeBcmTestPort.h",
-    ],
-    deps = [
-        "//fboss/agent:fboss-error",
-        "//fboss/agent:handler",
-        "//fboss/agent/hw/test:config_factory",
-        "//fboss/agent/platforms/common/darwin:darwin_platform_mapping",
-        "//fboss/agent/platforms/common/elbert:elbert_platform_mapping",
-        "//fboss/agent/platforms/common/fake_test:fake_test_platform_mapping",
-        "//fboss/agent/platforms/common/fuji:fuji_platform_mapping",
-        "//fboss/agent/platforms/common/minipack:minipack_platform_mapping",
-        "//fboss/agent/platforms/common/utils:wedge-led-utils",
-        "//fboss/agent/platforms/common/wedge100:wedge100_platform_mapping",
-        "//fboss/agent/platforms/common/wedge400:wedge400_platform_mapping",
-        "//fboss/agent/platforms/common/yamp:yamp_platform_mapping",
-        "//fboss/agent/platforms/wedge/utils:bcm-led-utils",
-        "//fboss/lib/config:fboss_config_utils",
-    ],
-    exported_deps = [
-        ":test_platform_types",
-        "//fboss/agent:fboss-types",
-        "//fboss/agent:switch_config-cpp2-types",
-        "//fboss/agent/hw/bcm:fake_bcm",  # @manual
-        "//fboss/agent/hw/switch_asics:switch_asics",
-        "//fboss/lib/fpga/facebook/fuji:fuji_container",
-        "//fboss/lib/platforms:product-info",
-        "//folly:network_address",
-        "//folly/testing:test_util",
     ],
     exported_external_deps = [
         ("boost", None, "boost_container"),

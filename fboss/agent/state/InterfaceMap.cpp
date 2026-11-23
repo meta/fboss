@@ -14,32 +14,9 @@
 #include "fboss/agent/state/NodeMap-defs.h"
 #include "fboss/agent/state/SwitchState.h"
 
-using folly::IPAddress;
 using std::string;
 
 namespace facebook::fboss {
-
-std::shared_ptr<Interface> InterfaceMap::getInterfaceIf(
-    RouterID router,
-    const IPAddress& ip) const {
-  for (const auto& itr : std::as_const(*this)) {
-    const auto& intf = itr.second;
-    if (intf->getRouterID() == router && intf->hasAddress(ip)) {
-      return intf;
-    }
-  }
-  return nullptr;
-}
-
-const std::shared_ptr<Interface> InterfaceMap::getInterface(
-    RouterID router,
-    const IPAddress& ip) const {
-  auto intf = getInterfaceIf(router, ip);
-  if (intf) {
-    return intf;
-  }
-  throw FbossError("No interface with ip : ", ip);
-}
 
 std::shared_ptr<Interface> InterfaceMap::getInterfaceInVlanIf(
     VlanID vlan) const {
@@ -59,30 +36,6 @@ const std::shared_ptr<Interface> InterfaceMap::getInterfaceInVlan(
     throw FbossError("No interface in vlan : ", vlan);
   }
   return interface;
-}
-
-const std::shared_ptr<Interface> InterfaceMap::getIntfToReach(
-    RouterID router,
-    const folly::IPAddress& dest) const {
-  for (const auto& itr : std::as_const(*this)) {
-    const auto& intf = itr.second;
-    if (intf->getRouterID() == router && intf->canReachAddress(dest)) {
-      return intf;
-    }
-  }
-  return nullptr;
-}
-
-const std::shared_ptr<Interface> MultiSwitchInterfaceMap::getIntfToReach(
-    RouterID router,
-    const folly::IPAddress& dest) const {
-  for (const auto& [_, intfMap] : std::as_const(*this)) {
-    auto intf = intfMap->getIntfToReach(router, dest);
-    if (intf) {
-      return intf;
-    }
-  }
-  return nullptr;
 }
 
 MultiSwitchInterfaceMap* MultiSwitchInterfaceMap::modify(
@@ -115,27 +68,6 @@ const std::shared_ptr<Interface> MultiSwitchInterfaceMap::getInterfaceInVlan(
   return interface;
 }
 
-std::shared_ptr<Interface> MultiSwitchInterfaceMap::getInterfaceIf(
-    RouterID router,
-    const IPAddress& ip) const {
-  for (const auto& [_, intfMap] : *this) {
-    auto intf = intfMap->getInterfaceIf(router, ip);
-    if (intf) {
-      return intf;
-    }
-  }
-  return nullptr;
-}
-
-const std::shared_ptr<Interface> MultiSwitchInterfaceMap::getInterface(
-    RouterID router,
-    const IPAddress& ip) const {
-  auto intf = getInterfaceIf(router, ip);
-  if (intf) {
-    return intf;
-  }
-  throw FbossError("No interface with ip : ", ip);
-}
 template struct ThriftMapNode<InterfaceMap, InterfaceMapTraits>;
 
 } // namespace facebook::fboss

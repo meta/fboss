@@ -119,10 +119,14 @@ TEST_F(OverrideSetIdManagerTest, reconstructFromSwitchStateMap) {
       mgr_.reconstructFromSwitchStateMap(
           fibsInfoWithOverrides({{start - 1, {9}}})),
       "Not an override");
-  EXPECT_DEATH(
-      mgr_.reconstructFromSwitchStateMap(
-          fibsInfoWithOverrides({{start + 1, {9}}, {start + 2, {9}}})),
-      "Members shared");
+  // Two ids with the same members: the lowest is kept.
+  mgr_.reconstructFromSwitchStateMap(
+      fibsInfoWithOverrides({{start + 1, {9}}, {start + 2, {9}}}));
+  EXPECT_EQ(
+      mgr_.getIdToMembers(),
+      (std::unordered_map<NextHopSetID, NextHopIDSet>{
+          {NextHopSetID(start + 1), idSet({9})}}));
+  EXPECT_EQ(mgr_.getOrAllocate(idSet({3}))->second, NextHopSetID(start + 3));
 
   mgr_.reconstructFromSwitchStateMap(fibsInfoWithOverrides({}));
   EXPECT_TRUE(mgr_.getIdToMembers().empty());

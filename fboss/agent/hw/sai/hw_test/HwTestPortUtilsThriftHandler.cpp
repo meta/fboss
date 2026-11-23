@@ -2,6 +2,7 @@
 
 #include <fmt/core.h>
 
+#include "fboss/agent/hw/sai/api/QosMapApi.h"
 #include "fboss/agent/hw/sai/api/SaiApiError.h"
 #include "fboss/agent/hw/sai/switch/SaiLagManager.h"
 #include "fboss/agent/hw/sai/switch/SaiSwitch.h"
@@ -148,6 +149,31 @@ void HwTestThriftHandler::getPortVcInfo(
   tryRead(portVcInfo.senderPacketOverhead(), [&] {
     return portApi.getAttribute(
         portKey, SaiPortTraits::Attributes::CbfcSenderPacketOverhead{});
+  });
+
+  auto& qosMapApi = SaiApiTable::getInstance()->qosMapApi();
+  auto readVcMap = [&](auto attr, auto keyOf) {
+    std::map<int16_t, int16_t> vcMap;
+    auto mapId = portApi.getAttribute(portKey, attr);
+    if (mapId == SAI_NULL_OBJECT_ID) {
+      return vcMap;
+    }
+    for (const auto& entry : qosMapApi.getAttribute(
+             QosMapSaiId(mapId),
+             SaiQosMapTraits::Attributes::MapToValueList{})) {
+      vcMap[keyOf(entry.key)] = entry.value.vc;
+    }
+    return vcMap;
+  };
+  tryRead(portVcInfo.trafficClassToVcId(), [&] {
+    return readVcMap(
+        SaiPortTraits::Attributes::QosTcToVcMap{},
+        [](const sai_qos_map_params_t& key) { return key.tc; });
+  });
+  tryRead(portVcInfo.queueToVcId(), [&] {
+    return readVcMap(
+        SaiPortTraits::Attributes::QosQueueToVcMap{},
+        [](const sai_qos_map_params_t& key) { return key.queue_index; });
   });
 
   if (!handle) {

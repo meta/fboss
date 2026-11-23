@@ -70,6 +70,21 @@ folly::dynamic nhopMemberKeyToFollyDynamic(
           [AttributeName<SaiMplsNextHopTraits::Attributes::OutsegType>::value] =
               folly::to<std::string>(outsegType->value());
     }
+  } else if (
+      auto tunnelAhk =
+          std::get_if<SaiTunnelEncapNextHopTraits::AdapterHostKey>(&nhopKey)) {
+    object[AttributeName<SaiIpNextHopTraits::Attributes::Type>::value] =
+        folly::to<std::string>(SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP);
+    object[AttributeName<
+        SaiTunnelEncapNextHopTraits::Attributes::TunnelId>::value] =
+        folly::to<std::string>(
+            std::get<SaiTunnelEncapNextHopTraits::Attributes::TunnelId>(
+                *tunnelAhk)
+                .value());
+    object[AttributeName<SaiIpNextHopTraits::Attributes::Ip>::value] =
+        std::get<SaiTunnelEncapNextHopTraits::Attributes::Ip>(*tunnelAhk)
+            .value()
+            .str();
   }
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
   else if (
@@ -158,6 +173,20 @@ detail::NextHopMemberKey follyDynamicToNhopMemberKey(
           mplsAhk) = outsegType ? folly::to<sai_int32_t>(outsegType->asString())
                                 : SAI_OUTSEG_TYPE_SWAP;
       return detail::NextHopMemberKey(mplsAhk, weight);
+    }
+
+    case SAI_NEXT_HOP_TYPE_TUNNEL_ENCAP: {
+      SaiTunnelEncapNextHopTraits::AdapterHostKey tunnelAhk;
+      std::get<SaiTunnelEncapNextHopTraits::Attributes::TunnelId>(tunnelAhk) =
+          folly::to<sai_object_id_t>(
+              object[AttributeName<SaiTunnelEncapNextHopTraits::Attributes::
+                                       TunnelId>::value]
+                  .asString());
+      std::get<SaiTunnelEncapNextHopTraits::Attributes::Ip>(tunnelAhk) =
+          folly::IPAddress(
+              object[AttributeName<SaiIpNextHopTraits::Attributes::Ip>::value]
+                  .asString());
+      return detail::NextHopMemberKey(tunnelAhk, weight);
     }
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
@@ -383,6 +412,18 @@ SaiObject<SaiUdfGroupTraits>::follyDynamicToAdapterHostKey(
 }
 
 template <>
+folly::dynamic SaiObject<SaiPolicerTraits>::adapterHostKeyToFollyDynamic() {
+  return adapterHostKey_;
+}
+
+template <>
+typename SaiPolicerTraits::AdapterHostKey
+SaiObject<SaiPolicerTraits>::follyDynamicToAdapterHostKey(
+    const folly::dynamic& json) {
+  return json.asString();
+}
+
+template <>
 folly::dynamic
 SaiObject<SaiIsolationGroupTraits>::adapterHostKeyToFollyDynamic() {
   return adapterHostKey_;
@@ -393,6 +434,19 @@ typename SaiIsolationGroupTraits::AdapterHostKey
 SaiObject<SaiIsolationGroupTraits>::follyDynamicToAdapterHostKey(
     const folly::dynamic& json) {
   return json.asString();
+}
+
+template <>
+folly::dynamic
+SaiObject<SaiVirtualRouterTraits>::adapterHostKeyToFollyDynamic() {
+  return static_cast<uint32_t>(adapterHostKey_);
+}
+
+template <>
+typename SaiVirtualRouterTraits::AdapterHostKey
+SaiObject<SaiVirtualRouterTraits>::follyDynamicToAdapterHostKey(
+    const folly::dynamic& json) {
+  return RouterID(static_cast<uint32_t>(json.asInt()));
 }
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)

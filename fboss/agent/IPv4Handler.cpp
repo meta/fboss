@@ -113,10 +113,13 @@ void IPv4Handler::sendICMPTimeExceeded(
     ipObj = std::make_unique<ICMPExtIpSubObjectV4>(ICMPExtIpSubObjectV4(srcIp));
 
   } catch (const std::exception&) {
-    // Fall back to using a src IP of any interface on the switch, where if
+    // Fall back to using a src IP of any interface in the ingress VRF, where if
     // none is available, the preconfigured src address
     try {
-      srcIp = getAnyIntfIP(state);
+      auto intfIdOpt = state->getInterfaceIDForPortIf(PortDescriptor(port));
+      srcIp = intfIdOpt
+          ? getAnyIntfIP(state, state->getInterfaceVrfs()->getVrf(*intfIdOpt))
+          : state->getIcmpV4UnavailableSrcAddress();
     } catch (const FbossError&) {
       srcIp = state->getIcmpV4UnavailableSrcAddress();
     }
@@ -299,7 +302,7 @@ void IPv4Handler::handlePacket(
 
   // Handle packets destined for us
   // Get the Interface to which this packet should be forwarded in host
-  // TODO: assume vrf 0 now
+  const auto vrf = getVrfFromVlanOrIntf(state, vlanOrIntf);
   std::shared_ptr<Interface> intf{nullptr};
   auto interfaceMap = state->getInterfaces();
   if (v4Hdr.dstAddr.isMulticast()) {
@@ -329,11 +332,11 @@ void IPv4Handler::handlePacket(
     // intf->hasAddress(v4Hdr.dstAddr)) {
     //   intf = nullptr;
     // }
-    intf = interfaceMap->getInterfaceIf(RouterID(0), v4Hdr.dstAddr);
+    intf = state->getInterfaceIf(vrf, v4Hdr.dstAddr);
   } else {
     // Else loopup host interface based on destAddr
-    const auto iter = sw_->getAddrToLocalIntfMap().find(
-        std::make_pair(RouterID(0), v4Hdr.dstAddr));
+    const auto iter =
+        sw_->getAddrToLocalIntfMap().find(std::make_pair(vrf, v4Hdr.dstAddr));
     if (iter != sw_->getAddrToLocalIntfMap().end()) {
       intf = interfaceMap->getNodeIf(iter->second);
     }
@@ -386,7 +389,7 @@ void IPv4Handler::handlePacket(
   // We will need to manage the rate somehow. Either from HW
   // or a SW control here
   stats->port(port)->ipv4Nexthop();
-  if (!resolveMac(state, port, v4Hdr.dstAddr)) {
+  if (!resolveMac(state, port, v4Hdr.dstAddr, vrf)) {
     stats->port(port)->ipv4NoArp();
     XLOG(DBG4) << "Cannot find the interface to send out ARP request for "
                << v4Hdr.dstAddr.str();
@@ -416,13 +419,14 @@ template void IPv4Handler::handlePacket(
 bool IPv4Handler::resolveMac(
     std::shared_ptr<SwitchState> state,
     PortID ingressPort,
-    IPAddressV4 dest) {
+    IPAddressV4 dest,
+    RouterID vrf) {
   // need to find out our own IP and MAC addresses so that we can send the
   // ARP request out. Since the request will be broadcast, there is no need to
   // worry about which port to send the packet out.
   // The RIB can lead the published state, so ids must resolve from the RIB.
-  auto routeAndNextHops = sw_->getRib()->getRouteAndNextHops(
-      dest, RouterID(0), false /* normalized */);
+  auto routeAndNextHops =
+      sw_->getRib()->getRouteAndNextHops(dest, vrf, false /* normalized */);
 
   if (!routeAndNextHops || !routeAndNextHops->first->isResolved()) {
     sw_->portStats(ingressPort)->ipv4DstLookupFailure();
@@ -434,6 +438,11 @@ bool IPv4Handler::resolveMac(
   auto intfs = state->getInterfaces();
   auto sent = false;
   for (auto nh : nhs) {
+    // TODO: resolve the underlay neighbors of next hops resolved in the next
+    // level
+    if (nh.resolvedInNextLevel()) {
+      continue;
+    }
     auto intf = intfs->getNodeIf(nh.intf());
     if (intf) {
       if (nh.addr().isV4()) {
@@ -444,7 +453,7 @@ bool IPv4Handler::resolveMac(
           continue;
         }
 
-        sent = sw_->sendArpRequestHelper(intf, state, source, target);
+        sent = sw_->resolveArpHelper(intf, target);
 
       } else if (nh.addr().isV6() && !route->isConnected()) {
         auto source = intf->getAddressToReach(nh.addr())->first.asV6();
@@ -454,7 +463,7 @@ bool IPv4Handler::resolveMac(
           continue;
         }
 
-        sent = sw_->sendNdpSolicitationHelper(intf, state, target);
+        sent = sw_->resolveNdpHelper(intf, target);
       }
     }
   }

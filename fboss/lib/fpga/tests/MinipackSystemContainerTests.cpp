@@ -96,4 +96,31 @@ TEST_F(MinipackSystemContainerTests, TestLeds) {
 TEST_F(MinipackSystemContainerTests, TestPimTypes) {
   testPimTypes(systemContainer_.get(), kPimToPimType);
 }
+
+TEST_F(MinipackSystemContainerTests, TestPimTypeErrorOnUnreadablePim) {
+  constexpr auto kFailingPim = 5;
+  fpgaDevice_->write(getFpgaPimOffset(kFailingPim), 0xFFFFFFFF);
+
+  try {
+    systemContainer_->getPimType(kFailingPim);
+    FAIL() << "Expected PimTypeError";
+  } catch (const PimTypeError& e) {
+    EXPECT_EQ(e.getPim(), kFailingPim);
+    EXPECT_EQ(e.getPimTypeReg(), 0xFF000000);
+    EXPECT_EQ(e.getReason(), PimTypeError::Reason::UNREADABLE);
+  }
+}
+
+TEST_F(MinipackSystemContainerTests, TestPimTypeErrorOnZeroPimTypeReg) {
+  constexpr auto kFailingPim = 5;
+  fpgaDevice_->write(getFpgaPimOffset(kFailingPim), 0);
+
+  try {
+    systemContainer_->getPimType(kFailingPim);
+    FAIL() << "Expected PimTypeError";
+  } catch (const PimTypeError& e) {
+    EXPECT_EQ(e.getPim(), kFailingPim);
+    EXPECT_EQ(e.getReason(), PimTypeError::Reason::UNREADABLE);
+  }
+}
 } // namespace facebook::fboss

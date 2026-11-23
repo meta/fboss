@@ -18,6 +18,8 @@ cpp_binary(
         "Main.cpp",
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     versions = {
         "broadcom-plp-barchetta2": "5.2",
         "broadcom-plp-epdm": "4.1.2",
@@ -93,6 +95,8 @@ cpp_library(
 
 cpp_library(
     name = "core-default",
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     exported_deps = [
         ":core-credo-0.7.2",  # @manual
     ],

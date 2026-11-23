@@ -121,6 +121,10 @@ class Tomahawk4Asic : public BroadcomXgsAsic {
     return 8192;
   }
 
+  std::optional<uint32_t> getMaxVrfs() const override {
+    return 8192;
+  }
+
   std::optional<uint32_t> getMaxArpTableSize() const override {
     return 16384;
   }

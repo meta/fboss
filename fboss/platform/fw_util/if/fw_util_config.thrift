@@ -162,6 +162,8 @@ struct FwConfig {
   8: optional string sha1sum;
   // Desired version for firmware
   9: optional string desiredVersion;
+  // Seconds to wait after the upgrade operations complete
+  10: optional i32 delayAfterUpgradeSec;
 }
 
 typedef string DeviceName

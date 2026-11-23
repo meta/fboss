@@ -14,12 +14,78 @@
 
 namespace facebook::fboss::utility {
 
+namespace {
+constexpr auto kEgressTestPoolName = "egress_test_pool";
+
+uint64_t perPortQueueReservedBytes(
+    const std::vector<cfg::PortQueue>& portQueues) {
+  uint64_t perPortReserved = 0;
+  for (const auto& queue : portQueues) {
+    if (auto rb = queue.reservedBytes()) {
+      perPortReserved += *rb;
+    }
+  }
+  return perPortReserved;
+}
+
+bool egressTestPoolRequired(const HwAsic* asic) {
+  switch (asic->getAsicType()) {
+    // P200: a buffer profile's reserve must fit in its pool's reserve.
+    case cfg::AsicType::ASIC_TYPE_P200:
+    // G200/G202X: a constant pool reserve keeps the SDK from recalculating it
+    // on every queue attach/detach (O(n^2)).
+    case cfg::AsicType::ASIC_TYPE_YUBA:
+    case cfg::AsicType::ASIC_TYPE_G202X:
+      return true;
+    default:
+      return false;
+  }
+}
+
+void addEgressTestPool(
+    cfg::SwitchConfig* config,
+    std::vector<cfg::PortQueue>& portQueues,
+    const HwAsic* asic) {
+  auto totalReservedBytes =
+      config->ports()->size() * perPortQueueReservedBytes(portQueues);
+  cfg::BufferPoolConfig poolCfg;
+  poolCfg.sharedBytes() = asic->getMMUSizeBytes() - totalReservedBytes;
+  poolCfg.reservedBytes() = totalReservedBytes;
+  config->bufferPoolConfigs().ensure()[kEgressTestPoolName] = poolCfg;
+  for (auto& queue : portQueues) {
+    queue.bufferPoolName() = kEgressTestPoolName;
+  }
+}
+} // namespace
+
+void addEgressTestPoolIfRequired(
+    cfg::SwitchConfig* config,
+    std::vector<cfg::PortQueue>& portQueues,
+    const HwAsic* asic) {
+  if (!egressTestPoolRequired(asic)) {
+    return;
+  }
+  if (perPortQueueReservedBytes(portQueues) > 0) {
+    addEgressTestPool(config, portQueues, asic);
+    return;
+  }
+  // Queues without reservedBytes stay on an existing test pool: P200 cannot
+  // change the pool's reserve once their buffer profiles are bound to it.
+  if (config->bufferPoolConfigs() &&
+      config->bufferPoolConfigs()->contains(kEgressTestPoolName)) {
+    for (auto& queue : portQueues) {
+      queue.bufferPoolName() = kEgressTestPoolName;
+    }
+  }
+}
+
 // XXX This is FSW config, add RSW config. Prefix queue names with portName
 // XXX this is 2Q config minus ECN. If needed, add 2Q + ECN config
 void add2QueueConfig(
     cfg::SwitchConfig* config,
     cfg::StreamType streamType,
-    bool scalingFactorSupported) {
+    bool scalingFactorSupported,
+    const HwAsic* asic) {
   std::vector<cfg::PortQueue> portQueues;
 
   cfg::PortQueue queue0;
@@ -52,6 +118,8 @@ void add2QueueConfig(
   queue7.streamType() = streamType;
   *queue7.scheduling() = cfg::QueueScheduling::STRICT_PRIORITY;
   portQueues.push_back(queue7);
+
+  addEgressTestPoolIfRequired(config, portQueues, asic);
 
   config->portQueueConfigs()["queue_config"] = portQueues;
   for (auto& port : *config->ports()) {

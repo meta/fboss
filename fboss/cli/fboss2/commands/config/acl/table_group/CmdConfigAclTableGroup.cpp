@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/acl/table_group/CmdConfigAclTableGroup.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
@@ -114,5 +115,17 @@ void CmdConfigAclTableGroup::printOutput(const RetType& logMsg) {
 // Explicit template instantiation
 template void
 CmdHandler<CmdConfigAclTableGroup, CmdConfigAclTableGroupTraits>::run();
+
+std::vector<std::string> CmdConfigAclTableGroupTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(
+      typed,
+      {{},
+       {std::string(kAclTableGroupAttrStage)},
+       {std::string(kAclStageIngress),
+        std::string(kAclStageIngressMacsec),
+        std::string(kAclStageEgressMacsec),
+        std::string(kAclStageIngressPostLookup)}});
+}
 
 } // namespace facebook::fboss

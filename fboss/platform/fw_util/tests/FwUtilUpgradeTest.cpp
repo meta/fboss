@@ -25,28 +25,12 @@ class FwUtilUpgradeTest : public ::testing::Test {
     std::ofstream binFile(binaryFile_);
     binFile << "test binary content";
     binFile.close();
-
-    // Create platform name file if it doesn't exist
-    std::filesystem::path platformPath = "/var/facebook/fboss/platform_name";
-    if (!std::filesystem::exists(platformPath)) {
-      std::ofstream platformFile(platformPath);
-      if (platformFile.is_open()) {
-        platformFile << "test_platform";
-        platformFile.close();
-        createdPlatformFile_ = true;
-      }
-    }
   }
 
   void TearDown() override {
     // Clean up temp directory
     if (std::filesystem::exists(tempDir_)) {
       std::filesystem::remove_all(tempDir_);
-    }
-
-    // Clean up platform file if we created it
-    if (createdPlatformFile_) {
-      std::filesystem::remove("/var/facebook/fboss/platform_name");
     }
   }
 
@@ -94,7 +78,6 @@ class FwUtilUpgradeTest : public ::testing::Test {
 
   std::filesystem::path tempDir_;
   std::string binaryFile_;
-  bool createdPlatformFile_ = false;
 };
 
 // Test doUpgrade with dry run mode enabled
@@ -127,6 +110,28 @@ TEST_F(FwUtilUpgradeTest, DoUpgradeWithValidConfig) {
 
   // Should attempt to call doUpgradeOperation, which will fail with flashrom
   EXPECT_THROW(fwUtil.doUpgrade("test_device"), std::exception);
+}
+
+TEST_F(FwUtilUpgradeTest, DoUpgradeWaitsForConfiguredDelay) {
+  std::string configFile = (tempDir_ / "test_config.json").string();
+  createConfigWithUpgrade(configFile);
+  FwUtilImpl fwUtil(
+      binaryFile_,
+      configFile,
+      false, // verifySha1sum
+      false // dryRun
+  );
+  // flashrom without flashromArgs is a no-op, so only the delay takes time.
+  UpgradeConfig noOpUpgrade;
+  noOpUpgrade.commandType() = "flashrom";
+  auto& fwConfig = fwUtil.fwUtilConfig_.fwConfigs()->at("test_device");
+  fwConfig.upgrade() = {noOpUpgrade};
+  fwConfig.delayAfterUpgradeSec() = 1;
+
+  const auto start = std::chrono::steady_clock::now();
+  fwUtil.doUpgrade("test_device");
+
+  EXPECT_GE(std::chrono::steady_clock::now() - start, std::chrono::seconds(1));
 }
 
 // Test doUpgrade with missing upgrade configuration

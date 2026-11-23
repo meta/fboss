@@ -91,6 +91,12 @@ class MockPlatformExplorer : public PlatformExplorer {
   void setPMStatus(const PlatformManagerStatus& status) {
     updatePmStatus(status);
   }
+
+  void addExplorationError(
+      ExplorationErrorType errorType,
+      const std::string& devicePath) {
+    explorationSummary_.addError(errorType, devicePath, "test error");
+  }
 };
 
 class PlatformManagerHandlerTest : public Test {
@@ -120,74 +126,145 @@ class PlatformManagerHandlerTest : public Test {
     explorer_->setPMStatus(pmStatus);
   }
 
+  PmUnitInfo addPmUnit(const std::string& slotPath) {
+    PmUnitVersion version;
+    version.productionState() = 2;
+    version.productionSubState() = 13;
+    version.respinVariantIndicator() = 1;
+    dataStore_->updatePmUnitName(slotPath, "TEST_PM_UNIT");
+    dataStore_->updatePmUnitVersion(slotPath, version);
+
+    PmUnitInfo expected;
+    expected.name() = "TEST_PM_UNIT";
+    expected.version() = version;
+    return expected;
+  }
+
+  PresenceInfo addAbsentSlot(const std::string& slotPath) {
+    PresenceInfo absent;
+    absent.isPresent() = false;
+    dataStore_->updatePmUnitPresenceInfo(slotPath, absent);
+    return absent;
+  }
+
+  PmUnitInfo getPmUnitInfo(const std::string& slotPath) {
+    auto request = std::make_unique<PmUnitInfoRequest>();
+    request->slotPath() = slotPath;
+    PmUnitInfoResponse response;
+    handler_->getPmUnitInfo(response, std::move(request));
+    return *response.pmUnitInfo();
+  }
+
+  void expectGetPmUnitInfoThrows(
+      const std::string& slotPath,
+      PlatformManagerErrorCode errorCode) {
+    try {
+      getPmUnitInfo(slotPath);
+      FAIL() << "Expected PlatformManagerError to be thrown";
+    } catch (const PlatformManagerError& e) {
+      EXPECT_EQ(*e.errorCode(), errorCode);
+    }
+  }
+
   PlatformConfig config_;
   std::unique_ptr<DataStore> dataStore_;
   std::unique_ptr<MockPlatformExplorer> explorer_;
   std::unique_ptr<PlatformManagerHandler> handler_;
 };
 
-class GetPmUnitInfoExplorationStatusTest
+TEST_F(
+    PlatformManagerHandlerTest,
+    GetPmUnitInfo_ThrowsWhenExplorationInProgress) {
+  addPmUnit("/TEST_SLOT@0");
+  setExplorationStatus(ExplorationStatus::IN_PROGRESS);
+
+  expectGetPmUnitInfoThrows(
+      "/TEST_SLOT@0", PlatformManagerErrorCode::EXPLORATION_NOT_SUCCEEDED);
+}
+
+class GetPmUnitInfoServedStatusTest
     : public PlatformManagerHandlerTest,
       public WithParamInterface<ExplorationStatus> {};
 
-TEST_P(GetPmUnitInfoExplorationStatusTest, ThrowsWhenExplorationNotSucceeded) {
+TEST_P(GetPmUnitInfoServedStatusTest, ReturnsStoredPmUnitInfo) {
+  const auto expected = addPmUnit("/TEST_SLOT@0");
   setExplorationStatus(GetParam());
 
-  auto request = std::make_unique<PmUnitInfoRequest>();
-  request->slotPath() = "/";
-
-  PmUnitInfoResponse response;
-  try {
-    handler_->getPmUnitInfo(response, std::move(request));
-    FAIL() << "Expected PlatformManagerError to be thrown";
-  } catch (const PlatformManagerError& e) {
-    EXPECT_EQ(
-        *e.errorCode(), PlatformManagerErrorCode::EXPLORATION_NOT_SUCCEEDED);
-  }
+  EXPECT_EQ(getPmUnitInfo("/TEST_SLOT@0"), expected);
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    ExplorationStatuses,
-    GetPmUnitInfoExplorationStatusTest,
-    Values(ExplorationStatus::FAILED, ExplorationStatus::IN_PROGRESS));
+    ServedStatuses,
+    GetPmUnitInfoServedStatusTest,
+    Values(
+        ExplorationStatus::SUCCEEDED,
+        ExplorationStatus::SUCCEEDED_WITH_EXPECTED_ERRORS,
+        ExplorationStatus::FAILED));
 
-TEST_F(PlatformManagerHandlerTest, GetPmUnitInfo_ThrowsOnInvalidSlotPath) {
-  setExplorationStatus(ExplorationStatus::SUCCEEDED);
+class GetPmUnitInfoNotFoundStatusTest
+    : public PlatformManagerHandlerTest,
+      public WithParamInterface<ExplorationStatus> {};
 
-  auto request = std::make_unique<PmUnitInfoRequest>();
-  request->slotPath() = "/NONEXISTENT_SLOT@0";
+TEST_P(GetPmUnitInfoNotFoundStatusTest, ThrowsOnUnknownSlotPath) {
+  setExplorationStatus(GetParam());
 
-  PmUnitInfoResponse response;
-  try {
-    handler_->getPmUnitInfo(response, std::move(request));
-    FAIL() << "Expected PlatformManagerError to be thrown";
-  } catch (const PlatformManagerError& e) {
-    EXPECT_EQ(*e.errorCode(), PlatformManagerErrorCode::PM_UNIT_NOT_FOUND);
-  }
+  expectGetPmUnitInfoThrows(
+      "/NONEXISTENT_SLOT@0", PlatformManagerErrorCode::PM_UNIT_NOT_FOUND);
 }
 
-TEST_F(PlatformManagerHandlerTest, GetPmUnitInfo_ReturnsValidInfoOnSuccess) {
-  setExplorationStatus(ExplorationStatus::SUCCEEDED);
+INSTANTIATE_TEST_SUITE_P(
+    NotFoundStatuses,
+    GetPmUnitInfoNotFoundStatusTest,
+    Values(
+        ExplorationStatus::UNSTARTED,
+        ExplorationStatus::SUCCEEDED,
+        ExplorationStatus::SUCCEEDED_WITH_EXPECTED_ERRORS,
+        ExplorationStatus::FAILED));
 
-  // Setup: Populate DataStore with a valid PmUnit
-  PmUnitVersion version;
-  version.productionState() = 2;
-  version.productionSubState() = 13;
-  version.respinVariantIndicator() = 1;
+TEST_F(
+    PlatformManagerHandlerTest,
+    GetPmUnitInfo_ReturnsAbsenceWhenExplorationFailed) {
+  const auto absent = addAbsentSlot("/PSU_SLOT@0");
+  explorer_->addExplorationError(
+      ExplorationErrorType::IDPROM_READ, "/SCM_SLOT@0/[IDPROM]");
+  setExplorationStatus(ExplorationStatus::FAILED);
 
-  dataStore_->updatePmUnitName("/TEST_SLOT@0", "TEST_PM_UNIT");
-  dataStore_->updatePmUnitVersion("/TEST_SLOT@0", version);
+  EXPECT_EQ(*getPmUnitInfo("/PSU_SLOT@0").presenceInfo(), absent);
+}
 
-  auto request = std::make_unique<PmUnitInfoRequest>();
-  request->slotPath() = "/TEST_SLOT@0";
+TEST_F(
+    PlatformManagerHandlerTest,
+    GetPmUnitInfo_ReturnsAbsenceWithOtherErrorOnSlotWhenExplorationFailed) {
+  const auto absent = addAbsentSlot("/FAN_SLOT@0");
+  explorer_->addExplorationError(
+      ExplorationErrorType::SLOT_PM_UNIT_ABSENCE, "/FAN_SLOT@0/[<ABSENT>]");
+  setExplorationStatus(ExplorationStatus::FAILED);
 
-  PmUnitInfoResponse response;
-  handler_->getPmUnitInfo(response, std::move(request));
+  EXPECT_EQ(*getPmUnitInfo("/FAN_SLOT@0").presenceInfo(), absent);
+}
 
-  EXPECT_EQ(*response.pmUnitInfo()->name(), "TEST_PM_UNIT");
-  EXPECT_EQ(*response.pmUnitInfo()->version()->productionState(), 2);
-  EXPECT_EQ(*response.pmUnitInfo()->version()->productionSubState(), 13);
-  EXPECT_EQ(*response.pmUnitInfo()->version()->respinVariantIndicator(), 1);
+TEST_F(
+    PlatformManagerHandlerTest,
+    GetPmUnitInfo_ThrowsOnPresenceCheckErrorWhenExplorationFailed) {
+  addAbsentSlot("/PSU_SLOT@0");
+  explorer_->addExplorationError(
+      ExplorationErrorType::SLOT_PRESENCE_CHECK, "/PSU_SLOT@0/[<ABSENT>]");
+  setExplorationStatus(ExplorationStatus::FAILED);
+
+  expectGetPmUnitInfoThrows(
+      "/PSU_SLOT@0", PlatformManagerErrorCode::EXPLORATION_NOT_SUCCEEDED);
+}
+
+TEST_F(
+    PlatformManagerHandlerTest,
+    GetPmUnitInfo_ReturnsOtherSlotOnPresenceCheckErrorWhenExplorationFailed) {
+  const auto absent = addAbsentSlot("/PSU_SLOT@1");
+  addAbsentSlot("/PSU_SLOT@0");
+  explorer_->addExplorationError(
+      ExplorationErrorType::SLOT_PRESENCE_CHECK, "/PSU_SLOT@0/[<ABSENT>]");
+  setExplorationStatus(ExplorationStatus::FAILED);
+
+  EXPECT_EQ(*getPmUnitInfo("/PSU_SLOT@1").presenceInfo(), absent);
 }
 
 TEST_F(PlatformManagerHandlerTest, GetAllPmUnits_ReturnsPopulatedMapWithUnits) {

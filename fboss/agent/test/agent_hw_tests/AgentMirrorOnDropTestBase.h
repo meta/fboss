@@ -43,6 +43,8 @@ class AgentMirrorOnDropTestBase : public AgentHwTest {
   std::vector<ProductionFeature> getProductionFeaturesVerified() const override;
 
  protected:
+  static constexpr auto kDefaultGlobalSharedBytes{2'000'000};
+
   // Packet to be dropped
   inline static const folly::IPAddressV6 kDropDestIp{
       "2401:3333:3333:3333:3333:3333:3333:3333"};
@@ -70,7 +72,23 @@ class AgentMirrorOnDropTestBase : public AgentHwTest {
       const folly::MacAddress& nextHopMac,
       bool disableTtlDecrement = false);
 
+  void unprogramEcmpTraffic(const folly::IPAddressV6& addr);
+
+  void unresolveEcmpTraffic(const PortID& portId);
+
   void addDropPacketAcl(cfg::SwitchConfig* config, const PortID& portId);
+
+  void configureMmuDropBuffers(
+      cfg::SwitchConfig& config,
+      const PortID& injectionPortId,
+      int priority);
+
+  void applyMirrorOnDropConfig(
+      cfg::SwitchConfig& config,
+      cfg::MirrorOnDropReport report,
+      const PortID& collectorPort);
+
+  void resetMirrorOnDropFlows();
 
   // Create a packet that will be dropped. The entire packet is expected to be
   // copied to the MoD payload. However note that if the test involves looping

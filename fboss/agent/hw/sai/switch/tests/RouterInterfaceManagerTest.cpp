@@ -13,6 +13,7 @@
 #include "fboss/agent/hw/sai/switch/SaiManagerTable.h"
 #include "fboss/agent/hw/sai/switch/SaiRouterInterfaceManager.h"
 #include "fboss/agent/hw/sai/switch/SaiSystemPortManager.h"
+#include "fboss/agent/hw/sai/switch/SaiVirtualRouterManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
 #include "fboss/agent/state/Interface.h"
 #include "fboss/agent/state/SwitchState.h"
@@ -230,10 +231,10 @@ TEST_F(RouterInterfaceManagerTest, addTwoPortRouterInterfaces) {
 TEST_F(RouterInterfaceManagerTest, addDupRouterInterface) {
   auto swInterface = makeInterface(intf0);
   saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-      swInterface);
+      swInterface, makeInterfaceVrfs());
   EXPECT_THROW(
       saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-          swInterface),
+          swInterface, makeInterfaceVrfs()),
       FbossError);
 }
 
@@ -242,10 +243,10 @@ TEST_F(RouterInterfaceManagerTest, addDupPortRouterInterface) {
   auto swInterface = makeInterface(*swSysPort, {intf0.subnet});
   std::ignore =
       saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-          swInterface);
+          swInterface, makeInterfaceVrfs());
   EXPECT_THROW(
       saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-          swInterface),
+          swInterface, makeInterfaceVrfs()),
       FbossError);
 }
 
@@ -497,7 +498,7 @@ TEST_F(RouterInterfaceManagerTest, getRouterInterface) {
   auto oldInterface = makeInterface(intf0);
   auto saiId =
       saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-          oldInterface);
+          oldInterface, makeInterfaceVrfs());
   auto routerInterfaceHandle =
       saiManagerTable->routerInterfaceManager().getRouterInterfaceHandle(
           InterfaceID(0));
@@ -510,7 +511,7 @@ TEST_F(RouterInterfaceManagerTest, getPortRouterInterface) {
   auto oldInterface = makeInterface(*swSysPort, {intf0.subnet});
   auto saiId =
       saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-          oldInterface);
+          oldInterface, makeInterfaceVrfs());
   checkPortRouterInterface(saiId, sysPort1, oldInterface->getMac());
   auto routerInterfaceHandle =
       saiManagerTable->routerInterfaceManager().getRouterInterfaceHandle(
@@ -522,7 +523,7 @@ TEST_F(RouterInterfaceManagerTest, getPortRouterInterface) {
 TEST_F(RouterInterfaceManagerTest, getNonexistentRouterInterface) {
   auto swInterface = makeInterface(intf0);
   saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-      swInterface);
+      swInterface, makeInterfaceVrfs());
   auto routerInterfaceHandle =
       saiManagerTable->routerInterfaceManager().getRouterInterfaceHandle(
           InterfaceID(2));
@@ -575,7 +576,7 @@ TEST_F(RouterInterfaceManagerTest, removePortRouterInterface) {
 TEST_F(RouterInterfaceManagerTest, removeNonexistentRouterInterface) {
   auto swInterface = makeInterface(intf1);
   saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-      swInterface);
+      swInterface, makeInterfaceVrfs());
   auto& routerInterfaceManager = saiManagerTable->routerInterfaceManager();
   auto swInterface2 = makeInterface(testInterfaces[2]);
   EXPECT_THROW(
@@ -587,7 +588,7 @@ TEST_F(RouterInterfaceManagerTest, adapterKeyAndTypeRouterInterface) {
   auto swInterface = makeInterface(intf1);
   auto saiId =
       saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-          swInterface);
+          swInterface, makeInterfaceVrfs());
   checkAdapterKey(saiId, swInterface->getID());
   checkType(saiId, swInterface->getID(), cfg::InterfaceType::VLAN);
 }
@@ -597,7 +598,7 @@ TEST_F(RouterInterfaceManagerTest, adapterKeyAndTypeSystemPortRouterInterface) {
   auto swInterface = makeInterface(*swSysPort, {intf0.subnet});
   auto saiId =
       saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-          swInterface);
+          swInterface, makeInterfaceVrfs());
   checkAdapterKey(saiId, swInterface->getID());
   // TODO(Chenab): Support port router interface
   checkType(saiId, swInterface->getID(), cfg::InterfaceType::SYSTEM_PORT);
@@ -607,7 +608,7 @@ TEST_F(RouterInterfaceManagerTest, adapterKeyAndTypePortRouterInterface) {
   auto swInterface = makeInterface(intf1, cfg::InterfaceType::PORT);
   auto saiId =
       saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-          swInterface);
+          swInterface, makeInterfaceVrfs());
   checkAdapterKey(saiId, swInterface->getID());
   checkType(saiId, swInterface->getID(), cfg::InterfaceType::PORT);
 }
@@ -624,7 +625,7 @@ TEST_F(RouterInterfaceManagerTest, addAggregatePortRouterInterface) {
       makeAggregatePortInterface(intf1, swAggregatePort->getID());
   auto saiId =
       saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-          swInterface);
+          swInterface, makeInterfaceVrfs());
 
   checkAdapterKey(saiId, swInterface->getID());
   checkType(saiId, swInterface->getID(), cfg::InterfaceType::PORT);
@@ -642,7 +643,7 @@ TEST_F(RouterInterfaceManagerTest, removeAggregatePortRouterInterface) {
       makeAggregatePortInterface(intf1, swAggregatePort->getID());
   std::ignore =
       saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-          swInterface);
+          swInterface, makeInterfaceVrfs());
   ASSERT_NE(
       saiManagerTable->routerInterfaceManager().getRouterInterfaceHandle(
           swInterface->getID()),
@@ -664,7 +665,7 @@ TEST_F(RouterInterfaceManagerTest, changePortRifToAggregatePortRif) {
   auto portInterface = makeInterface(intf1, cfg::InterfaceType::PORT);
   auto portSaiId =
       saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-          portInterface);
+          portInterface, makeInterfaceVrfs());
   auto portIdGot = saiApiTable->routerInterfaceApi().getAttribute(
       portSaiId, SaiPortRouterInterfaceTraits::Attributes::PortId{});
   EXPECT_NE(portIdGot, static_cast<sai_object_id_t>(lagSaiId));
@@ -673,7 +674,7 @@ TEST_F(RouterInterfaceManagerTest, changePortRifToAggregatePortRif) {
   auto aggInterface =
       makeAggregatePortInterface(intf1, swAggregatePort->getID());
   saiManagerTable->routerInterfaceManager().changeLocalRouterInterface(
-      portInterface, aggInterface);
+      portInterface, aggInterface, makeInterfaceVrfs());
 
   auto handle =
       saiManagerTable->routerInterfaceManager().getRouterInterfaceHandle(
@@ -693,7 +694,7 @@ TEST_F(RouterInterfaceManagerTest, changeAggregatePortRifToPortRif) {
       makeAggregatePortInterface(intf1, swAggregatePort->getID());
   auto aggSaiId =
       saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
-          aggInterface);
+          aggInterface, makeInterfaceVrfs());
   auto portIdGot = saiApiTable->routerInterfaceApi().getAttribute(
       aggSaiId, SaiPortRouterInterfaceTraits::Attributes::PortId{});
   EXPECT_EQ(portIdGot, static_cast<sai_object_id_t>(lagSaiId));
@@ -701,7 +702,7 @@ TEST_F(RouterInterfaceManagerTest, changeAggregatePortRifToPortRif) {
   // ... then rebind the same interface to a physical port.
   auto portInterface = makeInterface(intf1, cfg::InterfaceType::PORT);
   saiManagerTable->routerInterfaceManager().changeLocalRouterInterface(
-      aggInterface, portInterface);
+      aggInterface, portInterface, makeInterfaceVrfs());
 
   auto handle =
       saiManagerTable->routerInterfaceManager().getRouterInterfaceHandle(
@@ -710,4 +711,157 @@ TEST_F(RouterInterfaceManagerTest, changeAggregatePortRifToPortRif) {
   portIdGot = saiApiTable->routerInterfaceApi().getAttribute(
       handle->adapterKey(), SaiPortRouterInterfaceTraits::Attributes::PortId{});
   EXPECT_NE(portIdGot, static_cast<sai_object_id_t>(lagSaiId));
+}
+
+class RouterInterfaceManagerVrfTest : public ManagerTestBase {
+ public:
+  void SetUp() override {
+    setupStage = SetupStage::PORT | SetupStage::VLAN | SetupStage::VRF;
+    testInterfaceRouterIds = {{1, RouterID(1001)}};
+    ManagerTestBase::SetUp();
+  }
+
+  VirtualRouterSaiId virtualRouterId(RouterID routerId) const {
+    return saiManagerTable->virtualRouterManager()
+        .getVirtualRouterHandle(routerId)
+        ->virtualRouter->adapterKey();
+  }
+
+  sai_object_id_t rifVirtualRouterId(InterfaceID intfId) const {
+    return saiApiTable->routerInterfaceApi().getAttribute(
+        saiManagerTable->routerInterfaceManager()
+            .getRouterInterfaceHandle(intfId)
+            ->adapterKey(),
+        SaiVlanRouterInterfaceTraits::Attributes::VirtualRouterId{});
+  }
+};
+
+TEST_F(RouterInterfaceManagerVrfTest, vlanRouterInterfaceInVrf) {
+  auto state = programmedState->clone();
+  auto rifMap = state->getInterfaces()->modify(&state);
+  rifMap->addNode(makeInterface(testInterfaces[0]), scope());
+  rifMap->addNode(makeInterface(testInterfaces[1]), scope());
+  state->getInterfaceVrfs()->modify(&state)->addNode(
+      std::make_shared<InterfaceVrf>(InterfaceID(1), RouterID(1001)), scope());
+  applyNewState(state);
+
+  EXPECT_EQ(
+      rifVirtualRouterId(InterfaceID(1)), virtualRouterId(RouterID(1001)));
+  EXPECT_EQ(rifVirtualRouterId(InterfaceID(0)), virtualRouterId(RouterID(0)));
+  auto toMeRoutes = saiManagerTable->routerInterfaceManager()
+                        .getRouterInterfaceHandle(InterfaceID(1))
+                        ->toMeRoutes;
+  EXPECT_FALSE(toMeRoutes.empty());
+  for (const auto& toMeRoute : toMeRoutes) {
+    EXPECT_EQ(
+        toMeRoute->adapterHostKey().virtualRouterId(),
+        virtualRouterId(RouterID(1001)));
+  }
+}
+
+TEST_F(RouterInterfaceManagerVrfTest, routerInterfaceInMissingVrf) {
+  auto testInterface = testInterfaces[2];
+  testInterface.routerId = RouterID(2002);
+  EXPECT_THROW(
+      saiManagerTable->routerInterfaceManager().addLocalRouterInterface(
+          makeInterface(testInterface),
+          makeInterfaceVrfs(
+              {{InterfaceID(testInterface.id), testInterface.routerId}})),
+      FbossError);
+}
+
+TEST_F(RouterInterfaceManagerVrfTest, moveRouterInterfaceToVrf) {
+  auto state = programmedState->clone();
+  state->getInterfaces()->modify(&state)->addNode(
+      makeInterface(testInterfaces[0]), scope());
+  applyNewState(state);
+  auto oldRifId = saiManagerTable->routerInterfaceManager()
+                      .getRouterInterfaceHandle(InterfaceID(0))
+                      ->adapterKey();
+
+  auto movedInterface = testInterfaces[0];
+  movedInterface.routerId = RouterID(1001);
+  state = programmedState->clone();
+  state->getInterfaces()->modify(&state)->updateNode(
+      makeInterface(movedInterface), scope());
+  state->getInterfaceVrfs()->modify(&state)->addNode(
+      std::make_shared<InterfaceVrf>(InterfaceID(0), RouterID(1001)), scope());
+  applyNewState(state);
+
+  EXPECT_FALSE(FakeSai::getInstance()->routeInterfaceManager.exists(oldRifId));
+  EXPECT_EQ(
+      rifVirtualRouterId(InterfaceID(0)), virtualRouterId(RouterID(1001)));
+  const auto& toMeRoutes = saiManagerTable->routerInterfaceManager()
+                               .getRouterInterfaceHandle(InterfaceID(0))
+                               ->toMeRoutes;
+  EXPECT_FALSE(toMeRoutes.empty());
+  for (const auto& toMeRoute : toMeRoutes) {
+    EXPECT_EQ(
+        toMeRoute->adapterHostKey().virtualRouterId(),
+        virtualRouterId(RouterID(1001)));
+  }
+}
+
+TEST_F(RouterInterfaceManagerVrfTest, moveRouterInterfaceByInterfaceVrfMap) {
+  auto state = programmedState->clone();
+  state->getInterfaces()->modify(&state)->addNode(
+      makeInterface(testInterfaces[0]), scope());
+  applyNewState(state);
+
+  // Only the interface VRF map changes
+  state = programmedState->clone();
+  state->getInterfaceVrfs()->modify(&state)->addNode(
+      std::make_shared<InterfaceVrf>(InterfaceID(0), RouterID(1001)), scope());
+  applyNewState(state);
+  EXPECT_EQ(
+      rifVirtualRouterId(InterfaceID(0)), virtualRouterId(RouterID(1001)));
+
+  state = programmedState->clone();
+  state->getInterfaceVrfs()->modify(&state)->removeNode(InterfaceID(0));
+  applyNewState(state);
+  EXPECT_EQ(rifVirtualRouterId(InterfaceID(0)), virtualRouterId(RouterID(0)));
+}
+
+TEST_F(RouterInterfaceManagerVrfTest, moveRouterInterfaceToMissingVrf) {
+  auto oldInterface = makeInterface(testInterfaces[0]);
+  auto state = programmedState->clone();
+  state->getInterfaces()->modify(&state)->addNode(oldInterface, scope());
+  applyNewState(state);
+
+  auto movedInterface = testInterfaces[0];
+  movedInterface.routerId = RouterID(2002);
+  EXPECT_THROW(
+      saiManagerTable->routerInterfaceManager().changeLocalRouterInterface(
+          oldInterface,
+          makeInterface(movedInterface),
+          makeInterfaceVrfs(
+              {{InterfaceID(movedInterface.id), movedInterface.routerId}})),
+      FbossError);
+
+  ASSERT_NE(
+      saiManagerTable->routerInterfaceManager().getRouterInterfaceHandle(
+          InterfaceID(0)),
+      nullptr);
+  EXPECT_EQ(rifVirtualRouterId(InterfaceID(0)), virtualRouterId(RouterID(0)));
+}
+
+TEST_F(RouterInterfaceManagerVrfTest, moveRouterInterfaceOutOfRemovedVrf) {
+  auto state = programmedState->clone();
+  state->getInterfaces()->modify(&state)->addNode(
+      makeInterface(testInterfaces[1]), scope());
+  applyNewState(state);
+
+  auto movedInterface = testInterfaces[1];
+  movedInterface.routerId = RouterID(0);
+  state = programmedState->clone();
+  state->getInterfaces()->modify(&state)->updateNode(
+      makeInterface(movedInterface), scope());
+  state->getVrfs()->modify(&state)->removeNode(RouterID(1001));
+  applyNewState(state);
+
+  EXPECT_EQ(
+      saiManagerTable->virtualRouterManager().getVirtualRouterHandle(
+          RouterID(1001)),
+      nullptr);
+  EXPECT_EQ(rifVirtualRouterId(InterfaceID(1)), virtualRouterId(RouterID(0)));
 }

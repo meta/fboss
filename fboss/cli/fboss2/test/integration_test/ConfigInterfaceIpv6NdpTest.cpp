@@ -26,6 +26,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/test/integration_test/Fboss2IntegrationTest.h"
 
 using namespace facebook::fboss;
@@ -129,6 +130,44 @@ TEST_F(ConfigInterfaceIpv6NdpTest, SetAndVerifyRaInterval) {
 }
 
 // ---------------------------------------------------------------------------
+// Test: set ra-lifetime and verify routerLifetime via running config. A second
+// set overwrites the first, and 0 ("not a default router") is accepted. The
+// RA interval is a separate field and must not change.
+// ---------------------------------------------------------------------------
+
+TEST_F(ConfigInterfaceIpv6NdpTest, SetAndVerifyRaLifetime) {
+  XLOG(INFO) << "[Step 1] Finding an interface to test...";
+  std::string ifName = getRandomInterfacePortName();
+  int intfID = getInterfaceIdForPort(ifName);
+  XLOG(INFO) << "  Using interface: " << ifName;
+
+  // routerAdvertisementSeconds defaults to 0 when the ndp block is absent.
+  auto ndpBefore = getNdpConfig(getRunningConfig(), intfID);
+  const int64_t raIntervalBefore = ndpBefore.count("routerAdvertisementSeconds")
+      ? ndpBefore["routerAdvertisementSeconds"].asInt()
+      : 0;
+
+  // Neither value is the schema default (1800).
+  for (const int lifetime : {1234, 0}) {
+    XLOG(INFO) << "[Step 2] Setting ra-lifetime to " << lifetime << "...";
+    setNdpAttr(ifName, "ra-lifetime", std::to_string(lifetime));
+
+    XLOG(INFO) << "[Step 3] Verifying running config via thrift...";
+    expectNdpField(
+        intfID,
+        "routerLifetime",
+        [&](const folly::dynamic& v) { return v.asInt() == lifetime; },
+        fmt::format("== {}", lifetime));
+    expectNdpField(
+        intfID,
+        "routerAdvertisementSeconds",
+        [&](const folly::dynamic& v) { return v.asInt() == raIntervalBefore; },
+        fmt::format("unchanged at {}", raIntervalBefore));
+  }
+  XLOG(INFO) << "TEST PASSED";
+}
+
+// ---------------------------------------------------------------------------
 // Test: set hop-limit and verify via running config
 // ---------------------------------------------------------------------------
 
@@ -152,6 +191,46 @@ TEST_F(ConfigInterfaceIpv6NdpTest, SetAndVerifyHopLimit) {
 }
 
 // ---------------------------------------------------------------------------
+// Test: set prefix-valid-lifetime and verify prefixValidLifetimeSeconds via
+// running config. The preferred lifetime is a separate field and must not
+// change.
+// ---------------------------------------------------------------------------
+
+TEST_F(ConfigInterfaceIpv6NdpTest, SetAndVerifyPrefixValidLifetime) {
+  XLOG(INFO) << "[Step 1] Finding an interface to test...";
+  std::string ifName = getRandomInterfacePortName();
+  int intfID = getInterfaceIdForPort(ifName);
+  XLOG(INFO) << "  Using interface: " << ifName;
+
+  // prefixPreferredLifetimeSeconds takes its schema default when the ndp block
+  // is absent.
+  auto ndpBefore = getNdpConfig(getRunningConfig(), intfID);
+  const int64_t preferredBefore =
+      ndpBefore.count("prefixPreferredLifetimeSeconds")
+      ? ndpBefore["prefixPreferredLifetimeSeconds"].asInt()
+      : int64_t{*cfg::NdpConfig{}.prefixPreferredLifetimeSeconds()};
+
+  // Not the schema default (2592000).
+  constexpr int64_t kLifetime = 1209600;
+  XLOG(INFO) << "[Step 2] Setting prefix-valid-lifetime to " << kLifetime
+             << "...";
+  setNdpAttr(ifName, "prefix-valid-lifetime", std::to_string(kLifetime));
+
+  XLOG(INFO) << "[Step 3] Verifying running config via thrift...";
+  expectNdpField(
+      intfID,
+      "prefixValidLifetimeSeconds",
+      [&](const folly::dynamic& v) { return v.asInt() == kLifetime; },
+      fmt::format("== {}", kLifetime));
+  expectNdpField(
+      intfID,
+      "prefixPreferredLifetimeSeconds",
+      [&](const folly::dynamic& v) { return v.asInt() == preferredBefore; },
+      fmt::format("unchanged at {}", preferredBefore));
+  XLOG(INFO) << "TEST PASSED";
+}
+
+// ---------------------------------------------------------------------------
 // Test: set managed-config-flag and verify via running config
 // ---------------------------------------------------------------------------
 
@@ -169,6 +248,46 @@ TEST_F(ConfigInterfaceIpv6NdpTest, SetManagedConfigFlag) {
       "routerAdvertisementManagedBit",
       [](const folly::dynamic& v) { return v.asBool(); },
       "== true");
+  XLOG(INFO) << "TEST PASSED";
+}
+
+// ---------------------------------------------------------------------------
+// Test: set prefix-preferred-lifetime and verify prefixPreferredLifetimeSeconds
+// via running config. A second set overwrites the first, and 0 ("deprecated
+// immediately") is accepted. The valid lifetime is a separate field and must
+// not change.
+// ---------------------------------------------------------------------------
+
+TEST_F(ConfigInterfaceIpv6NdpTest, SetAndVerifyPrefixPreferredLifetime) {
+  XLOG(INFO) << "[Step 1] Finding an interface to test...";
+  std::string ifName = getRandomInterfacePortName();
+  int intfID = getInterfaceIdForPort(ifName);
+  XLOG(INFO) << "  Using interface: " << ifName;
+
+  // prefixValidLifetimeSeconds takes its schema default when the ndp block is
+  // absent.
+  auto ndpBefore = getNdpConfig(getRunningConfig(), intfID);
+  const int64_t validBefore = ndpBefore.count("prefixValidLifetimeSeconds")
+      ? ndpBefore["prefixValidLifetimeSeconds"].asInt()
+      : int64_t{*cfg::NdpConfig{}.prefixValidLifetimeSeconds()};
+
+  // Not the schema default (604800).
+  constexpr int64_t kLifetime = 86400;
+  XLOG(INFO) << "[Step 2] Setting prefix-preferred-lifetime to " << kLifetime
+             << "...";
+  setNdpAttr(ifName, "prefix-preferred-lifetime", std::to_string(kLifetime));
+
+  XLOG(INFO) << "[Step 3] Verifying running config via thrift...";
+  expectNdpField(
+      intfID,
+      "prefixPreferredLifetimeSeconds",
+      [&](const folly::dynamic& v) { return v.asInt() == kLifetime; },
+      fmt::format("== {}", kLifetime));
+  expectNdpField(
+      intfID,
+      "prefixValidLifetimeSeconds",
+      [&](const folly::dynamic& v) { return v.asInt() == validBefore; },
+      fmt::format("unchanged at {}", validBefore));
   XLOG(INFO) << "TEST PASSED";
 }
 
@@ -204,6 +323,41 @@ TEST_F(ConfigInterfaceIpv6NdpTest, SetRaAddress) {
       "routerAddress",
       [&](const folly::dynamic& v) { return v.asString() == raAddr; },
       fmt::format("== \"{}\"", raAddr));
+  XLOG(INFO) << "TEST PASSED";
+}
+
+// ---------------------------------------------------------------------------
+// Test: set other-config-flag and verify routerAdvertisementOtherBit via
+// running config. The managed bit is a separate flag and must not change.
+// ---------------------------------------------------------------------------
+
+TEST_F(ConfigInterfaceIpv6NdpTest, SetOtherConfigFlag) {
+  XLOG(INFO) << "[Step 1] Finding an interface to test...";
+  std::string ifName = getRandomInterfacePortName();
+  int intfID = getInterfaceIdForPort(ifName);
+  XLOG(INFO) << "  Using interface: " << ifName;
+
+  // routerAdvertisementManagedBit defaults to false when the ndp block is
+  // absent.
+  auto ndpBefore = getNdpConfig(getRunningConfig(), intfID);
+  const bool managedBefore = ndpBefore.count("routerAdvertisementManagedBit")
+      ? ndpBefore["routerAdvertisementManagedBit"].asBool()
+      : false;
+
+  XLOG(INFO) << "[Step 2] Setting other-config-flag...";
+  setNdpAttr(ifName, "other-config-flag");
+
+  XLOG(INFO) << "[Step 3] Verifying running config via thrift...";
+  expectNdpField(
+      intfID,
+      "routerAdvertisementOtherBit",
+      [](const folly::dynamic& v) { return v.asBool(); },
+      "== true");
+  expectNdpField(
+      intfID,
+      "routerAdvertisementManagedBit",
+      [&](const folly::dynamic& v) { return v.asBool() == managedBefore; },
+      fmt::format("unchanged at {}", managedBefore));
   XLOG(INFO) << "TEST PASSED";
 }
 

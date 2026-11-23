@@ -325,7 +325,7 @@
             "dtm_flow_mapping_mode_region_119.BCM9943X": "0",
             "dtm_flow_mapping_mode_region_120.BCM9943X": "0",
             "dtm_flow_nof_remote_cores_region.BCM9943X": "8",
-            "eventor_sbus_dma_channels.BCM9943X": "0,6,0,7",
+            "eventor_sbus_dma_channels.BCM9943X": "0,6,0,7,1,6,1,7",
             "fail_on_unsupported_attribute": "1",
             "l3_ecmp_max_group_size": "512",
             "l3_route_dst_class_id_enable": "1",

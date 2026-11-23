@@ -7,18 +7,21 @@ cpp_library(
     srcs = [
         "ConfigGenerationSpecUtils.cpp",
         "FeatureDefaultCommandArgsUtils.cpp",
+        "LinkTopologyUtils.cpp",
         "ThriftConfigUtils.cpp",
     ],
     headers = [
         "ConfigGenerationSpecUtils.h",
         "FeatureDefaultCommandArgsUtils.h",
+        "LinkTopologyUtils.h",
         "ThriftConfigUtils.h",
     ],
     visibility = ["PUBLIC"],
     deps = [
-        "//folly:file_util",
-        "//folly:string",
-        "//folly/json:dynamic",
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly:small_vector",
+        "fbsource//xplat/folly:string",
+        "fbsource//xplat/folly/json:dynamic",
     ],
     exported_deps = [
         "//fboss/agent:fboss-error",

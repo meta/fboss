@@ -125,6 +125,9 @@ class SaiHostifManager {
   void setCpuQosPolicy(const std::optional<std::string>& qosPolicy);
   void clearQosPolicy();
   void setCpuPortQosPolicy(QosMapSaiId dscpToTc, QosMapSaiId tcToQueue);
+#if defined(SAI_CBFC_SUPPORTED)
+  void setCpuPortTcToVcMap(const std::shared_ptr<SaiQosMap>& tcToVc);
+#endif
   void setCpuSystemPortQosPolicy(QosMapSaiId tcToQueue);
   std::shared_ptr<SaiHostifTrapGroup> ensureHostifTrapGroup(uint32_t queueId);
   void processQueueDelta(const DeltaValue<ControlPlane>& delta);
@@ -161,6 +164,9 @@ class SaiHostifManager {
   std::shared_ptr<SaiQosMap> dscpToTcQosMap_;
   std::shared_ptr<SaiQosMap> tcToQueueQosMap_;
   std::shared_ptr<SaiQosMap> tcToVoqMap_;
+#if defined(SAI_CBFC_SUPPORTED)
+  std::shared_ptr<SaiQosMap> tcToVcQosMap_;
+#endif
   std::optional<std::string> qosPolicy_;
   std::unique_ptr<SaiCpuPortHandle> cpuPortHandle_;
   HwCpuFb303Stats cpuStats_;

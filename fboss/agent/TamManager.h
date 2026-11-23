@@ -7,6 +7,7 @@
 
 #include <folly/MacAddress.h>
 
+#include "fboss/agent/HwSwitchMatcher.h"
 #include "fboss/agent/NextHopResolver.h"
 #include "fboss/agent/StateObserver.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
@@ -54,14 +55,15 @@ class TamManager : public StateObserver {
   std::shared_ptr<SwitchState> resolveMirrorOnDropReports(
       const std::shared_ptr<SwitchState>& state);
 
-  // Helper to resolve a single collector IP address
+  // Resolves only over nexthops egressing on a switch in `matcher`.
   template <typename AddrT, typename ResolverT>
   std::
       pair<std::optional<folly::MacAddress>, std::optional<cfg::PortDescriptor>>
       resolveCollectorIp(
           ResolverT& resolver,
           const std::shared_ptr<SwitchState>& state,
-          const AddrT& ip);
+          const AddrT& ip,
+          const HwSwitchMatcher& matcher);
 };
 
 } // namespace facebook::fboss

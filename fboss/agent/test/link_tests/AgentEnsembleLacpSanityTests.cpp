@@ -29,7 +29,8 @@ class AgentEnsembleLacpTest : public AgentEnsembleLinkTest {
   std::vector<link_test_production_features::LinkTestProductionFeature>
   getProductionFeatures() const override {
     return {
-        link_test_production_features::LinkTestProductionFeature::L2_LINK_TEST};
+        link_test_production_features::LinkTestProductionFeature::L2_LINK_TEST,
+        link_test_production_features::LinkTestProductionFeature::ASIC_LAG};
   }
 
  public:

@@ -252,6 +252,22 @@ struct formatter<sai_u16_range_t> {
 };
 #endif
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+template <>
+struct formatter<sai_u64_range_t> {
+  template <typename ParseContext>
+  constexpr auto parse(ParseContext& ctx) const {
+    return ctx.begin();
+  }
+
+  template <typename FormatContext>
+  auto format(const sai_u64_range_t& range, FormatContext& ctx) const {
+    return format_to(
+        ctx.out(), "(u64_range: min: {}, max: {})", range.min, range.max);
+  }
+};
+#endif
+
 // Formatting for sai_port_eye_values_list_t
 template <>
 struct formatter<sai_port_lane_eye_values_t> {

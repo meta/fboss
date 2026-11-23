@@ -73,6 +73,14 @@ void assertNotInOtherPolicy(
 // Comma-separated action keywords, for --help and error text.
 std::string actionKeysCsv();
 
+// The action keywords, for shell completion.
+std::vector<std::string> actionKeys();
+
+// Shell completion for the `match <rule-name> action <action-type> [<value>]`
+// grammar shared by the copp and data-plane traffic-policy commands.
+std::vector<std::string> completeConfigArgs(
+    const std::vector<std::string>& typed);
+
 // Throw std::invalid_argument unless `actionType` names a known action. Lets
 // arg classes reject a bad keyword at parse time while still checking against
 // the one action table.

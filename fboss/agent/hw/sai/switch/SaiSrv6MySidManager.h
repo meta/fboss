@@ -97,6 +97,7 @@ class SaiSrv6MySidManager {
 
   SaiStore* saiStore_;
   SaiManagerTable* managerTable_;
+  SaiPlatform* platform_;
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
   folly::F14FastMap<
       SaiMySidEntryTraits::AdapterHostKey,

@@ -66,7 +66,7 @@ export default function ChangelogPage(props) {
                                 </div>
                                 <div className={styles.commitMeta}>
                                   <a
-                                    href={`https://github.com/facebook/fboss/commit/${commit.hash}`}
+                                    href={`https://github.com/meta/fboss/commit/${commit.hash}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className={styles.commitHashLink}

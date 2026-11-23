@@ -29,7 +29,7 @@ class CmdConfigTunnel
 
   RetType queryClient(const HostInfo& /* hostInfo */) {
     throw std::runtime_error(
-        "Incomplete command, please use 'ip-in-ip' subcommand");
+        "Incomplete command, please use 'ip-in-ip' or 'srv6' subcommand");
   }
 
   void printOutput(const RetType& /* model */) {}

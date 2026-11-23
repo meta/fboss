@@ -97,6 +97,8 @@ std::string to_string(RestartEvent type) {
       return "fib_synced_bgp";
     case RestartEvent::FIB_SYNCED_OPENR:
       return "fib_synced_openr";
+    case RestartEvent::VRFS_SYNCED:
+      return "vrfs_synced";
     case RestartEvent::SIGNAL_RECEIVED:
       return "signal_received";
     case RestartEvent::SHUTDOWN:
@@ -197,6 +199,7 @@ class RestartTimeTracker {
       case RestartEvent::CONFIGURED:
       case RestartEvent::FIB_SYNCED_BGPD:
       case RestartEvent::FIB_SYNCED_OPENR:
+      case RestartEvent::VRFS_SYNCED:
         return steady_clock::now();
       case RestartEvent::SIGNAL_RECEIVED:
       case RestartEvent::SHUTDOWN:

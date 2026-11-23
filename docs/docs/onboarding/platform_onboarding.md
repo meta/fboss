@@ -41,15 +41,15 @@ For common problems and their solutions, please refer to the [troubleshooting gu
    - [ ] `platform_manager.json` is committed to the FBOSS repository
    - [ ] `platform_manager.json` abides by the specification
    - [ ] `spec.json` is committed to `fboss/platform/firmware_onboarding/configs/<platform>/` in the FBOSS repository
-   - [ ] `spec.json` abides by the [platform spec schema](https://github.com/facebook/fboss/blob/main/fboss/platform/firmware_onboarding/references/vendor-spec-schema.md), using [configs/icecube800bc/spec.json](https://github.com/facebook/fboss/blob/main/fboss/platform/firmware_onboarding/configs/icecube800bc/spec.json) as the worked example
+   - [ ] `spec.json` abides by the [platform spec schema](https://github.com/meta/fboss/blob/main/fboss/platform/firmware_onboarding/references/vendor-spec-schema.md), using [configs/icecube800bc/spec.json](https://github.com/meta/fboss/blob/main/fboss/platform/firmware_onboarding/configs/icecube800bc/spec.json) as the worked example
    - [ ] `spec.json` lists every firmware-bearing component on the platform, with its location, field-replaceability and upgrade priority
-   - [ ] `spec.json` passes the [pre-flight validator](https://github.com/facebook/fboss/blob/main/fboss/platform/firmware_onboarding/README.md) with no errors
+   - [ ] `spec.json` passes the [pre-flight validator](https://github.com/meta/fboss/blob/main/fboss/platform/firmware_onboarding/README.md) with no errors
    - [ ] The BSP repository is setup
    - [ ] The BSP repository is accessible by Meta and linked in the summary page of the onboarding tracker
    - [ ] The BSP abides by the API specification and development requirements
    - [ ] The BSP is compiled as out-of-tree kernel modules and deployed in FBOSS to unblock FBOSS development
    - [ ] The platform firmware binaries are delivered to the BSP repository at `https://github.com/facebookexternal/fboss.bsp.<vendor_name>/<platform_name>/firmware/`
-   - [ ] The firmware package abides by the [Firmware Repository Specification](https://github.com/facebook/fboss/blob/main/fboss/docs/firmware_deliverables_requirements.md) — directory layout, at least `package_0` and `package_1`, the `P_<Platform>_F_<fw_target_name>_V_<Version>.<extension>` naming convention, `README.md` and `testsPlanPerformed.md`
+   - [ ] The firmware package abides by the [Firmware Repository Specification](https://github.com/meta/fboss/blob/main/fboss/docs/firmware_deliverables_requirements.md) — directory layout, at least `package_0` and `package_1`, the `P_<Platform>_F_<fw_target_name>_V_<Version>.<extension>` naming convention, `README.md` and `testsPlanPerformed.md`
    - [ ] Each firmware file's `<fw_target_name>` matches the target name in `fw_util.json` and the corresponding component name in `spec.json`, and its `<Version>` matches what `fw_util` reads back from the device
    - [ ] `bsp_tests.json` is modified as needed based on guidance in `bsp_tests_config.thrift`
    - [ ] 100% of BSP tests pass

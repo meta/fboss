@@ -13,7 +13,7 @@ target_link_libraries(setup_thrift
   thrift_method_rate_limit_setup
   thrift_service_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(fboss_init
@@ -175,15 +175,13 @@ target_link_libraries(utils
   meru800bia_platform_mapping
   meru800bfa_platform_mapping
   janga800bic_platform_mapping
-  j4sim_platform_mapping
-  saintpaul_platform_mapping
   blackwolf800banw_platform_mapping
-  icecube800banw_platform_mapping
   icecube800bc_platform_mapping
   icetea800bc_platform_mapping
   tahansb800bc_platform_mapping
   ladakh800bcls_platform_mapping
   leh800bcls_platform_mapping
+  Boost::filesystem
 )
 
 add_library(stats
@@ -208,7 +206,7 @@ add_library(stat_printers
 )
 
 target_link_libraries(stat_printers
-  FBThrift::thriftcpp2
+  thrift::rpc
   hardware_stats_cpp2
   phy_cpp2
   Folly::folly
@@ -273,17 +271,30 @@ target_link_libraries(shel_manager
   ${GTEST}
 )
 
+add_library(acl_resource_accountant
+  fboss/agent/AclResourceAccountant.cpp
+)
+
+target_link_libraries(acl_resource_accountant
+  agent_features
+  hw_asic_table
+  state
+)
+
 add_library(pbr_acl_manager
   fboss/agent/PbrAclManager.cpp
 )
 
 target_link_libraries(pbr_acl_manager
+  agent_features
   fboss_error
+  fib_helpers
   state
 )
 
 add_library(fsdb_adapted_sub_manager
   fboss/agent/FsdbAdaptedCowStorage.cpp
+  fboss/agent/FsdbAdaptedCowStoragePatch.cpp
   fboss/agent/FsdbAdaptedSubManager.cpp
   fboss/agent/FsdbAdaptedTemplateInstantiations.cpp
 )
@@ -304,7 +315,7 @@ target_link_libraries(hw_switch_thrift_client_table
   fboss_types
   hw_ctrl_cpp2
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 add_library(core
@@ -630,7 +641,7 @@ target_link_libraries(switch_state_delta_logger
   fsdb_oper_cpp2
   thrift_cow_serializer
   fb303::fb303
-  FBThrift::thriftprotocol
+  thrift::protocol
   Folly::folly
 )
 
@@ -687,6 +698,11 @@ target_link_libraries(hwagent
   switch_asics
 )
 
+add_library(instrumentation_hooks
+  fboss/agent/InstrumentationHooks.cpp
+  fboss/agent/TracingStackCheckpoint.cpp
+)
+
 add_library(hwagent-main
   fboss/agent/HwAgentMain.cpp
   fboss/agent/oss/Main.cpp
@@ -694,6 +710,7 @@ add_library(hwagent-main
 
 target_link_libraries(hwagent-main
   agent_features
+  instrumentation_hooks
   fboss_common_init
   platform_base
   fboss_common_cpp2
@@ -748,6 +765,7 @@ add_library(split_agent_thrift_syncer
 
 target_link_libraries(split_agent_thrift_syncer
   multiswitch_service
+  instrumentation_hooks
   Folly::folly
   hw_switch
 )
@@ -783,6 +801,7 @@ add_library(monolithic_agent_initializer
 
 target_link_libraries(monolithic_agent_initializer
   core
+  instrumentation_hooks
   fboss_common_init
   handler
   hw_switch
@@ -815,6 +834,7 @@ add_library(split_agent_initializer
 
 target_link_libraries(split_agent_initializer
   Folly::folly
+  instrumentation_hooks
   sw_agent_initializer
   multiswitch_service
   multi_switch_hw_switch_handler
@@ -892,7 +912,7 @@ target_link_libraries(sw_agent_initializer
   agent_features
   core
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   handler
   setup_thrift
   utils
@@ -954,6 +974,7 @@ add_library(validate_state_update
 )
 
 target_link_libraries(validate_state_update
+  acl_resource_accountant
   state
   fboss_error
   switchid_scope_resolver

@@ -59,7 +59,10 @@ MockState MockStateMachineController::getStateByOrder(
 
 template <>
 std::string MockStateMachineController::getUpdateString(MockEvent event) const {
-  return fmt::format("[MockObj: {}, Event:{}]", id_, mockEventToString(event));
+  return fmt::format(
+      "[MockObj: {}, Event:{}]",
+      fmt::underlying(id_),
+      mockEventToString(event));
 };
 
 template <>

@@ -2,6 +2,7 @@
 
 #include "fboss/agent/hw/sai/switch/SaiVendorSwitchManager.h"
 #include "fboss/agent/hw/sai/store/SaiStore.h"
+#include "fboss/agent/hw/sai/switch/DropReasonUtils.h"
 #include "fboss/agent/platforms/sai/SaiPlatform.h"
 
 DEFINE_int32(
@@ -95,12 +96,18 @@ void SaiVendorSwitchManager::logCgmErrors() const {
       SaiApiTable::getInstance()->vendorSwitchApi().getAttribute(
           vendorSwitch_->adapterKey(),
           SaiVendorSwitchTraits::Attributes::CgmRejectStatusBitmap{});
+  const auto originalCgmRejectBitmap = cgmRejectBitmap;
+  std::vector<std::string> reasons;
   while (cgmRejectBitmap != 0) {
     // Brian Kernighan's algorithm to find set bits in the bitmap.
     uint64_t rightmostSetBit = cgmRejectBitmap & -cgmRejectBitmap;
-    XLOG(WARNING) << "CGM REJECT: "
-                  << getCgmDropReasonName(std::countr_zero(rightmostSetBit));
+    reasons.emplace_back(
+        getCgmDropReasonName(std::countr_zero(rightmostSetBit)));
     cgmRejectBitmap -= rightmostSetBit;
+  }
+  for (const auto& line :
+       formatDropReasonLogLines("CGM", reasons, originalCgmRejectBitmap)) {
+    XLOG(WARNING) << line;
   }
 #endif
 }

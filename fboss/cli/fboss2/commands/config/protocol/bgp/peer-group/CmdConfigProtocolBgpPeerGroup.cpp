@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/peer-group/CmdConfigProtocolBgpPeerGroup.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -655,5 +656,15 @@ void CmdConfigProtocolBgpPeerGroup::printOutput(const RetType& output) {
 template void CmdHandler<
     CmdConfigProtocolBgpPeerGroup,
     CmdConfigProtocolBgpPeerGroupTraits>::run();
+
+std::vector<std::string> CmdConfigProtocolBgpPeerGroupTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  std::vector<std::string> attrs;
+  for (const auto& [name, _] : attrHandlers()) {
+    attrs.push_back(name);
+  }
+  return utils::completion::completeAttrGrammar(
+      typed, {.attrs = std::move(attrs), .minObjects = 1, .repeat = false});
+}
 
 } // namespace facebook::fboss

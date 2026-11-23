@@ -80,11 +80,29 @@ class AclApiTest : public ::testing::Test {
         folly::IPAddressV6("0:0:9abc:def0::"),
         folly::IPAddressV6("0:0:ffff:ffff::"));
   }
+  std::pair<folly::IPAddressV6, folly::IPAddressV6> kDstIpV6Word1() const {
+    return std::make_pair(
+        folly::IPAddressV6("::4a1c:1230:0:0"),
+        folly::IPAddressV6("::efff:fffc:0:0"));
+  }
+  std::pair<folly::IPAddressV6, folly::IPAddressV6> kDstIpV6Word0() const {
+    return std::make_pair(
+        folly::IPAddressV6("::1"), folly::IPAddressV6("::ffff"));
+  }
 
   std::pair<folly::IPAddressV6, folly::IPAddressV6> kDstIpV6Word2_2() const {
     return std::make_pair(
         folly::IPAddressV6("0:0:abcd:ef01::"),
         folly::IPAddressV6("0:0:ffff:ffff::"));
+  }
+  std::pair<folly::IPAddressV6, folly::IPAddressV6> kDstIpV6Word1_2() const {
+    return std::make_pair(
+        folly::IPAddressV6("::a1c:1234:0:0"),
+        folly::IPAddressV6("::efff:fffc:0:0"));
+  }
+  std::pair<folly::IPAddressV6, folly::IPAddressV6> kDstIpV6Word0_2() const {
+    return std::make_pair(
+        folly::IPAddressV6("::2"), folly::IPAddressV6("::ffff"));
   }
 
   std::pair<folly::IPAddressV4, folly::IPAddressV4> kSrcIpV4() const {
@@ -436,6 +454,8 @@ class AclApiTest : public ::testing::Test {
             true, // dstIpv6
             true, // dstIpv6Word3
             true, // dstIpv6Word2
+            true, // dstIpv6Word1
+            true, // dstIpv6Word0
             true, // srcIpv4
             true, // dstIpv4
             true, // l4SrcPort
@@ -510,6 +530,10 @@ class AclApiTest : public ::testing::Test {
         AclEntryFieldIpV6(kDstIpV6Word3())};
     SaiAclEntryTraits::Attributes::FieldDstIpV6Word2 aclFieldDstIpV6Word2{
         AclEntryFieldIpV6(kDstIpV6Word2())};
+    SaiAclEntryTraits::Attributes::FieldDstIpV6Word1 aclFieldDstIpV6Word1{
+        AclEntryFieldIpV6(kDstIpV6Word1())};
+    SaiAclEntryTraits::Attributes::FieldDstIpV6Word0 aclFieldDstIpV6Word0{
+        AclEntryFieldIpV6(kDstIpV6Word0())};
     SaiAclEntryTraits::Attributes::FieldSrcIpV4 aclFieldSrcIpV4{
         AclEntryFieldIpV4(kSrcIpV4())};
     SaiAclEntryTraits::Attributes::FieldDstIpV4 aclFieldDstIpV4{
@@ -613,6 +637,8 @@ class AclApiTest : public ::testing::Test {
          aclFieldDstIpV6,
          aclFieldDstIpV6Word3,
          aclFieldDstIpV6Word2,
+         aclFieldDstIpV6Word1,
+         aclFieldDstIpV6Word0,
          aclFieldSrcIpV4,
          aclFieldDstIpV4,
          aclFieldSrcPort,
@@ -684,6 +710,7 @@ class AclApiTest : public ::testing::Test {
         {aclTableIdAttribute,
 #if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
          label,
+         std::nullopt,
 #endif
          enablePacketCountAttribute,
          enableByteCountAttribute,
@@ -761,6 +788,8 @@ class AclApiTest : public ::testing::Test {
       const std::pair<folly::IPAddressV6, folly::IPAddressV6>& dstIpV6,
       const std::pair<folly::IPAddressV6, folly::IPAddressV6>& dstIpV6Word3,
       const std::pair<folly::IPAddressV6, folly::IPAddressV6>& dstIpV6Word2,
+      const std::pair<folly::IPAddressV6, folly::IPAddressV6>& dstIpV6Word1,
+      const std::pair<folly::IPAddressV6, folly::IPAddressV6>& dstIpV6Word0,
       const std::pair<folly::IPAddressV4, folly::IPAddressV4>& srcIpV4,
       const std::pair<folly::IPAddressV4, folly::IPAddressV4>& dstIpV4,
       const std::pair<sai_object_id_t, sai_uint32_t>& srcPort,
@@ -818,6 +847,10 @@ class AclApiTest : public ::testing::Test {
         aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word3());
     auto aclFieldDstIpV6Word2Got = aclApi->getAttribute(
         aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word2());
+    auto aclFieldDstIpV6Word1Got = aclApi->getAttribute(
+        aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word1());
+    auto aclFieldDstIpV6Word0Got = aclApi->getAttribute(
+        aclEntryId, SaiAclEntryTraits::Attributes::FieldDstIpV6Word0());
     auto aclFieldSrcIpV4Got = aclApi->getAttribute(
         aclEntryId, SaiAclEntryTraits::Attributes::FieldSrcIpV4());
     auto aclFieldDstIpV4Got = aclApi->getAttribute(
@@ -917,6 +950,8 @@ class AclApiTest : public ::testing::Test {
     EXPECT_EQ(aclFieldDstIpV6Got.getDataAndMask(), dstIpV6);
     EXPECT_EQ(aclFieldDstIpV6Word3Got.getDataAndMask(), dstIpV6Word3);
     EXPECT_EQ(aclFieldDstIpV6Word2Got.getDataAndMask(), dstIpV6Word2);
+    EXPECT_EQ(aclFieldDstIpV6Word1Got.getDataAndMask(), dstIpV6Word1);
+    EXPECT_EQ(aclFieldDstIpV6Word0Got.getDataAndMask(), dstIpV6Word0);
     EXPECT_EQ(aclFieldSrcIpV4Got.getDataAndMask(), srcIpV4);
     EXPECT_EQ(aclFieldDstIpV4Got.getDataAndMask(), dstIpV4);
     EXPECT_EQ(aclFieldSrcPortGot.getDataAndMask(), srcPort);
@@ -1073,6 +1108,10 @@ TEST_F(AclApiTest, getAclTableAttribute) {
       aclTableId, SaiAclTableTraits::Attributes::FieldDstIpV6Word3());
   auto aclTableFieldDstIpV6Word2Got = aclApi->getAttribute(
       aclTableId, SaiAclTableTraits::Attributes::FieldDstIpV6Word2());
+  auto aclTableFieldDstIpV6Word1Got = aclApi->getAttribute(
+      aclTableId, SaiAclTableTraits::Attributes::FieldDstIpV6Word1());
+  auto aclTableFieldDstIpV6Word0Got = aclApi->getAttribute(
+      aclTableId, SaiAclTableTraits::Attributes::FieldDstIpV6Word0());
   auto aclTableFieldSrcIpV4Got = aclApi->getAttribute(
       aclTableId, SaiAclTableTraits::Attributes::FieldSrcIpV4());
   auto aclTableFieldDstIpV4Got = aclApi->getAttribute(
@@ -1140,6 +1179,8 @@ TEST_F(AclApiTest, getAclTableAttribute) {
   EXPECT_EQ(aclTableFieldDstIpV6Got, true);
   EXPECT_EQ(aclTableFieldDstIpV6Word3Got, true);
   EXPECT_EQ(aclTableFieldDstIpV6Word2Got, true);
+  EXPECT_EQ(aclTableFieldDstIpV6Word1Got, true);
+  EXPECT_EQ(aclTableFieldDstIpV6Word0Got, true);
   EXPECT_EQ(aclTableFieldSrcIpV4Got, true);
   EXPECT_EQ(aclTableFieldDstIpV4Got, true);
   EXPECT_EQ(aclTableFieldL4SrcPortGot, true);
@@ -1183,6 +1224,8 @@ TEST_F(AclApiTest, getAclEntryAttribute) {
       kDstIpV6(),
       kDstIpV6Word3(),
       kDstIpV6Word2(),
+      kDstIpV6Word1(),
+      kDstIpV6Word0(),
       kSrcIpV4(),
       kDstIpV4(),
       kSrcPort(),
@@ -1258,6 +1301,35 @@ TEST_F(AclApiTest, getAclCounterAttribute) {
   EXPECT_EQ(aclEnableByteCount, kEnableByteCount());
   EXPECT_EQ(aclCounterPackets, kCounterPackets());
   EXPECT_EQ(aclCounterBytes, kCounterBytes());
+}
+
+TEST_F(AclApiTest, aclCounterLabelExtended) {
+#if SAI_API_VERSION >= SAI_VERSION(1, 10, 2)
+  auto aclTableId = createAclTable();
+  std::vector<int8_t> labelExtended(60, 'a');
+  auto aclCounterId = aclApi->create<SaiAclCounterTraits>(
+      {SaiAclCounterTraits::Attributes::TableId{aclTableId},
+       SaiCharArray32{},
+       SaiAclCounterTraits::Attributes::LabelExtended{labelExtended},
+       std::nullopt,
+       std::nullopt,
+       std::nullopt,
+       std::nullopt},
+      0);
+  EXPECT_EQ(
+      labelExtended,
+      aclApi->getAttribute(
+          aclCounterId, SaiAclCounterTraits::Attributes::LabelExtended{}));
+
+  std::vector<int8_t> labelExtended2(100, 'b');
+  aclApi->setAttribute(
+      aclCounterId,
+      SaiAclCounterTraits::Attributes::LabelExtended{labelExtended2});
+  EXPECT_EQ(
+      labelExtended2,
+      aclApi->getAttribute(
+          aclCounterId, SaiAclCounterTraits::Attributes::LabelExtended{}));
+#endif
 }
 
 TEST_F(AclApiTest, setAclTableAttribute) {
@@ -1360,6 +1432,10 @@ TEST_F(AclApiTest, setAclEntryAttribute) {
       aclFieldDstIpV6Word3Attribute2{AclEntryFieldIpV6(kDstIpV6Word3_2())};
   SaiAclEntryTraits::Attributes::FieldDstIpV6Word2
       aclFieldDstIpV6Word2Attribute2{AclEntryFieldIpV6(kDstIpV6Word2_2())};
+  SaiAclEntryTraits::Attributes::FieldDstIpV6Word1
+      aclFieldDstIpV6Word1Attribute2{AclEntryFieldIpV6(kDstIpV6Word1_2())};
+  SaiAclEntryTraits::Attributes::FieldDstIpV6Word0
+      aclFieldDstIpV6Word0Attribute2{AclEntryFieldIpV6(kDstIpV6Word0_2())};
   SaiAclEntryTraits::Attributes::FieldSrcIpV4 aclFieldSrcIpV4Attribute2{
       AclEntryFieldIpV4(kSrcIpV4_2())};
   SaiAclEntryTraits::Attributes::FieldDstIpV4 aclFieldDstIpV4Attribute2{
@@ -1460,6 +1536,8 @@ TEST_F(AclApiTest, setAclEntryAttribute) {
   aclApi->setAttribute(aclEntryId, aclFieldDstIpV6Attribute2);
   aclApi->setAttribute(aclEntryId, aclFieldDstIpV6Word3Attribute2);
   aclApi->setAttribute(aclEntryId, aclFieldDstIpV6Word2Attribute2);
+  aclApi->setAttribute(aclEntryId, aclFieldDstIpV6Word1Attribute2);
+  aclApi->setAttribute(aclEntryId, aclFieldDstIpV6Word0Attribute2);
   aclApi->setAttribute(aclEntryId, aclFieldSrcIpV4Attribute2);
   aclApi->setAttribute(aclEntryId, aclFieldDstIpV4Attribute2);
   aclApi->setAttribute(aclEntryId, aclFieldSrcPortAttribute2);
@@ -1518,6 +1596,8 @@ TEST_F(AclApiTest, setAclEntryAttribute) {
       kDstIpV6_2(),
       kDstIpV6Word3_2(),
       kDstIpV6Word2_2(),
+      kDstIpV6Word1_2(),
+      kDstIpV6Word0_2(),
       kSrcIpV4_2(),
       kDstIpV4_2(),
       kSrcPort2(),

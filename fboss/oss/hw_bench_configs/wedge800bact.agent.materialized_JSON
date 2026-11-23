@@ -2,6 +2,7 @@
   "defaultCommandLineArgs": {
     "check_wb_handles": "true",
     "counter_refresh_interval": "1",
+    "enable_acl_table_group": "true",
     "enable_nexthop_id_manager": "true",
     "enable_route_resource_protection": "false",
     "log_variable_name": "true",
@@ -143,6 +144,31 @@
     },
     "defaultVoqConfig": [
       
+    ],
+    "aclTableGroups": [
+      {
+        "name": "acl-table-group-ingress",
+        "aclTables": [
+          {
+            "name": "AclTable1",
+            "priority": 0,
+            "aclEntries": [
+              
+            ],
+            "actionTypes": [
+              
+            ],
+            "qualifiers": [
+              
+            ],
+            "udfGroups": [
+              
+            ]
+          }
+        ],
+        "stage": 0,
+        "bindPoint": 0
+      }
     ],
     "mirrorOnDropReports": [
       

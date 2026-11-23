@@ -99,7 +99,7 @@ class PortRifNeighbor {
           intfIDAndIpAndMac,
       std::optional<sai_uint32_t> metadata,
       std::optional<sai_uint32_t> encapIndex,
-      bool isLocal,
+      std::optional<bool> isLocal,
       std::optional<bool> noHostRoute,
       cfg::InterfaceType intfType);
 

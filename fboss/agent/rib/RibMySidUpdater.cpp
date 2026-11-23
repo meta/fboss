@@ -5,7 +5,6 @@
 #include "fboss/agent/rib/NextHopIDManager.h"
 #include "fboss/agent/rib/RoutingInformationBase.h"
 #include "fboss/agent/state/MySid.h"
-#include "fboss/agent/state/Route.h"
 
 namespace facebook::fboss {
 

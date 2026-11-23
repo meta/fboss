@@ -412,8 +412,7 @@ void DHCPv4Handler::processReply(
   // TODO we should add router id information to the packet
   // to get the VRF of the interface that this packet came
   // in on. Assuming 0 for now since we have only one VRF
-  auto intf =
-      state->getInterfaces()->getInterface(RouterID(0), IPAddress(switchIp));
+  auto intf = state->getInterface(RouterID(0), IPAddress(switchIp));
   if (!intf) {
     sw->portStats(pkt->getSrcPort())->dhcpV4DropPkt();
     LOG(INFO) << "Could not lookup interface for : " << switchIp

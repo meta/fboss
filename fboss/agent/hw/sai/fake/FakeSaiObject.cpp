@@ -11,6 +11,63 @@
 #include "fboss/agent/hw/sai/api/AddressUtil.h"
 #include "fboss/agent/hw/sai/fake/FakeSai.h"
 
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+sai_status_t sai_query_attribute_capability(
+    sai_object_id_t /*switch_id*/,
+    sai_object_type_t object_type,
+    sai_attr_id_t attr_id,
+    sai_attr_capability_t* capability) {
+  const auto& csig = facebook::fboss::FakeSai::getInstance()->csigCapabilities;
+  bool supported;
+  if (object_type == SAI_OBJECT_TYPE_TAM_INT &&
+      attr_id == SAI_TAM_INT_ATTR_CSIG_D_BIT) {
+    supported = csig.dBit;
+  } else if (
+      object_type == SAI_OBJECT_TYPE_TAM_INT &&
+      attr_id == SAI_TAM_INT_ATTR_QUANT_BAND_ID) {
+    supported = csig.customBandIds;
+  } else if (
+      object_type == SAI_OBJECT_TYPE_PORT &&
+      attr_id == SAI_PORT_ATTR_INT_DELETE) {
+    supported = csig.intDelete;
+  } else if (
+      object_type == SAI_OBJECT_TYPE_PORT &&
+      attr_id == SAI_PORT_ATTR_INT_METADATA) {
+    supported = csig.intMetadata;
+  } else {
+    return SAI_STATUS_NOT_SUPPORTED;
+  }
+  *capability = {supported, supported, true};
+  return SAI_STATUS_SUCCESS;
+}
+
+sai_status_t sai_query_attribute_enum_values_capability(
+    sai_object_id_t /*switch_id*/,
+    sai_object_type_t object_type,
+    sai_attr_id_t attr_id,
+    sai_s32_list_t* list) {
+  if (object_type != SAI_OBJECT_TYPE_TAM_INT) {
+    return SAI_STATUS_NOT_SUPPORTED;
+  }
+  const auto& csig = facebook::fboss::FakeSai::getInstance()->csigCapabilities;
+  const std::vector<sai_int32_t>* values;
+  if (attr_id == SAI_TAM_INT_ATTR_TYPE) {
+    values = &csig.tagTypes;
+  } else if (attr_id == SAI_TAM_INT_ATTR_CSIG_SIGNAL_TYPE) {
+    values = &csig.signals;
+  } else {
+    return SAI_STATUS_NOT_SUPPORTED;
+  }
+  const auto capacity = list->count;
+  list->count = static_cast<uint32_t>(values->size());
+  if (capacity < list->count) {
+    return SAI_STATUS_BUFFER_OVERFLOW;
+  }
+  std::copy(values->begin(), values->end(), list->list);
+  return SAI_STATUS_SUCCESS;
+}
+#endif
+
 sai_status_t sai_get_object_count(
     sai_object_id_t /* switch_id */,
     sai_object_type_t object_type,
@@ -84,6 +141,9 @@ sai_status_t sai_get_object_count(
       }
       break;
     }
+    case SAI_OBJECT_TYPE_POLICER:
+      *count = static_cast<uint32_t>(fs->policerManager.map().size());
+      break;
     case SAI_OBJECT_TYPE_ISOLATION_GROUP:
       *count = fs->isolationGroupManager.map().size();
       break;
@@ -190,6 +250,11 @@ sai_status_t sai_get_object_count(
     case SAI_OBJECT_TYPE_TAM:
       *count = fs->tamManager.map().size();
       break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    case SAI_OBJECT_TYPE_TAM_INT:
+      *count = static_cast<uint32_t>(fs->tamIntManager.map().size());
+      break;
+#endif
     case SAI_OBJECT_TYPE_TAM_EVENT_THRESHOLD:
       *count = static_cast<uint32_t>(fs->tamEventThresholdManager.map().size());
       break;
@@ -198,6 +263,12 @@ sai_status_t sai_get_object_count(
       break;
     case SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY:
       *count = fs->tunnelTermManager.map().size();
+      break;
+    case SAI_OBJECT_TYPE_TUNNEL_MAP:
+      *count = fs->tunnelMapManager.map().size();
+      break;
+    case SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY:
+      *count = fs->tunnelMapEntryManager.map().size();
       break;
 #if SAI_API_VERSION >= SAI_VERSION(1, 12, 0)
     case SAI_OBJECT_TYPE_SRV6_SIDLIST:
@@ -403,6 +474,12 @@ sai_status_t sai_get_object_key(
       }
       break;
     }
+    case SAI_OBJECT_TYPE_POLICER: {
+      for (const auto& [id, policer] : fs->policerManager.map()) {
+        object_list[i++].key.object_id = id;
+      }
+      break;
+    }
     case SAI_OBJECT_TYPE_ISOLATION_GROUP: {
       for (const auto& g : fs->isolationGroupManager.map()) {
         object_list[i++].key.object_id = g.second.id;
@@ -604,6 +681,13 @@ sai_status_t sai_get_object_key(
       }
       break;
     }
+#if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
+    case SAI_OBJECT_TYPE_TAM_INT:
+      for (const auto& ob : fs->tamIntManager.map()) {
+        object_list[i++].key.object_id = ob.second.id;
+      }
+      break;
+#endif
     case SAI_OBJECT_TYPE_TAM_EVENT_THRESHOLD: {
       for (const auto& ob : fs->tamEventThresholdManager.map()) {
         object_list[i++].key.object_id = ob.second.id;
@@ -618,6 +702,18 @@ sai_status_t sai_get_object_key(
     }
     case SAI_OBJECT_TYPE_TUNNEL_TERM_TABLE_ENTRY: {
       for (const auto& ob : fs->tunnelTermManager.map()) {
+        object_list[i++].key.object_id = ob.second.id;
+      }
+      break;
+    }
+    case SAI_OBJECT_TYPE_TUNNEL_MAP: {
+      for (const auto& ob : fs->tunnelMapManager.map()) {
+        object_list[i++].key.object_id = ob.second.id;
+      }
+      break;
+    }
+    case SAI_OBJECT_TYPE_TUNNEL_MAP_ENTRY: {
+      for (const auto& ob : fs->tunnelMapEntryManager.map()) {
         object_list[i++].key.object_id = ob.second.id;
       }
       break;

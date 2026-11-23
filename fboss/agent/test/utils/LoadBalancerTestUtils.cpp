@@ -700,16 +700,12 @@ size_t pumpTraffic(
                              : MacAddressGenerator().get(dstMac.u64HBO() + 1));
   for (auto i = 0; i < int(std::sqrt(numPackets)); ++i) {
     auto srcIp = folly::IPAddress(
-        folly::sformat(
-            isV6 ? "1001::{}:{}" : "100.10.{}.{}",
-            (i + 1) / 256,
-            (i + 1) % 256));
+        isV6 ? fmt::format("1001::{}:{}", (i + 1) / 256, (i + 1) % 256)
+             : fmt::format("100.10.{}.{}", (i + 1) / 256, (i + 1) % 256));
     for (auto j = 0; j < int(numPackets / std::sqrt(numPackets)); ++j) {
       auto dstIp = folly::IPAddress(
-          folly::sformat(
-              isV6 ? "2001::{}:{}" : "201.10.{}.{}",
-              (j + 1) / 256,
-              (j + 1) % 256));
+          isV6 ? fmt::format("2001::{}:{}", (j + 1) / 256, (j + 1) % 256)
+               : fmt::format("201.10.{}.{}", (j + 1) / 256, (j + 1) % 256));
       auto pkt = makeUDPTxPacket(
           allocateFn,
           vlan,
@@ -909,10 +905,12 @@ void pumpMplsTraffic(
   std::unique_ptr<TxPacket> pkt;
   for (auto i = 0; i < 100; ++i) {
     auto srcIp = folly::IPAddress(
-        folly::sformat(isV6 ? "1001::{}" : "100.10.0.{}", i + 1));
+        isV6 ? fmt::format("1001::{}", i + 1)
+             : fmt::format("100.10.0.{}", i + 1));
     for (auto j = 0; j < 100; ++j) {
       auto dstIp = folly::IPAddress(
-          folly::sformat(isV6 ? "2001::{}" : "200.10.0.{}", j + 1));
+          isV6 ? fmt::format("2001::{}", j + 1)
+               : fmt::format("200.10.0.{}", j + 1));
 
       auto frame = isV6 ? utility::getEthFrame(
                               intfMac,

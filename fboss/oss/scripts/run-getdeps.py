@@ -62,6 +62,12 @@ ARG_PHY_PAI_SDK_TARBALL = "--phy-pai-sdk-tarball"
 ARG_BENCHMARK_INSTALL = "--benchmark-install"
 ARG_SKIP_INSTALL = "--skip-install"
 ARG_ASAN = "--asan"
+ASAN_DEP_FLAGS = "-fsanitize=address -fno-omit-frame-pointer -g1"
+# Clang groups each file's instrumented globals in COMDATs named after the
+# file's exported symbols. fbthrift compiles one generated file into two
+# libraries, so the names collide and GNU ld discards one copy's strings while
+# its code still refers to them.
+ASAN_CLANG_DEP_FLAGS = "-fno-sanitize-address-globals-dead-stripping"
 ARG_GETDEPS_HELP = "--getdeps-help"
 ARG_GETDEPS = "getdeps_args"
 ARG_USE_GCC = "--use-gcc"
@@ -214,13 +220,12 @@ def parse_args():
         action="store_true",
         help="Set this flag to skip installing binaries.",
     )
-    # TODO: re-enable when asain builds are supported
-    # parser.add_argument(
-    #     ARG_ASAN,
-    #     required=False,
-    #     action="store_true",
-    #     help="Set this flag to enable ASAN builds.",
-    # )
+    parser.add_argument(
+        ARG_ASAN,
+        required=False,
+        action="store_true",
+        help="Set this flag to enable ASAN builds.",
+    )
     parser.add_argument(
         ARG_GETDEPS_HELP,
         required=False,
@@ -1036,7 +1041,27 @@ def _set_misc_env(args):
         misc["BENCHMARK_INSTALL"] = "1"
     if args.skip_install:
         misc["SKIP_ALL_INSTALL"] = "1"
+    if args.asan:
+        misc["WITH_ASAN"] = "1"
+        # getdeps' per-process address space cap kills ASAN binaries the
+        # build runs, such as gtest discovery and config generators.
+        misc["GETDEPS_NO_MEMORY_LIMIT"] = "1"
+        # For ASAN binaries the build runs (thrift compiler, gtest discovery):
+        # leak reports at exit would fail the build, and boost is linked into
+        # both libfolly.so and each binary, a same-size duplicate that the
+        # default ODR check aborts on. Level 1 still reports size mismatches.
+        misc["ASAN_OPTIONS"] = "detect_leaks=0:detect_odr_violation=1"
     _apply_env(misc, args.preserve_env)
+    if args.asan:
+        # Instrument every dependency, not just folly and FBOSS: otherwise the
+        # linker can keep an uninstrumented copy of inline folly code that
+        # takes paths folly disables under ASAN, and ASAN misreports them.
+        flags = ASAN_DEP_FLAGS
+        if not args.use_gcc:
+            flags += f" {ASAN_CLANG_DEP_FLAGS}"
+        for var in ("CXXFLAGS", "LDFLAGS"):
+            os.environ[var] = f"{os.environ.get(var, '')} {flags}".strip()
+            print_info(f"Set ENV {var}={os.environ[var]}")
 
 
 def _get_cmake_target(getdeps_args):

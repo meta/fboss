@@ -245,3 +245,73 @@ TEST(EthHdrTest, setVlans) {
       hdr.getVlanTags(),
       std::vector<VlanTag>({VlanTag(0x81000001), VlanTag(0x81000002)}));
 }
+
+TEST(EthHdrTest, csig_tag_fields) {
+  CsigTag tag(/*signalType*/ 0x5, /*signal*/ 0x17, /*linkLocator*/ 0x42);
+  EXPECT_EQ(0x5, tag.signalType());
+  EXPECT_EQ(0x17, tag.signal());
+  EXPECT_EQ(0x42, tag.linkLocator());
+  EXPECT_EQ(CsigTag(0xABC2), tag);
+}
+
+TEST(EthHdrTest, cursor_data_constructor_csig) {
+  auto pkt = MockRxPacket::fromHex(
+      // Ethernet Header
+      "ff ff ff ff ff ff" // Destination MAC Address
+      "10 dd b1 bb 5a ef" // Source MAC Address
+      "99 00 AB C2" // CSIG: signalType 5, signal 0x17, link locator 0x42
+      "86 DD" // EtherType: IPv6
+  );
+  Cursor cursor(pkt->buf());
+  EthHdr ethHdr(cursor);
+  EXPECT_EQ(vector<VlanTag>(), ethHdr.vlanTags);
+  ASSERT_TRUE(ethHdr.getCsigTag().has_value());
+  EXPECT_EQ(CsigTag(0x5, 0x17, 0x42), *ethHdr.getCsigTag());
+  EXPECT_EQ(static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_IPV6), ethHdr.etherType);
+  EXPECT_EQ(EthHdr::UNTAGGED_PKT_SIZE + CsigTag::SIZE, ethHdr.size());
+  EXPECT_EQ(ethHdr.size(), cursor - Cursor(pkt->buf()));
+}
+
+TEST(EthHdrTest, cursor_data_constructor_vlan_csig) {
+  auto pkt = MockRxPacket::fromHex(
+      // Ethernet Header
+      "ff ff ff ff ff ff" // Destination MAC Address
+      "10 dd b1 bb 5a ef" // Source MAC Address
+      "81 00 00 01" // VLAN: 1
+      "99 00 AB C2" // CSIG: signalType 5, signal 0x17, link locator 0x42
+      "86 DD" // EtherType: IPv6
+  );
+  Cursor cursor(pkt->buf());
+  EthHdr ethHdr(cursor);
+  EXPECT_EQ(vector<VlanTag>{VlanTag(0x81000001)}, ethHdr.vlanTags);
+  ASSERT_TRUE(ethHdr.getCsigTag().has_value());
+  EXPECT_EQ(CsigTag(0x5, 0x17, 0x42), *ethHdr.getCsigTag());
+  EXPECT_EQ(static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_IPV6), ethHdr.etherType);
+  EXPECT_EQ(EthHdr::SIZE + CsigTag::SIZE, ethHdr.size());
+  EXPECT_EQ(ethHdr.size(), cursor - Cursor(pkt->buf()));
+}
+
+TEST(EthHdrTest, cursor_data_constructor_csig_too_small) {
+  auto pkt = MockRxPacket::fromHex(
+      // Ethernet Header
+      "ff ff ff ff ff ff" // Destination MAC Address
+      "10 dd b1 bb 5a ef" // Source MAC Address
+      "99 00 AB C2" // CSIG
+      "86   " // OOPS! One octet too small!
+  );
+  Cursor cursor(pkt->buf());
+  EXPECT_THROW({ EthHdr ethHdr(cursor); }, HdrParseError);
+}
+
+TEST(EthHdrTest, csig_tag_equality) {
+  EthHdr lhs(
+      MacAddress("ff:ff:ff:ff:ff:ff"),
+      MacAddress("10:dd:b1:bb:5a:ef"),
+      {},
+      static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_IPV6));
+  EthHdr rhs(lhs);
+  rhs.setCsigTag(CsigTag(0x5, 0x17, 0x42));
+  EXPECT_NE(lhs, rhs);
+  lhs.setCsigTag(CsigTag(0x5, 0x17, 0x42));
+  EXPECT_EQ(lhs, rhs);
+}

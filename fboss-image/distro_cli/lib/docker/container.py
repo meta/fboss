@@ -18,6 +18,7 @@ def run_container(  # noqa: PLR0913
     image: str,
     command: list[str],
     volumes: dict[Path, Path] | None = None,
+    read_only_volumes: dict[Path, Path] | None = None,
     env: dict[str, str] | None = None,
     privileged: bool = False,
     interactive: bool = False,
@@ -25,6 +26,9 @@ def run_container(  # noqa: PLR0913
     detach: bool = False,
     working_dir: str | None = None,
     name: str | None = None,
+    devices: dict[Path, Path] | None = None,
+    cap_add: list[str] | None = None,
+    shm_size: str | None = None,
 ) -> int:
     """Run a command in a Docker container.
 
@@ -32,12 +36,17 @@ def run_container(  # noqa: PLR0913
         image: Docker image name to run
         command: Command to execute in container (as list)
         volumes: Dictionary mapping host paths to container paths
+        read_only_volumes: Dictionary mapping host paths to container paths,
+            mounted read-only
         env: Dictionary of environment variables
         privileged: Run container in privileged mode
         interactive: Run container in interactive mode (-it)
         ephemeral: Remove container after it exits (--rm, default: True)
         working_dir: Working directory inside container
         name: Name for the container
+        devices: Extra host devices to pass through
+        cap_add: Capabilities to add; defaults to the runtime's capability set
+        shm_size: Container shared memory size
 
     Returns:
         Exit code from the container
@@ -54,6 +63,11 @@ def run_container(  # noqa: PLR0913
     # Start with default flags
     cmd.append("--network=host")
 
+    # Podman caps container pids at 2048 by default (Docker does not cap);
+    # parallel dep builds routinely exceed that with compiler subprocess
+    # trees, failing spawns with EAGAIN. Remove the cap.
+    cmd.extend(["--pids-limit", "0"])
+
     # Add flags
     if ephemeral:
         cmd.append("--rm")
@@ -67,15 +81,30 @@ def run_container(  # noqa: PLR0913
     if privileged:
         cmd.append("--privileged")
 
+    if cap_add:
+        for capability in cap_add:
+            cmd.extend(["--cap-add", capability])
+
     if name:
         cmd.extend(["--name", name])
 
     if working_dir:
         cmd.extend(["-w", working_dir])
 
+    if shm_size:
+        cmd.extend(["--shm-size", shm_size])
+
+    if devices:
+        for host_device, container_device in devices.items():
+            cmd.extend(["--device", f"{host_device}:{container_device}"])
+
     if volumes:
         for host_path, container_path in volumes.items():
             cmd.extend(["-v", f"{host_path}:{container_path}"])
+
+    if read_only_volumes:
+        for host_path, container_path in read_only_volumes.items():
+            cmd.extend(["-v", f"{host_path}:{container_path}:ro"])
 
     if env:
         for key, value in env.items():

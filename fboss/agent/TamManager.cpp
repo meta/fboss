@@ -2,6 +2,8 @@
 
 #include "fboss/agent/TamManager.h"
 
+#include <algorithm>
+
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/state/DeltaFunctions.h"
 #include "fboss/agent/state/SwitchState.h"
@@ -48,21 +50,34 @@ std::pair<std::optional<folly::MacAddress>, std::optional<cfg::PortDescriptor>>
 TamManager::resolveCollectorIp(
     ResolverT& resolver,
     const std::shared_ptr<SwitchState>& state,
-    const AddrT& ip) {
+    const AddrT& ip,
+    const HwSwitchMatcher& matcher) {
   std::optional<folly::MacAddress> resolvedMac;
   std::optional<cfg::PortDescriptor> resolvedPort;
 
   auto nexthops = resolver.resolveNextHops(state, ip);
   for (const auto& nexthop : nexthops) {
     auto neighbor = resolver.resolveNextHopNeighbor(state, ip, nexthop);
-    if (neighbor) {
-      resolvedMac = neighbor->getMac();
-      auto port = resolver.resolveEgressPort(state, neighbor);
-      if (port) {
-        resolvedPort = port->toThrift();
-        break;
-      }
+    if (!neighbor) {
+      continue;
     }
+    auto port = resolver.resolveEgressPort(state, neighbor);
+    if (!port) {
+      continue;
+    }
+    // A port on another NPU is resolved by that NPU's own copy.
+    auto portScope = sw_->getScopeResolver()->scope(state, port.value());
+    if (!std::any_of(
+            portScope.switchIds().begin(),
+            portScope.switchIds().end(),
+            [&matcher](const SwitchID& switchId) {
+              return matcher.has(switchId);
+            })) {
+      continue;
+    }
+    resolvedMac = neighbor->getMac();
+    resolvedPort = port->toThrift();
+    break;
   }
 
   return {resolvedMac, resolvedPort};
@@ -76,22 +91,23 @@ std::shared_ptr<SwitchState> TamManager::resolveMirrorOnDropReports(
 
   for (auto mniter = mnpuReports->cbegin(); mniter != mnpuReports->cend();
        ++mniter) {
+    auto matcher = HwSwitchMatcher(mniter->first);
     auto& reports = std::as_const(mniter->second);
     for (auto iter = reports->cbegin(); iter != reports->cend(); ++iter) {
       auto report = iter->second;
 
-      // A non-zero mirrorPortId indicates the egress port is statically
-      // configured (e.g. DNX), so no mirror resolution is needed. Resolution
-      // only applies when mirrorPortId is 0 (e.g. XGS platforms like TH5).
-      if (report->getMirrorPortId() != PortID(0)) {
+      // A configured mirrorPortId means the egress port is static (e.g. DNX),
+      // so no mirror resolution is needed. Resolution applies only when it is
+      // unset (e.g. XGS platforms like TH5).
+      if (report->getMirrorPortId().has_value()) {
         continue;
       }
 
       const auto collectorIp = report->getCollectorIp();
 
       auto [resolvedMac, resolvedPort] = collectorIp.isV4()
-          ? resolveCollectorIp(v4Resolver_, state, collectorIp.asV4())
-          : resolveCollectorIp(v6Resolver_, state, collectorIp.asV6());
+          ? resolveCollectorIp(v4Resolver_, state, collectorIp.asV4(), matcher)
+          : resolveCollectorIp(v6Resolver_, state, collectorIp.asV6(), matcher);
 
       // Check if resolution changed
       bool isNowResolved = resolvedMac.has_value() && resolvedPort.has_value();

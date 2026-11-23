@@ -44,7 +44,7 @@ add_library(extended_path_builder
 
 target_link_libraries(extended_path_builder
   fsdb_oper_cpp2
-  FBThrift::thriftcpp2
+  thrift::rpc
   Folly::folly
 )
 

@@ -14,7 +14,7 @@ target_link_libraries(fboss-bspmapping-gen
   fboss_common_cpp2
   platform_mode
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 install(TARGETS fboss-bspmapping-gen)

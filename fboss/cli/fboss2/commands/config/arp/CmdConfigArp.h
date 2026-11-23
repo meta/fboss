@@ -16,6 +16,7 @@
 #include <string_view>
 #include <vector>
 #include "fboss/cli/fboss2/CmdHandler.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -69,6 +70,11 @@ struct CmdConfigArpTraits : public WriteCommandTraits {
         args,
         "<attr> <value> where <attr> is one of: "
         "timeout, age-interval, max-probes, stale-interval");
+  }
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed) {
+    return utils::completion::completeAttrGrammar(
+        typed, {.attrs = utils::completion::toWords(arp_attrs::kValidAttrs)});
   }
   using ObjectArgType = ArpConfigArgs;
   using RetType = std::string;

@@ -9,7 +9,7 @@ add_library(counter_utils
 
 target_link_libraries(counter_utils
   fb303::fb303
-  FBThrift::thriftcpp2
+  thrift::rpc
   hardware_stats_cpp2
   switch_config_cpp2
 )
@@ -93,7 +93,7 @@ target_link_libraries(hw_fb303_stats
 target_link_libraries(hw_port_fb303_stats
   counter_utils
   fboss_types
-  FBThrift::thriftcpp2
+  thrift::rpc
   hardware_stats_cpp2
   hw_fb303_stats
   Folly::folly
@@ -106,7 +106,7 @@ target_link_libraries(hw_rif_fb303_stats
 
 target_link_libraries(hw_cpu_fb303_stats
   counter_utils
-  FBThrift::thriftcpp2
+  thrift::rpc
   hardware_stats_cpp2
   Folly::folly
   switch_config_cpp2
@@ -115,7 +115,7 @@ target_link_libraries(hw_cpu_fb303_stats
 
 target_link_libraries(hw_trunk_counters
   counter_utils
-  FBThrift::thriftcpp2
+  thrift::rpc
   hardware_stats_cpp2
   Folly::folly
   fboss_types
@@ -133,3 +133,20 @@ target_link_libraries(hw_resource_stats_publisher
 target_link_libraries(prbs_stats_entry
   ctrl_cpp2
 )
+
+add_executable(hw_port_fb303_stats_test
+  fboss/util/oss/TestMain.cpp
+  fboss/agent/hw/test/HwPortFb303StatsTests.cpp
+  fboss/agent/hw/test/HwSysPortFb303StatsTests.cpp
+)
+
+target_link_libraries(hw_port_fb303_stats_test
+  hw_port_fb303_stats
+  switch_config_cpp2
+  fb303::fb303
+  Folly::folly
+  ${GTEST}
+  ${LIBGMOCK_LIBRARIES}
+)
+
+gtest_discover_tests(hw_port_fb303_stats_test)

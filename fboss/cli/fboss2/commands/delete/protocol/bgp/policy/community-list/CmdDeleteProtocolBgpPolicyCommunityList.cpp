@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/community-list/CmdDeleteProtocolBgpPolicyCommunityList.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -187,5 +188,12 @@ void CmdDeleteProtocolBgpPolicyCommunityList::printOutput(
 template void CmdHandler<
     CmdDeleteProtocolBgpPolicyCommunityList,
     CmdDeleteProtocolBgpPolicyCommunityListTraits>::run();
+
+std::vector<std::string>
+CmdDeleteProtocolBgpPolicyCommunityListTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(
+      typed, {{}, {std::string(kCommunityKeyword)}});
+}
 
 } // namespace facebook::fboss

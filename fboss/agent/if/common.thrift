@@ -9,15 +9,18 @@ include "common/network/if/Address.thrift"
 include "thrift/annotation/cpp.thrift"
 include "thrift/annotation/thrift.thrift"
 include "thrift/annotation/hack.thrift"
+include "thrift/annotation/python.thrift"
 
 @hack.NamePrefix{prefix = "fboss_"}
 @hack.LegacyOmitPrefixInNameString
 @thrift.AllowLegacyMissingUris
 package;
 
-@cpp.Type{name = "::folly::fbstring"}
+@python.Py3EnableCppAdapter
+@cpp.Adapter{name = "::apache::thrift::StringTypeAdapter<::folly::fbstring>"}
 typedef binary fbbinary
-@cpp.Type{name = "::folly::fbstring"}
+@python.Py3EnableCppAdapter
+@cpp.Adapter{name = "::apache::thrift::StringTypeAdapter<::folly::fbstring>"}
 typedef string fbstring
 
 struct ClientInformation {
@@ -64,6 +67,11 @@ struct NextHopThrift {
   5: list<Address.BinaryAddress> srv6SegmentList;
   6: optional TunnelType tunnelType;
   7: optional string tunnelId;
+  8: optional string overlayDstMac;
+  // VXLAN network identifier, explicitly carried on the next hop
+  // instead of derived from the tunnel's VRF->VNI mapper.
+  // Valid range is 1..16777215 when set.
+  9: optional i32 tunnelVni;
 
   /**
   * For capturing topology information to assist Agent path pruning decisions
@@ -98,6 +106,16 @@ struct NextHopThrift {
   //    o every nexthop in this list<backupNexthops>
   //       - role = NextHopRole.BACKUP,
   //       - list<backupNexthops> member is empty.
+
+  // VRF to resolve this next hop in; unset means the route's VRF. Only
+  // tunnel next hops (e.g. VXLAN to a VTEP) may set it, to the default VRF.
+  20: optional i32 vrf;
+
+  // Set on next hops the agent resolved by a lookup in the next level, such
+  // as a VXLAN tunnel next hop whose VTEP is looked up in the underlay VRF.
+  // The hardware resolves the egress from the next level route, so these
+  // next hops have no interface. Clients must not set it.
+  21: optional bool resolvedInNextLevel;
 }
 
 /*
@@ -139,7 +157,8 @@ enum PacketType {
 }
 
 typedef map<byte, ForwardingClass> DscpToForwardingClassMap
-typedef map<ForwardingClass, NextHopGroup> ForwardingClassToNamedNhg
+// Traffic class -> name of a named next-hop group
+typedef map<ForwardingClass, string> ForwardingClassToNamedNhg
 
 /*
  * Class based traffic forwarding policy
@@ -147,7 +166,10 @@ typedef map<ForwardingClass, NextHopGroup> ForwardingClassToNamedNhg
 struct ClassBasedPolicy {
   1: string name;
   2: string defaultNexthopGroup;
-  3: ForwardingClassToNamedNhg class2NextHopGroup;
+  // Deprecated: use class2NamedNextHopGroup. Ignored by the agent.
+  3: map<ForwardingClass, NextHopGroup> class2NextHopGroup_DEPRECATED;
+  // Named next-hop groups created beforehand with addNamedNextHopGroups
+  4: ForwardingClassToNamedNhg class2NamedNextHopGroup;
 }
 
 /*
@@ -244,6 +266,7 @@ enum TunnelType {
   SRV6_ENCAP = 1,
   IP_IN_IP_ENCAP = 2,
   SRV6_DECAP = 3,
+  VXLAN = 4,
 }
 
 enum MySidType {

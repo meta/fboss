@@ -38,6 +38,8 @@ class CoppReasonDeleteArgs : public utils::BaseObjectArgType<std::string> {
 };
 
 struct CmdDeleteCoppReasonTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdDeleteCopp;
   using ObjectArgType = CoppReasonDeleteArgs;
   using RetType = std::string;

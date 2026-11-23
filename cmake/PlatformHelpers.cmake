@@ -26,7 +26,7 @@ add_library(platform_utils
 
 target_link_libraries(platform_fs_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   ${RE2}
 )
 
@@ -35,13 +35,13 @@ target_link_libraries(platform_name_lib
   platform_utils
   Folly::folly
   fb303::fb303
-  FBThrift::thriftcpp2
+  thrift::rpc
   ${RE2}
 )
 
 target_link_libraries(platform_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   ${RE2}
   thrift_service_utils
   fb303::fb303

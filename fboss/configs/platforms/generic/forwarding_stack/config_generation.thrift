@@ -24,6 +24,8 @@ enum ConfigProfileType {
   HW_TEST = 2,
   // Configuration used by FBOSS hardware benchmarks.
   BENCHMARK = 3,
+  // Configuration used by FBOSS link tests.
+  LINK_TEST = 4,
 }
 
 struct ConfigOption {
@@ -37,6 +39,15 @@ struct ConfigOption {
   // Selects a named ASIC-v3 config variant for this output. When omitted, the
   // generator uses the profile name as the ASIC config variant.
   3: optional string asicConfigVariant;
+
+  // Selects the extensionless CSV filename under
+  // forwarding_stack/link_topology/. When set, the topology determines the
+  // enabled port graph, port profiles, and expected LLDP peers.
+  4: optional string linkTopologyVariant;
+
+  // Selects a directory under variants/ whose generated platform mapping
+  // artifacts should be used for this output.
+  5: optional string platformMappingVariant;
 }
 
 struct ConfigGenerationSpec {

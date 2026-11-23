@@ -14,21 +14,25 @@
  *
  * Requirements:
  *   - FBOSS agent is running with a valid configuration that already contains
- *     ECMP and AGGREGATE_PORT load balancer entries (true for every real DUT)
+ *     the load balancer targeted by an enabled test
  */
 
 #include <fmt/format.h>
+#include <folly/ScopeGuard.h>
 #include <folly/json/dynamic.h>
 #include <folly/json/json.h>
 #include <folly/logging/xlog.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <initializer_list>
 #include <optional>
 #include <set>
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/if/gen-cpp2/FbossCtrlAsyncClient.h"
+#include "fboss/cli/fboss2/commands/config/load_balancing/CmdConfigLoadBalancing.h"
 #include "fboss/cli/fboss2/test/integration_test/Fboss2IntegrationTest.h"
 #include "fboss/cli/fboss2/test/integration_test/LoadBalancingTestUtils.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
@@ -39,8 +43,18 @@ using ::testing::HasSubstr;
 
 namespace {
 
-constexpr int kEcmpIdValue = 1;
-constexpr int kLagIdValue = 2;
+constexpr int loadBalancerIdValue(cfg::LoadBalancerID id) {
+  return static_cast<int>(id);
+}
+
+template <typename Enum>
+std::set<int> enumValues(std::initializer_list<Enum> values) {
+  std::set<int> out;
+  for (auto value : values) {
+    out.insert(static_cast<int>(value));
+  }
+  return out;
+}
 
 } // namespace
 
@@ -55,9 +69,8 @@ class ConfigLoadBalancingTest : public Fboss2IntegrationTest {
     return folly::parseJson(configStr);
   }
 
-  // Return the load balancer object for the given numeric LoadBalancerID
-  // (1=ECMP, 2=AGGREGATE_PORT) from the sw config, throwing if not present.
-  folly::dynamic getLoadBalancer(int idValue) const {
+  // Return the requested load balancer from the sw config, throwing if absent.
+  folly::dynamic getLoadBalancer(cfg::LoadBalancerID id) const {
     auto config = getRunningConfig();
     if (!config.isObject() || !config.count("sw")) {
       throw std::runtime_error("Running config missing 'sw' object");
@@ -68,29 +81,31 @@ class ConfigLoadBalancingTest : public Fboss2IntegrationTest {
           "Running config missing 'sw.loadBalancers' array");
     }
     for (const auto& lb : sw["loadBalancers"]) {
-      if (lb.count("id") && lb["id"].asInt() == idValue) {
+      if (lb.count("id") && lb["id"].asInt() == loadBalancerIdValue(id)) {
         return lb;
       }
     }
     throw std::runtime_error(
-        fmt::format("Running config has no load balancer with id={}", idValue));
+        fmt::format(
+            "Running config has no {} load balancer", lbIdToString(id)));
   }
 
-  int getAlgorithm(int idValue) const {
-    auto lb = getLoadBalancer(idValue);
-    return lb["algorithm"].asInt();
+  cfg::HashingAlgorithm getAlgorithm(cfg::LoadBalancerID id) const {
+    auto lb = getLoadBalancer(id);
+    return static_cast<cfg::HashingAlgorithm>(lb["algorithm"].asInt());
   }
 
-  std::optional<int> getSeed(int idValue) const {
-    auto lb = getLoadBalancer(idValue);
+  std::optional<int> getSeed(cfg::LoadBalancerID id) const {
+    auto lb = getLoadBalancer(id);
     if (!lb.count("seed")) {
       return std::nullopt;
     }
     return lb["seed"].asInt();
   }
 
-  std::set<int> getFieldSet(int idValue, const std::string& fieldKey) const {
-    auto lb = getLoadBalancer(idValue);
+  std::set<int> getFieldSet(cfg::LoadBalancerID id, const std::string& fieldKey)
+      const {
+    auto lb = getLoadBalancer(id);
     std::set<int> out;
     if (!lb.count("fieldSelection")) {
       return out;
@@ -117,39 +132,76 @@ class ConfigLoadBalancingTest : public Fboss2IntegrationTest {
     return result.stdout;
   }
 
-  // Drive `config load-balancing <area> hash-algorithm <algoToken>`, verify
-  // the running config's algorithm int matches `expectedEnumValue`, then
-  // restore the original algorithm.
-  void testAlgorithm(
-      const std::string& area,
-      int idValue,
-      const std::string& algoToken,
-      int expectedEnumValue) {
+  void testAlgorithm(cfg::LoadBalancerID id) {
+    const auto area = lbIdToString(id);
+    const auto original = getAlgorithm(id);
+    const auto expected = original == cfg::HashingAlgorithm::CRC
+        ? cfg::HashingAlgorithm::CRC16_CCITT
+        : cfg::HashingAlgorithm::CRC;
+    const auto algoToken = algorithmIntToToken(static_cast<int>(expected));
     XLOG(INFO) << "--- " << area << " hash-algorithm " << algoToken << " ---";
-    int original = getAlgorithm(idValue);
-    ASSERT_NE(original, expectedEnumValue)
-        << "Test value matches original — pick a different one";
 
     auto stdout = runAndCommit(
         {"config", "load-balancing", area, "hash-algorithm", algoToken});
     EXPECT_THAT(stdout, HasSubstr("hash-algorithm"));
-    EXPECT_EQ(getAlgorithm(idValue), expectedEnumValue);
+    EXPECT_EQ(getAlgorithm(id), expected);
 
     // Restore.
-    std::string originalToken = algorithmIntToToken(original);
+    const auto originalToken = algorithmIntToToken(static_cast<int>(original));
     runAndCommit(
         {"config", "load-balancing", area, "hash-algorithm", originalToken});
-    EXPECT_EQ(getAlgorithm(idValue), original);
+    EXPECT_EQ(getAlgorithm(id), original);
   }
 
-  // Drive `config load-balancing <area> hash-seed <seed>`, verify running
-  // config matches, then restore. Uses the *numeric* seed verification
-  // unconditionally; the restore path handles both "had a seed" and "seed
-  // unset" original states.
-  void testSeed(const std::string& area, int idValue, int newSeed) {
+  // Running-config load balancers with the given id.
+  int countConfigLoadBalancers(cfg::LoadBalancerID id) const {
+    auto config = getRunningConfig();
+    int count = 0;
+    for (const auto& lb : config["sw"]["loadBalancers"]) {
+      if (lb.count("id") && lb["id"].asInt() == loadBalancerIdValue(id)) {
+        ++count;
+      }
+    }
+    return count;
+  }
+
+  // Switch-state load balancers stored under the requested id, one per switch.
+  // loadBalancerMaps: SwitchIdList -> LoadBalancerID -> LoadBalancerFields.
+  std::vector<folly::dynamic> getStateLoadBalancers(
+      cfg::LoadBalancerID id) const {
+    std::vector<folly::dynamic> out;
+    auto maps = getSwitchState("loadBalancerMaps");
+    for (const auto& [switchIds, lbs] : maps.items()) {
+      for (const auto& [key, lb] : lbs.items()) {
+        if (key.asInt() == loadBalancerIdValue(id)) {
+          out.push_back(lb);
+        }
+      }
+    }
+    return out;
+  }
+
+  // Verify the command updates the existing load-balancer entry without
+  // creating a duplicate, and that the committed seed appears in switch state
+  // under the matching LoadBalancerID.
+  void testSeed(cfg::LoadBalancerID id) {
+    const auto area = lbIdToString(id);
+    const auto original = getSeed(id);
+    // Flip the low bit of the current seed, so the test value always differs
+    // from whatever the DUT already uses.
+    const int32_t newSeed = original.has_value() ? (*original ^ 1) : 1;
     XLOG(INFO) << "--- " << area << " hash-seed " << newSeed << " ---";
-    auto original = getSeed(idValue);
-    ASSERT_TRUE(!original.has_value() || *original != newSeed);
+
+    ASSERT_EQ(countConfigLoadBalancers(id), 1)
+        << "expected exactly one " << area << " load balancer";
+
+    // Put the original seed back even if a check below fails.
+    const std::string restoreValue =
+        original.has_value() ? std::to_string(*original) : "default";
+    auto restoreGuard = folly::makeGuard([&] {
+      runAndCommit(
+          {"config", "load-balancing", area, "hash-seed", restoreValue});
+    });
 
     runAndCommit(
         {"config",
@@ -157,108 +209,105 @@ class ConfigLoadBalancingTest : public Fboss2IntegrationTest {
          area,
          "hash-seed",
          std::to_string(newSeed)});
-    auto observed = getSeed(idValue);
-    ASSERT_TRUE(observed.has_value());
-    EXPECT_EQ(*observed, newSeed);
 
-    // Restore: either original had a value or was unset (use "default").
-    if (original.has_value()) {
-      runAndCommit(
-          {"config",
-           "load-balancing",
-           area,
-           "hash-seed",
-           std::to_string(*original)});
-      auto restored = getSeed(idValue);
-      ASSERT_TRUE(restored.has_value());
-      EXPECT_EQ(*restored, *original);
-    } else {
-      runAndCommit({"config", "load-balancing", area, "hash-seed", "default"});
-      EXPECT_FALSE(getSeed(idValue).has_value());
+    EXPECT_EQ(countConfigLoadBalancers(id), 1)
+        << "the command appended a load balancer instead of updating " << area;
+    EXPECT_EQ(getSeed(id), newSeed);
+
+    const auto stateLbs = getStateLoadBalancers(id);
+    EXPECT_FALSE(stateLbs.empty())
+        << "no " << area << " load balancer in switch state";
+    for (const auto& lb : stateLbs) {
+      EXPECT_EQ(lb["id"].asInt(), loadBalancerIdValue(id))
+          << "loadBalancerMaps key does not match the entry's id";
+      EXPECT_EQ(lb["seed"].asInt(), newSeed);
     }
+
+    restoreGuard.dismiss();
+    runAndCommit({"config", "load-balancing", area, "hash-seed", restoreValue});
+    EXPECT_EQ(getSeed(id), original);
   }
 
   // Generic hash-fields-* test. Sets `newTokens`, verifies the running
   // config's field-set matches `expectedEnumValues`, then restores the
   // original comma-separated token list.
   void testFields(
-      const std::string& area,
-      int idValue,
+      cfg::LoadBalancerID id,
       const std::string& attrName, // e.g. "hash-fields-ipv4"
       const std::string& fieldKey, // e.g. "ipv4Fields"
       const std::string& newTokens,
       const std::set<int>& expectedEnumValues,
       const std::string& restoreTokens) {
+    const auto area = lbIdToString(id);
     XLOG(INFO) << "--- " << area << " " << attrName << " " << newTokens
                << " ---";
-    auto originalFields = getFieldSet(idValue, fieldKey);
+    auto originalFields = getFieldSet(id, fieldKey);
 
     runAndCommit({"config", "load-balancing", area, attrName, newTokens});
-    EXPECT_EQ(getFieldSet(idValue, fieldKey), expectedEnumValues);
+    EXPECT_EQ(getFieldSet(id, fieldKey), expectedEnumValues);
 
     runAndCommit({"config", "load-balancing", area, attrName, restoreTokens});
-    EXPECT_EQ(getFieldSet(idValue, fieldKey), originalFields);
+    EXPECT_EQ(getFieldSet(id, fieldKey), originalFields);
   }
 };
 
 // ============================================================
-// ECMP (LoadBalancerID = 1)
+// ECMP
 // ============================================================
 
 TEST_F(ConfigLoadBalancingTest, EcmpHashAlgorithm) {
-  testAlgorithm("ecmp", kEcmpIdValue, "crc32-hi", 4);
+  testAlgorithm(cfg::LoadBalancerID::ECMP);
 }
 
 TEST_F(ConfigLoadBalancingTest, EcmpHashSeed) {
-  testSeed("ecmp", kEcmpIdValue, 314159);
+  testSeed(cfg::LoadBalancerID::ECMP);
 }
 
 TEST_F(ConfigLoadBalancingTest, EcmpHashFieldsIpv4) {
   testFields(
-      "ecmp",
-      kEcmpIdValue,
+      cfg::LoadBalancerID::ECMP,
       "hash-fields-ipv4",
       "ipv4Fields",
       "src-ip",
-      {1 /* SOURCE_ADDRESS */},
+      enumValues({cfg::IPv4Field::SOURCE_ADDRESS}),
       "src-ip,dst-ip");
 }
 
 TEST_F(ConfigLoadBalancingTest, EcmpHashFieldsIpv6) {
   testFields(
-      "ecmp",
-      kEcmpIdValue,
+      cfg::LoadBalancerID::ECMP,
       "hash-fields-ipv6",
       "ipv6Fields",
       "src-ip,dst-ip,flow-label",
-      {1, 2, 3},
+      enumValues(
+          {cfg::IPv6Field::SOURCE_ADDRESS,
+           cfg::IPv6Field::DESTINATION_ADDRESS,
+           cfg::IPv6Field::FLOW_LABEL}),
       "src-ip,dst-ip");
 }
 
 TEST_F(ConfigLoadBalancingTest, EcmpHashFieldsTransport) {
   testFields(
-      "ecmp",
-      kEcmpIdValue,
+      cfg::LoadBalancerID::ECMP,
       "hash-fields-transport",
       "transportFields",
       "src-port",
-      {1 /* SOURCE_PORT */},
+      enumValues({cfg::TransportField::SOURCE_PORT}),
       "src-port,dst-port");
 }
 
 TEST_F(ConfigLoadBalancingTest, EcmpHashFieldsMpls) {
   testFields(
-      "ecmp",
-      kEcmpIdValue,
+      cfg::LoadBalancerID::ECMP,
       "hash-fields-mpls",
       "mplsFields",
       "top,second",
-      {1, 2},
+      enumValues({cfg::MPLSField::TOP_LABEL, cfg::MPLSField::SECOND_LABEL}),
       "none");
 }
 
 // ============================================================
-// LAG (LoadBalancerID = 2 / AGGREGATE_PORT)
+// LAG
 // ============================================================
 
 // LAG tests disabled pending the UDF-group-ID fix in SaiSwitchManager:
@@ -266,20 +315,19 @@ TEST_F(ConfigLoadBalancingTest, EcmpHashFieldsMpls) {
 // hashManager().getOrCreate(), so any LAG hash update on a DUT with UDF groups
 // would silently drop them.
 TEST_F(ConfigLoadBalancingTest, DISABLED_LagHashAlgorithm) {
-  testAlgorithm("lag", kLagIdValue, "crc32-lo", 3);
+  testAlgorithm(cfg::LoadBalancerID::AGGREGATE_PORT);
 }
 
 TEST_F(ConfigLoadBalancingTest, DISABLED_LagHashSeed) {
-  testSeed("lag", kLagIdValue, 271828);
+  testSeed(cfg::LoadBalancerID::AGGREGATE_PORT);
 }
 
 TEST_F(ConfigLoadBalancingTest, DISABLED_LagHashFieldsIpv4) {
   testFields(
-      "lag",
-      kLagIdValue,
+      cfg::LoadBalancerID::AGGREGATE_PORT,
       "hash-fields-ipv4",
       "ipv4Fields",
       "dst-ip",
-      {2 /* DESTINATION_ADDRESS */},
+      enumValues({cfg::IPv4Field::DESTINATION_ADDRESS}),
       "src-ip,dst-ip");
 }

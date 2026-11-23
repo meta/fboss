@@ -7,7 +7,18 @@
 #include "fboss/cli/fboss2/CmdSubcommands.h"
 
 namespace facebook::fboss::utils {
-void initApp(CLI::App& app) {
+
+RegisteredCommands registeredCommands(bool readOnly) {
+  if (readOnly) {
+    return {
+        filterReadCommands(kCommandTree()),
+        filterReadCommands(kAdditionalCommandTree()),
+        filterReadCommands(kSpecialCommands())};
+  }
+  return {kCommandTree(), kAdditionalCommandTree(), kSpecialCommands()};
+}
+
+void initApp(CLI::App& app, bool readOnly) {
   app.require_subcommand();
 
   /*
@@ -21,6 +32,16 @@ void initApp(CLI::App& app) {
    * NOTE: kCommandTree/kAdditionalCommandTree/kSpecialCommands will be linked
    * from elsewhere to make `CmdSubcommands` an independent lib.
    */
+  if (readOnly) {
+    const auto cmds = registeredCommands(readOnly);
+    CmdSubcommands::getInstance()->init(
+        app,
+        cmds.cmdTree,
+        cmds.additionalCmdTree,
+        cmds.specialCmds,
+        VerbRegistration::kOnlyUsed);
+    return;
+  }
   CmdSubcommands::getInstance()->init(
       app, kCommandTree(), kAdditionalCommandTree(), kSpecialCommands());
 }

@@ -1,7 +1,7 @@
 # Platform Services — Build and Test Targets
 
 Platform services build with CMake inside the FBOSS container. See the build
-documentation at https://facebook.github.io/fboss/ for container setup; the
+documentation at https://meta.github.io/fboss/ for container setup; the
 runnable snippets are in `docs/static/code_snips/`.
 
 For the build system itself (container setup, `run-getdeps.py` flags, build

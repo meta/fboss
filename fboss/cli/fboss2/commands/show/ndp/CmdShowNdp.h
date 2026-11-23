@@ -11,7 +11,6 @@
 #pragma once
 
 #include <fboss/agent/if/gen-cpp2/ctrl_types.h>
-#include <fboss/agent/if/gen-cpp2/fboss_types.h>
 #include <string_view>
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/commands/show/ndp/gen-cpp2/model_types.h"

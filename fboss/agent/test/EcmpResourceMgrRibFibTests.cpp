@@ -232,4 +232,68 @@ TEST_F(EcmpResourceManagerRibFibTest, ermReconstructsAfterNextHopCollapse) {
   EXPECT_NO_THROW(erm->reconstructFromSwitchState(state));
 }
 
+TEST_F(EcmpResourceManagerRibFibTest, ribMirrorsOverrideNextHopSetId) {
+  const NextHopSetID setId(nextHopIdTypeStart(NextHopIdType::OVERRIDE_SET));
+  auto withOverrides = [](const auto& state,
+                          const std::optional<NextHopSetID>& id,
+                          std::optional<cfg::SwitchingMode> mode) {
+    auto newState = state->clone();
+    auto fib6 = fib(newState);
+    auto route = fib6->cbegin()->second->clone();
+    RouteNextHopEntry fwd(route->getForwardInfo().toThrift());
+    fwd.setOverrideNextHopSetID(id);
+    fwd.setOverrideEcmpSwitchingMode(mode);
+    route->setResolved(fwd);
+    fib6->updateNode(route);
+    newState->publish();
+    return std::make_pair(newState, route->prefix().network());
+  };
+  auto ribSetId = [this](const folly::IPAddressV6& ip) {
+    waitForStateUpdates(sw_);
+    return sw_->getRib()
+        ->longestMatch(ip, RouterID(0))
+        ->getForwardInfo()
+        .getOverrideNextHopSetID();
+  };
+  // An empty RIB update whose fib delta carries the overrides.
+  auto syncOverrides = [this](const auto& oldState, const auto& newState) {
+    sw_->getRib()->update(
+        sw_->getScopeResolver(),
+        RouterID(0),
+        ClientID::BGPD,
+        AdminDistance::EBGP,
+        std::vector<UnicastRoute>{},
+        std::vector<IpPrefix>{},
+        false,
+        "sync overrides",
+        [&](const SwitchIdScopeResolver*,
+            const std::vector<RibVrfFib>&,
+            const NextHopIDManager*,
+            const MySidTable&,
+            void*) { return StateDelta(oldState, newState); },
+        nullptr);
+  };
+  auto state0 = sw_->getState();
+  auto [state1, ip] = withOverrides(state0, setId, std::nullopt);
+  syncOverrides(state0, state1);
+  EXPECT_EQ(ribSetId(ip), setId);
+  // A mode-only change keeps the id.
+  auto [state2, _] =
+      withOverrides(state1, setId, cfg::SwitchingMode::PER_PACKET_RANDOM);
+  syncOverrides(state1, state2);
+  EXPECT_EQ(ribSetId(ip), setId);
+  auto [state3, __] = withOverrides(state2, std::nullopt, std::nullopt);
+  syncOverrides(state2, state3);
+  EXPECT_EQ(ribSetId(ip), std::nullopt);
+  // A newly resolved route with only the id still mirrors it.
+  auto unresolvedState = state3->clone();
+  auto unresolvedFib = fib(unresolvedState);
+  unresolvedFib->updateNode(
+      unresolvedFib->cbegin()->second->cloneForReresolve());
+  unresolvedState->publish();
+  auto [state4, ___] = withOverrides(unresolvedState, setId, std::nullopt);
+  syncOverrides(unresolvedState, state4);
+  EXPECT_EQ(ribSetId(ip), setId);
+}
+
 } // namespace facebook::fboss

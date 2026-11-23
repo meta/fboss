@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/hw/sai/api/AclApi.h"
 #include "fboss/agent/hw/sai/api/NextHopApi.h"
 #include "fboss/agent/hw/sai/api/Types.h"
@@ -134,10 +135,18 @@ class SaiAclTableManager {
    */
   static auto constexpr kDscpMask = 0x3F;
 
+#if defined(BRCM_SAI_SDK_XGS)
+  // XGS reads FIELD_TC back clipped to the 4-bit IntPriority field and cannot
+  // set it, so a wider mask fails warm boot reconciliation.
+  // TODO(zecheng): back to 0xFF once BRCM SAI keeps or rejects a wider mask.
+  static auto constexpr kTcMask = 0x0F;
+#else
   // Traffic class is a u8; PBR matches on the full value.
   static auto constexpr kTcMask = 0xFF;
+#endif
 
-  static auto constexpr kMaxUdfGroups = 5;
+  static auto constexpr kMaxUdfGroups =
+      cfg::switch_config_constants::ACL_TABLE_UDF_GROUPS_MAX();
 
   /*
    * L4 Src/Dst Port Mask.
@@ -316,6 +325,8 @@ class SaiAclTableManager {
   void removeUnclaimedAclCounter();
 
   AclStats getAclStats() const;
+
+  bool aclCounterLabelExtendedSupported() const;
 
  private:
   SaiAclTableHandle* FOLLY_NULLABLE

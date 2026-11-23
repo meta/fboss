@@ -230,6 +230,15 @@ std::
   int i = 0;
   auto udfGroupSaiIds = managerTable_->udfManager().getUdfGroupIds(
       addedAclTable->getUdfGroups()->toThrift());
+  if (udfGroupSaiIds.size() > SaiAclTableManager::kMaxUdfGroups) {
+    throw FbossError(
+        "ACL table ",
+        addedAclTable->getID(),
+        " has ",
+        udfGroupSaiIds.size(),
+        " UDF groups, max supported is ",
+        SaiAclTableManager::kMaxUdfGroups);
+  }
   for (const auto udfGroupSaiId : udfGroupSaiIds) {
     udfGroupIds[i++] = udfGroupSaiId;
   }
@@ -242,6 +251,8 @@ std::
       qualifierExistsFn(cfg::AclTableQualifier::DST_IPV6),
       qualifierExistsFn(cfg::AclTableQualifier::DST_IPV6_WORD3),
       qualifierExistsFn(cfg::AclTableQualifier::DST_IPV6_WORD2),
+      qualifierExistsFn(cfg::AclTableQualifier::DST_IPV6_WORD1),
+      qualifierExistsFn(cfg::AclTableQualifier::DST_IPV6_WORD0),
       qualifierExistsFn(cfg::AclTableQualifier::SRC_IPV4),
       qualifierExistsFn(cfg::AclTableQualifier::DST_IPV4),
       qualifierExistsFn(cfg::AclTableQualifier::L4_SRC_PORT),

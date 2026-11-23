@@ -9,7 +9,11 @@
  */
 #include "fboss/agent/MacTableUtils.h"
 
+#include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/Utils.h"
+#include "fboss/agent/state/Port.h"
+#include "fboss/agent/state/SwitchSettings.h"
+#include "fboss/agent/state/SwitchState.h"
 
 namespace {
 
@@ -66,6 +70,19 @@ std::shared_ptr<MacEntry> getMacEntry(
     folly::MacAddress mac) {
   auto macTable = getMacTable(state, vlanId);
   return macTable->getMacIf(mac);
+}
+
+template <typename Fn>
+void forEachUnconfiguredMacOnPort(
+    const Vlan& vlan,
+    const facebook::fboss::PortDescriptor& port,
+    Fn&& fn) {
+  for (const auto& [macStr, macEntry] : std::as_const(*vlan.getMacTable())) {
+    if (macEntry->getPort() == port &&
+        !macEntry->getConfigured().value_or(false)) {
+      fn(macEntry->getMac());
+    }
+  }
 }
 
 } // namespace
@@ -144,6 +161,11 @@ std::shared_ptr<SwitchState> MacTableUtils::updateOrAddStaticEntry(
     VlanID vlanId,
     folly::MacAddress mac,
     std::optional<bool> configured) {
+  // Neighbor-created MACs stay off a port error-disabled for its MAC limit
+  // until the error is cleared.
+  if (!configured.value_or(false) && isMacLimitErrorDisabled(state, port)) {
+    return state;
+  }
   auto existingMacEntry = getMacEntry(state, vlanId, mac);
   if (existingMacEntry &&
       existingMacEntry->getType() == MacEntryType::STATIC_ENTRY &&
@@ -187,6 +209,98 @@ std::shared_ptr<SwitchState> MacTableUtils::removeEntry(
   return newState;
 }
 
+std::shared_ptr<SwitchState> MacTableUtils::removeUnconfiguredEntriesForPort(
+    const std::shared_ptr<SwitchState>& state,
+    const PortDescriptor& port) {
+  std::shared_ptr<SwitchState> newState{state};
+  for (const auto& vlanMap : std::as_const(*state->getVlans())) {
+    for (const auto& [_, vlan] : std::as_const(*vlanMap.second)) {
+      std::vector<folly::MacAddress> macs;
+      forEachUnconfiguredMacOnPort(
+          *vlan, port, [&](const auto& mac) { macs.push_back(mac); });
+      if (macs.empty()) {
+        continue;
+      }
+      auto* vlanPtr = vlan.get();
+      auto* macTable = vlan->getMacTable()->modify(&vlanPtr, &newState);
+      for (const auto& mac : macs) {
+        macTable->removeEntry(mac);
+      }
+    }
+  }
+  return newState;
+}
+
+bool MacTableUtils::isMacLimitErrorDisabled(
+    const std::shared_ptr<SwitchState>& state,
+    const PortDescriptor& port) {
+  if (!port.isPhysicalPort()) {
+    return false;
+  }
+  auto portNode = state->getPorts()->getNodeIf(port.phyPortID());
+  return portNode &&
+      portNode->hasError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
+}
+
+uint32_t MacTableUtils::countUnconfiguredEntriesForPort(
+    const std::shared_ptr<SwitchState>& state,
+    const PortDescriptor& port) {
+  uint32_t count{0};
+  for (const auto& vlanMap : std::as_const(*state->getVlans())) {
+    for (const auto& [_, vlan] : std::as_const(*vlanMap.second)) {
+      forEachUnconfiguredMacOnPort(*vlan, port, [&](const auto&) { ++count; });
+    }
+  }
+  return count;
+}
+
+std::optional<int32_t> MacTableUtils::getMaxL2EntriesPerPort(
+    const std::shared_ptr<SwitchState>& state,
+    const std::shared_ptr<Port>& port,
+    const SwitchIdScopeResolver& scopeResolver) {
+  const auto switchSettings =
+      state->getSwitchSettings()->getSwitchSettings(scopeResolver.scope(port));
+  if (!switchSettings) {
+    return std::nullopt;
+  }
+  const auto limit = switchSettings->getMaxL2EntriesPerPort();
+  if (limit && *limit > 0) {
+    return limit;
+  }
+  return std::nullopt;
+}
+
+bool MacTableUtils::exceedsMacLimit(
+    const std::shared_ptr<SwitchState>& state,
+    const PortDescriptor& port,
+    VlanID vlanId,
+    folly::MacAddress mac,
+    int32_t limit) {
+  if (auto vlan = state->getVlans()->getNodeIf(vlanId)) {
+    auto existing = vlan->getMacTable()->getMacIf(mac);
+    if (existing && existing->getPort() == port) {
+      return false;
+    }
+  }
+  return countUnconfiguredEntriesForPort(state, port) >=
+      static_cast<uint32_t>(limit);
+}
+
+std::shared_ptr<SwitchState> MacTableUtils::errorDisablePortForMacLimit(
+    const std::shared_ptr<SwitchState>& state,
+    PortID portId) {
+  if (!state->getPorts()->getNodeIf(portId)) {
+    XLOG(ERR) << "Can't error-disable port " << portId << ", it doesn't exist";
+    return state;
+  }
+  auto newState =
+      removeUnconfiguredEntriesForPort(state, PortDescriptor(portId));
+  auto port = newState->getPorts()->getNodeIf(portId)->modify(&newState);
+  port->setAdminState(cfg::PortState::DISABLED);
+  port->addError(PortError::ERROR_DISABLE_MAC_LIMIT_EXCEEDED);
+  return newState;
+}
+
 std::shared_ptr<SwitchState> MacTableUtils::updateOrAddStaticEntryIfNbrExists(
     const std::shared_ptr<SwitchState>& state,
     VlanID vlanId,
@@ -208,6 +322,9 @@ std::shared_ptr<SwitchState> MacTableUtils::updateOrAddStaticEntryIfNbrExists(
     // For Static MAC entry, we miror the port neighbor was resolved on
     auto port = arpItr != arpTable.end() ? (arpItr->second)->getPort()
                                          : (ndpItr->second)->getPort();
+    if (isMacLimitErrorDisabled(state, port)) {
+      return state;
+    }
     auto macTable = getMacTable(state, vlanId).get();
     auto existingMacEntry = macTable->getMacIf(mac);
     if (existingMacEntry) {

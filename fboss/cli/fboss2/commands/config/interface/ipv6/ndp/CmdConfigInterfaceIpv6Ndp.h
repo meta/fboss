@@ -59,6 +59,8 @@ class NdpConfigAttrs : public utils::BaseObjectArgType<std::string> {
 };
 
 struct CmdConfigInterfaceIpv6NdpTraits : public WriteCommandTraits {
+  static std::vector<std::string> completeArgs(
+      const std::vector<std::string>& typed);
   using ParentCmd = CmdConfigInterfaceIpv6;
   static void addCliArg(CLI::App& cmd, std::vector<std::string>& args) {
     cmd.add_option(

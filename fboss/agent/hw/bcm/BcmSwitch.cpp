@@ -2391,7 +2391,6 @@ void BcmSwitch::changeDefaultVlan(VlanID oldId, VlanID newId) {
     if (intfTable_->getBcmIntfIf(oldId)) {
       auto oldIntf = make_shared<Interface>(
           InterfaceID(oldId),
-          RouterID(0), /* currently VRF is always zero anyway */
           std::optional<VlanID>(oldId),
           folly::StringPiece(fmt::format("Interface-{}", uint16_t(oldId))),
           getPlatform()->getLocalMac(),
@@ -2402,7 +2401,6 @@ void BcmSwitch::changeDefaultVlan(VlanID oldId, VlanID newId) {
     }
     auto newIntf = make_shared<Interface>(
         InterfaceID(newId),
-        RouterID(0), /* currently VRF is always zero anyway */
         std::optional<VlanID>(newId),
         folly::StringPiece(fmt::format("Interface-{}", uint16_t(newId))),
         getPlatform()->getLocalMac(),
@@ -2764,7 +2762,7 @@ void BcmSwitch::processAddedNeighborEntry(const NeighborEntryT* addedEntry) {
   }
 
   const auto* intf = getIntfTable()->getBcmIntf(addedEntry->getIntfID());
-  auto vrf = getBcmVrfId(intf->getInterface()->getRouterID());
+  auto vrf = getBcmVrfId(RouterID(0));
 
   auto neighborKey =
       BcmHostKey(vrf, IPAddress(addedEntry->getIP()), addedEntry->getIntfID());
@@ -2796,7 +2794,7 @@ void BcmSwitch::processChangedNeighborEntry(
   }
 
   const auto* intf = getIntfTable()->getBcmIntf(newEntry->getIntfID());
-  auto vrf = getBcmVrfId(intf->getInterface()->getRouterID());
+  auto vrf = getBcmVrfId(RouterID(0));
 
   auto neighborKey =
       BcmHostKey(vrf, IPAddress(newEntry->getIP()), newEntry->getIntfID());
@@ -2811,7 +2809,7 @@ void BcmSwitch::processRemovedNeighborEntry(
   XLOG(DBG3) << "deleting neighbor entry " << removedEntry->getIP().str();
 
   const auto* intf = getIntfTable()->getBcmIntf(removedEntry->getIntfID());
-  auto vrf = getBcmVrfId(intf->getInterface()->getRouterID());
+  auto vrf = getBcmVrfId(RouterID(0));
 
   auto neighborKey = BcmHostKey(
       vrf, IPAddress(removedEntry->getIP()), removedEntry->getIntfID());
@@ -4088,8 +4086,7 @@ void BcmSwitch::processChangedTeFlow(
     const std::shared_ptr<TeFlowEntry>& newTeFlow) {
   XLOG(DBG3) << "processChangedTeFlow, oldTeFlow=" << oldTeFlow->str()
              << " newTeFlow=" << newTeFlow->str();
-  teFlowTable_->processChangedTeFlow(
-      platform_->getAsic()->getDefaultTeFlowGroupID(), oldTeFlow, newTeFlow);
+  teFlowTable_->processChangedTeFlow(oldTeFlow, newTeFlow);
 }
 
 void BcmSwitch::processRemovedTeFlow(
@@ -4116,6 +4113,12 @@ bool BcmSwitch::hasValidAclMatcher(const std::shared_ptr<AclEntry>& acl) const {
     return false;
   }
   if (acl->getTcpFlagsMask()) {
+    return false;
+  }
+  if (acl->getDstIpWithMask()) {
+    return false;
+  }
+  if (acl->getDstIpV6Word1WithMask() || acl->getDstIpV6Word0WithMask()) {
     return false;
   }
 

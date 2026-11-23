@@ -25,6 +25,7 @@
 
 #include <array>
 #include <string>
+#include <unordered_map>
 
 #include <fmt/format.h>
 #include <gtest/gtest.h>
@@ -55,9 +56,12 @@ class ManagerTestBase : public ::testing::Test {
     QUEUE = 16,
     LAG = 32,
     SYSTEM_PORT = 64,
+    VRF = 128,
   };
   ~ManagerTestBase() override;
   void setupSaiPlatform();
+  virtual std::unique_ptr<SaiPlatform> createSaiPlatformForTest(
+      std::unique_ptr<PlatformProductInfo> productInfo);
 
   /*
    * TestPort, TestRemoteHost, and TestInterface are helper structs for
@@ -86,6 +90,7 @@ class ManagerTestBase : public ::testing::Test {
     folly::CIDRNetwork subnet;
     std::vector<TestRemoteHost> remoteHosts;
     int mtu{1500};
+    RouterID routerId{0};
     TestInterface() {}
     TestInterface(int id, size_t numHosts) : id(id) {
       if (id > 245) {
@@ -188,6 +193,10 @@ class ManagerTestBase : public ::testing::Test {
       const TestInterface& testInterface,
       cfg::InterfaceType type = cfg::InterfaceType::VLAN) const;
 
+  // Interface VRF map with the interfaces in the given VRFs
+  std::shared_ptr<MultiSwitchInterfaceVrfMap> makeInterfaceVrfs(
+      const std::map<InterfaceID, RouterID>& interfaceVrfs = {}) const;
+
   // A port router interface bound to an aggregate port rather than to a
   // physical port.
   std::shared_ptr<Interface> makeAggregatePortInterface(
@@ -261,6 +270,9 @@ class ManagerTestBase : public ::testing::Test {
   std::array<TestInterface, 10> testInterfaces;
   std::array<TestInterface, 10> testRemoteInterfaces;
   uint32_t setupStage{SetupStage::BLANK};
+  // Interface id to VRF, set before SetUp(); VRFs are created with
+  // SetupStage::VRF
+  std::unordered_map<int, RouterID> testInterfaceRouterIds;
 
   void applyNewState(const std::shared_ptr<SwitchState>& newState);
 

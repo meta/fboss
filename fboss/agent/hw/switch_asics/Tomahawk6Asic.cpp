@@ -29,7 +29,9 @@ bool Tomahawk6Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::DETAILED_L2_UPDATE:
     case HwAsic::Feature::TELEMETRY_AND_MONITORING:
     case HwAsic::Feature::ALPM_ROUTE_PROJECTION:
+    case HwAsic::Feature::PORT_MAC_FLUSH:
     case HwAsic::Feature::MAC_AGING:
+    case HwAsic::Feature::STATIC_FDB_EVICT_DYNAMIC:
     case HwAsic::Feature::SAI_PORT_SPEED_CHANGE: // CS00011784917
     case HwAsic::Feature::SFLOW_SHIM_VERSION_FIELD:
     case HwAsic::Feature::EGRESS_MIRRORING:
@@ -80,6 +82,7 @@ bool Tomahawk6Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::L3_MTU_ERROR_TRAP:
     case HwAsic::Feature::SAI_USER_DEFINED_TRAP:
     case HwAsic::Feature::ACL_COUNTER_LABEL:
+    case HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED:
     case HwAsic::Feature::ECMP_DLB_OFFSET:
     case HwAsic::Feature::SAI_FEC_CORRECTED_BITS:
     case HwAsic::Feature::SAI_FEC_CODEWORDS_STATS:
@@ -126,11 +129,13 @@ bool Tomahawk6Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::LINK_TRAINING:
     case HwAsic::Feature::SRV6_MYSID_DISCARD_COUNTER:
     case HwAsic::Feature::SRV6_MYSID_RESOURCE_COUNTER:
+    case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
+    case HwAsic::Feature::SRV6_DECAP_TUNNEL:
     case HwAsic::Feature::CABLE_PROPOGATION_DELAY:
     case HwAsic::Feature::SAI_MPLS_INSEGMENT:
     case HwAsic::Feature::MANAGEMENT_PORT_MULTICAST_QUEUE_ALPHA:
     case HwAsic::Feature::MY_MAC:
-    case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
+    case HwAsic::Feature::HIERARCHICAL_ECMP:
       return true;
     case HwAsic::Feature::SAI_MPLS_TTL_1_TRAP:
       // The hostif trap is only implemented from 15.4 GA onwards; the 15.4
@@ -141,6 +146,13 @@ bool Tomahawk6Asic::isSupported(Feature feature) const {
       // is not being patched for it.
       return saiSdkAtLeast("16.0_ea_odp");
     case HwAsic::Feature::SAI_MPLS_NEXTHOP_OUTSEG_TYPE:
+    case HwAsic::Feature::PBR_ACL:
+      return saiSdkAtLeast("16.0_ea_odp");
+    case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:
+      // UEC Link Layer Retry (UE Spec 1.0.2 section 5.1) via SAI
+      // PORT_LLR_PROFILE. Experimental on TH6 from the 16.0 early access drop
+      // onwards (baking on the Ladakh non-blocking conveyor node); 14.2 keeps
+      // reporting unsupported so those runs skip via SDK gating.
       return saiSdkAtLeast("16.0_ea_odp");
     // features not working well with bcmsim
     case HwAsic::Feature::MIRROR_PACKET_TRUNCATION:
@@ -256,10 +268,8 @@ bool Tomahawk6Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::ECN_PROBABILISTIC_MARKING:
     case HwAsic::Feature::DEVICE_WATERMARK_SUPPORT:
     case HwAsic::Feature::SWITCH_CUSTOM_DROP_BITMAP_SUPPORT:
-    case HwAsic::Feature::PBR_ACL:
     case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:
     case HwAsic::Feature::CBFC:
-    case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:
     case HwAsic::Feature::SLL_HLL_DISCARD_COUNTERS:
     case HwAsic::Feature::NEXT_HOP_GROUP_MEMBER_MONITORED_OBJECT:
     case HwAsic::Feature::RX_PACKET_TYPE:
@@ -267,6 +277,13 @@ bool Tomahawk6Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::CSIG:
     case HwAsic::Feature::ACL_ENTRY_OUT_PORT_QUALIFIER:
     case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
+    case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
+    case HwAsic::Feature::PORT_LATCH_STATUS:
+    case HwAsic::Feature::PCS_ERROR_COUNTERS:
+    case HwAsic::Feature::MIRROR_SESSION_POLICER:
+    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
+    case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:
+    case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
       return false;
   }
   return false;

@@ -67,6 +67,7 @@ class MirrorApiTest : public ::testing::Test {
          ttl,
          truncateSize,
          samplingRate,
+         std::nullopt,
          std::nullopt},
         0);
   }

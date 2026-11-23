@@ -15,6 +15,10 @@ export_file(
     visibility = ["//rtp/npi/npi_launcher/..."],
 )
 
+export_file(name = "phy.thrift")
+
+export_file(name = "prbs.thrift")
+
 thrift_library(
     name = "phy",
     go_thrift_namespaces = {

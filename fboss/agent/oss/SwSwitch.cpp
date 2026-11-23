@@ -9,14 +9,14 @@
  */
 #include "fboss/agent/SwSwitch.h"
 
-#include <folly/Format.h>
+#include <fmt/format.h>
 #include <folly/Range.h>
 #include <folly/logging/xlog.h>
 
 namespace facebook::fboss {
 
 void SwSwitch::logLinkStateEvent(PortID port, bool up) {
-  std::string logMsg = folly::sformat(
+  std::string logMsg = fmt::format(
       "LinkState: Port {0} {1}", (uint16_t)port, (up ? "Up" : "Down"));
   XLOG(DBG2) << logMsg;
 }
@@ -24,7 +24,7 @@ void SwSwitch::logLinkStateEvent(PortID port, bool up) {
 void SwSwitch::logSwitchRunStateChange(
     SwitchRunState oldState,
     SwitchRunState newState) {
-  std::string logMsg = folly::sformat(
+  std::string logMsg = fmt::format(
       "SwitchRunState changed from {} to {}",
       switchRunStateStr(oldState),
       switchRunStateStr(newState));

@@ -1,6 +1,6 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <filesystem>
 #include <map>
 #include <string>

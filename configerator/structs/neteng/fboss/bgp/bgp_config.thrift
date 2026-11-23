@@ -718,6 +718,12 @@ struct BgpSettingConfig {
 
   /** Record the latest platform-normalized FIB request for each RIB entry. */
   24: optional bool enable_fib_out_tracking;
+
+  /**
+   * Advertise the RFC 8538 Notification (N) bit in the Graceful Restart
+   * capability. Default (unset or false): the N bit is not advertised.
+   */
+  25: optional bool enable_gr_notification;
 }
 
 /**
@@ -751,6 +757,10 @@ struct BgpNetServiceThriftConfig {
 
   // Thrift server behavior
   12: optional bool propagate_thrift_default_protocols;
+
+  // When true, NetSimpleAclChecker evaluates callers with an agent.id TLS
+  // attribute as SERVICE_IDENTITY:agentic_caller. Unset means false.
+  13: optional bool enable_agentic_caller_enforcement;
 }
 
 /**

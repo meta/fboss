@@ -40,7 +40,7 @@ const {
           sidebarPath: require.resolve('./sidebars.js'),
           editUrl: fbContent({
             internal: 'https://www.internalfb.com/intern/diffusion/FBS/browse/master/fbcode/fboss/agent/wiki/static_docs',
-            external: 'https://github.com/facebook/fboss/tree/main/fboss/agent/wiki',
+            external: 'https://github.com/meta/fboss/tree/main/fboss/agent/wiki',
           }),
         },
         experimentalXRepoSnippets: {

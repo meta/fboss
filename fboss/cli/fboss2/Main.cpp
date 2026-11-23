@@ -19,13 +19,21 @@ FOLLY_INIT_LOGGING_CONFIG("fboss=DBG0; default:async=true");
 
 namespace facebook::fboss {
 
+namespace {
+#ifdef FBOSS2_READ_ONLY
+constexpr bool kReadOnly = true;
+#else
+constexpr bool kReadOnly = false;
+#endif
+} // namespace
+
 int cliMain(int argc, char* argv[]) {
   int one = 1;
-  folly::init(&one, &argv, /* removeFlags = */ false);
+  const folly::Init init(&one, &argv, /* removeFlags = */ false);
 
   CLI::App app{"FBOSS CLI"};
 
-  utils::initApp(app);
+  utils::initApp(app, kReadOnly);
   utils::postAppInit(argc, argv, app);
 
   try {

@@ -106,14 +106,19 @@ bool P200Asic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::L3_INTF_MTU:
     case HwAsic::Feature::CPU_QUEUE_WATERMARK_STATS:
     case HwAsic::Feature::BUFFER_POOL_HEADROOM_WATERMARK:
+    case HwAsic::Feature::INGRESS_PRIORITY_GROUP_SHARED_WATERMARK:
     case HwAsic::Feature::SAI_SET_TC_WITH_USER_DEFINED_TRAP_CPU_ACTION:
     case HwAsic::Feature::SAI_MPLS_NEXTHOP_OUTSEG_TYPE:
     case HwAsic::Feature::CPU_TX_PACKET_REQUIRES_VLAN_TAG:
+    case HwAsic::Feature::AGGREGATE_PORT_ROUTER_INTERFACE:
+    case HwAsic::Feature::HASH_FIELDS_CUSTOMIZATION:
+    case HwAsic::Feature::PFC:
+    case HwAsic::Feature::PCS_ERROR_COUNTERS:
+    case HwAsic::Feature::DEDICATED_CPU_BUFFER_POOL:
       return true;
     case HwAsic::Feature::ACL_BYTE_COUNTER:
     case HwAsic::Feature::RESERVED_ENCAP_INDEX_RANGE:
     case HwAsic::Feature::HOSTTABLE:
-    case HwAsic::Feature::HASH_FIELDS_CUSTOMIZATION:
     case HwAsic::Feature::QCM:
     case HwAsic::Feature::SCHEDULER_PPS:
     case HwAsic::Feature::NEXTHOP_TTL_DECREMENT_DISABLE:
@@ -127,7 +132,6 @@ bool P200Asic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::ZERO_SDK_WRITE_WARMBOOT:
     case HwAsic::Feature::OBM_COUNTERS:
     case HwAsic::Feature::EGRESS_QUEUE_FLEX_COUNTER:
-    case HwAsic::Feature::PFC:
     case HwAsic::Feature::PFC_XON_TO_XOFF_COUNTER:
     case HwAsic::Feature::INGRESS_L3_INTERFACE:
     case HwAsic::Feature::NON_UNICAST_HASH:
@@ -211,10 +215,8 @@ bool P200Asic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::INGRESS_PRIORITY_GROUP_DROPPED_PACKETS:
     case HwAsic::Feature::NO_RX_REASON_TRAP:
     case HwAsic::Feature::EGRESS_GVOQ_WATERMARK_BYTES:
-    case HwAsic::Feature::INGRESS_PRIORITY_GROUP_SHARED_WATERMARK:
     case HwAsic::Feature::MULTIPLE_EGRESS_BUFFER_POOL:
     case HwAsic::Feature::PORT_MTU_ERROR_TRAP:
-    case HwAsic::Feature::DEDICATED_CPU_BUFFER_POOL:
     case HwAsic::Feature::INGRESS_POST_LOOKUP_ACL_TABLE:
     case HwAsic::Feature::FAST_LLFC_COUNTER:
     case HwAsic::Feature::INGRESS_SRAM_MIN_BUFFER_WATERMARK:
@@ -235,7 +237,6 @@ bool P200Asic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::SAI_PORT_IN_CONGESTION_DISCARDS:
     case HwAsic::Feature::TEMPERATURE_MONITORING:
     case HwAsic::Feature::ROUTER_INTERFACE_STATISTICS:
-    case HwAsic::Feature::AGGREGATE_PORT_ROUTER_INTERFACE:
     case HwAsic::Feature::CPU_PORT_EGRESS_BUFFER_POOL:
     case HwAsic::Feature::ACL_SET_ECMP_HASH_ALGORITHM:
     case HwAsic::Feature::SET_NEXT_HOP_GROUP_HASH_ALGORITHM:
@@ -263,17 +264,22 @@ bool P200Asic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::HW_PROTECTION_SWITCHOVER_COUNTERS:
     case HwAsic::Feature::PBR_ACL_BYTE_COUNTER:
     case HwAsic::Feature::SRV6_MYSID_RESOURCE_COUNTER:
+    case HwAsic::Feature::SRV6_BINDING_USID_UA_USD:
+    case HwAsic::Feature::SRV6_DECAP_TUNNEL:
     case HwAsic::Feature::PBR_ACL:
     case HwAsic::Feature::DEVICE_WATERMARK_SUPPORT:
     case HwAsic::Feature::ECN_PROBABILISTIC_MARKING:
     case HwAsic::Feature::SWITCH_CUSTOM_DROP_BITMAP_SUPPORT:
     case HwAsic::Feature::SWITCH_DROP_REASON_LIST_SUPPORT:
     case HwAsic::Feature::ECMP_RANDOM_SPRAY_HIERARCHICAL_LEVEL:
+    case HwAsic::Feature::HIERARCHICAL_ECMP:
     case HwAsic::Feature::CBFC:
     case HwAsic::Feature::LINK_LAYER_RETRANSMISSION:
     case HwAsic::Feature::PORT_DEBOUNCE:
     case HwAsic::Feature::SWITCH_WIDE_LINK_UP_DEBOUNCE:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_QUALIFIERS:
+    case HwAsic::Feature::ACL_DST_IP_WITH_MASK:
+    case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:
     case HwAsic::Feature::NEXT_HOP_GROUP_MEMBER_MONITORED_OBJECT:
     case HwAsic::Feature::RX_PACKET_TYPE:
     case HwAsic::Feature::MY_MAC:
@@ -281,6 +287,12 @@ bool P200Asic::isSupportedNonFabric(Feature feature) const {
     case HwAsic::Feature::CSIG:
     case HwAsic::Feature::ACL_ENTRY_OUT_PORT_QUALIFIER:
     case HwAsic::Feature::XPHY_SERDES_TX_FIR_POST3:
+    case HwAsic::Feature::LAG_TTL_DECREMENT_DISABLE:
+    case HwAsic::Feature::ACL_COUNTER_LABEL_EXTENDED:
+    case HwAsic::Feature::PORT_MAC_FLUSH:
+    case HwAsic::Feature::PORT_LATCH_STATUS:
+    case HwAsic::Feature::STATIC_FDB_EVICT_DYNAMIC:
+    case HwAsic::Feature::MIRROR_SESSION_POLICER:
       return false;
     case HwAsic::Feature::SAI_ACL_MPLS_LABEL0_TTL:
       // Leaba does not implement the MPLS label0 TTL ACL qualifier yet.

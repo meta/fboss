@@ -414,6 +414,22 @@
             }
           ]
       },
+      "EOLO-16T-02-1T": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.3"
+            }
+          ]
+      },
+      "EOLO-16T-02-R1": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.3"
+            }
+          ]
+      },
       "FTCD4313E2PCL-FB": {
           "versions": [
             {
@@ -510,6 +526,30 @@
             }
           ]
       },
+      "FTCF4719E6PCBFB1": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.2"
+            }
+          ]
+      },
+      "FTCF4719E6PCBFB2": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.2"
+            }
+          ]
+      },
+      "FTCF4719E6PCBFB3": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "3.2"
+            }
+          ]
+      },
       "QDD-400G-XDR4": {
           "versions": [
             {
@@ -527,6 +567,14 @@
             {
               "fwType": 1,
               "version": "0.11"
+            }
+          ]
+      },
+      "SPQ8E44DOCOA": {
+          "versions": [
+            {
+              "fwType": 1,
+              "version": "0.1"
             }
           ]
       },

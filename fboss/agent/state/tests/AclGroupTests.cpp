@@ -8,6 +8,7 @@
  *
  */
 
+#include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/ApplyThriftConfig.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/HwSwitchMatcher.h"
@@ -82,6 +83,19 @@ const std::vector<std::string> kAclUdfGroups = {
     kUdfGroup3};
 
 namespace {
+
+cfg::UdfConfig makeAclUdfConfig(const std::vector<std::string>& udfGroups) {
+  cfg::UdfConfig udfConfig;
+  for (const auto& name : udfGroups) {
+    cfg::UdfGroup udfGroup;
+    udfGroup.name() = name;
+    udfGroup.startOffsetInBytes() = 8;
+    udfGroup.fieldSizeInBytes() = 1;
+    udfGroup.type() = cfg::UdfGroupType::ACL;
+    udfConfig.udfGroups()->emplace(name, udfGroup);
+  }
+  return udfConfig;
+}
 
 std::shared_ptr<const AclMap> getAclMapFromState(
     std::shared_ptr<SwitchState> state) {
@@ -558,6 +572,7 @@ TEST(AclGroup, ApplyConfigColdbootMultipleAclTable) {
   config.aclTableGroup()->name() = kGroup1;
   config.aclTableGroup()->aclTables()->resize(1);
   config.aclTableGroup()->aclTables()[0] = cfgTable1;
+  config.udfConfig() = makeAclUdfConfig(kAclUdfGroups);
   // Make sure acl1b used so that it isn't ignored
   config.dataPlaneTrafficPolicy() = cfg::TrafficPolicyConfig();
   config.dataPlaneTrafficPolicy()->matchToAction()->resize(
@@ -729,6 +744,61 @@ TEST(AclGroup, ApplyConfigColdbootMultipleAclTable) {
       *table2);
   EXPECT_EQ(
       *(stateV2->getAclTableGroups()->getNodeIf(kAclStage1)), *tableGroup);
+}
+
+TEST(AclGroup, ApplyConfigAclTableUdfGroupLimits) {
+  FLAGS_enable_acl_table_group = true;
+  auto platform = createMockPlatform();
+  auto stateEmpty = make_shared<SwitchState>();
+
+  const int maxUdfGroups =
+      cfg::switch_config_constants::ACL_TABLE_UDF_GROUPS_MAX();
+  std::vector<std::string> definedGroups;
+  for (int i = 0; i <= maxUdfGroups; ++i) {
+    definedGroups.push_back("udfGroup" + std::to_string(i));
+  }
+  auto makeConfig = [&](const std::vector<std::string>& tableUdfGroups) {
+    cfg::SwitchConfig config;
+    config.aclTableGroup() = cfg::AclTableGroup();
+    config.aclTableGroup()->stage() = kAclStage1;
+    config.aclTableGroup()->name() = kGroup1;
+    config.aclTableGroup()->aclTables()->resize(1);
+    config.aclTableGroup()->aclTables()[0].name() = kTable1;
+    config.aclTableGroup()->aclTables()[0].priority() = 1;
+    config.aclTableGroup()->aclTables()[0].udfGroups() = tableUdfGroups;
+    config.udfConfig() = makeAclUdfConfig(definedGroups);
+    return config;
+  };
+
+  std::vector<std::string> maxGroups(
+      definedGroups.begin(), definedGroups.begin() + maxUdfGroups);
+  auto config = makeConfig(maxGroups);
+  auto state = publishAndApplyConfig(stateEmpty, &config, platform.get());
+  ASSERT_NE(nullptr, state);
+  EXPECT_EQ(
+      state->getAclTableGroups()
+          ->getNodeIf(kAclStage1)
+          ->getAclTableMap()
+          ->getTableIf(kTable1)
+          ->getUdfGroups()
+          ->toThrift(),
+      maxGroups);
+
+  config = makeConfig({});
+  EXPECT_NE(
+      nullptr, publishAndApplyConfig(stateEmpty, &config, platform.get()));
+
+  config = makeConfig(definedGroups);
+  EXPECT_THROW(
+      publishAndApplyConfig(stateEmpty, &config, platform.get()), FbossError);
+
+  config = makeConfig({definedGroups[0], definedGroups[0]});
+  EXPECT_THROW(
+      publishAndApplyConfig(stateEmpty, &config, platform.get()), FbossError);
+
+  config = makeConfig({definedGroups[0], "undefinedUdfGroup"});
+  EXPECT_THROW(
+      publishAndApplyConfig(stateEmpty, &config, platform.get()), FbossError);
 }
 
 TEST(AclGroup, ApplyConfigPortBoundAclTableGroup) {
@@ -1303,7 +1373,7 @@ TEST(AclGroup, ApplyConfigPreservesComputedPbrEntries) {
   ASSERT_NE(nullptr, stateV1);
   EXPECT_EQ(0, stateV1->getAclsForTable(kAclStage1, kPbrTable)->numEntries());
 
-  auto stateV2 = addPbrEntry(stateV1, "pbrPolicy_tc1", 3505);
+  auto stateV2 = addPbrEntry(stateV1, "pbrPolicy_tc1", FLAGS_pbr_acl_priority);
   ASSERT_EQ(1, stateV2->getAclsForTable(kAclStage1, kPbrTable)->numEntries());
 
   // Re-applying the same config is a no-op: the PBR table's empty config
@@ -1319,12 +1389,12 @@ TEST(AclGroup, ApplyConfigPreservesComputedPbrEntries) {
   ASSERT_EQ(1, pbrAcls->numEntries());
   auto entry = pbrAcls->getEntryIf("pbrPolicy_tc1");
   ASSERT_NE(nullptr, entry);
-  EXPECT_EQ(3505, entry->getPriority());
+  EXPECT_EQ(FLAGS_pbr_acl_priority, entry->getPriority());
   // Other tables are still rebuilt from config as usual.
   EXPECT_EQ(1, stateV3->getAclsForTable(kAclStage1, kTable1)->numEntries());
 }
 
-TEST(AclGroup, ApplyConfigRejectsConfiguredPbrEntries) {
+TEST(AclGroup, ApplyConfigKeepsConfiguredPbrEntriesBelowComputed) {
   FLAGS_enable_acl_table_group = true;
   auto platform = createMockPlatform();
   auto config = makePbrTableConfig();
@@ -1332,10 +1402,21 @@ TEST(AclGroup, ApplyConfigRejectsConfiguredPbrEntries) {
   auto& cfgPbr = config.aclTableGroup()->aclTables()[1];
   cfgPbr.aclEntries()->resize(1);
   cfgPbr.aclEntries()[0].name() = kAcl2a;
-  cfgPbr.aclEntries()[0].actionType() = cfg::AclActionType::DENY;
 
-  EXPECT_THROW(
-      publishAndApplyConfig(
-          std::make_shared<SwitchState>(), &config, platform.get()),
-      FbossError);
+  auto stateV1 = publishAndApplyConfig(
+      std::make_shared<SwitchState>(), &config, platform.get());
+  ASSERT_NE(nullptr, stateV1);
+  EXPECT_EQ(
+      AclTable::kDataplaneAclMaxPriority,
+      stateV1->getAclsForTable(kAclStage1, kPbrTable)
+          ->getEntry(kAcl2a)
+          ->getPriority());
+  auto stateV2 = addPbrEntry(stateV1, "pbrPolicy_tc1", FLAGS_pbr_acl_priority);
+
+  cfgPbr.aclEntries()->clear();
+  auto stateV3 = publishAndApplyConfig(stateV2, &config, platform.get());
+  ASSERT_NE(nullptr, stateV3);
+  auto pbrAcls = stateV3->getAclsForTable(kAclStage1, kPbrTable);
+  EXPECT_EQ(1, pbrAcls->numEntries());
+  EXPECT_NE(nullptr, pbrAcls->getEntryIf("pbrPolicy_tc1"));
 }

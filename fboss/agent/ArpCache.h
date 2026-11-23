@@ -33,6 +33,7 @@ class ArpCache : public NeighborCache<ArpTable> {
       InterfaceID intfID);
 
   void sentArpRequest(folly::IPAddressV4 ip);
+  void resolve(folly::IPAddressV4 ip);
   void receivedArpMine(
       folly::IPAddressV4 ip,
       folly::MacAddress mac,

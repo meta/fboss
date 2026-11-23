@@ -59,6 +59,8 @@ void CmdShowTransceiver::printOutput(const RetType& model, std::ostream& out) {
        "Rx SNR"});
 
   for (const auto& [portId, details] : model.transceivers().value()) {
+    const bool isZr =
+        details.mediaInterface().value() == MediaInterfaceCode::ZR_800G;
     outTable.addRow({
         details.name().value(),
         statusToString(
@@ -86,7 +88,10 @@ void CmdShowTransceiver::printOutput(const RetType& model, std::ostream& out) {
             details.currentMA().value(), LOW_CURRENT_WARN, LOW_CURRENT_ERR),
         listToString(details.txPower().value(), LOW_POWER_WARN, LOW_POWER_ERR),
         listToString(details.rxPower().value(), LOW_POWER_WARN, LOW_POWER_ERR),
-        listToString(details.rxSnr().value(), LOW_SNR_WARN, LOW_SNR_ERR),
+        listToString(
+            details.rxSnr().value(),
+            isZr ? ZR_LOW_SNR_WARN : LOW_SNR_WARN,
+            isZr ? ZR_LOW_SNR_ERR : LOW_SNR_ERR),
     });
   }
   out << outTable << std::endl;

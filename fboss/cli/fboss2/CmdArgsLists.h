@@ -20,6 +20,12 @@ class CmdArgsLists {
  public:
   static std::shared_ptr<CmdArgsLists> getInstance();
 
+  // Exchanges the process-wide embedding override; nullptr selects the
+  // singleton. Returns the previous override. Serialize invocations and keep
+  // the override installed until their workers finish.
+  static std::shared_ptr<CmdArgsLists> exchangeInvocationOverride(
+      std::shared_ptr<CmdArgsLists> instance);
+
   const std::vector<std::string>& at(int i) const {
     return data_[i];
   }
@@ -71,7 +77,7 @@ class CmdArgsLists {
  private:
   // since we do a lot of work of figuring out argument types at compile time,
   // for now we need to know the the theoretical max depth of nested subcommands
-  static constexpr auto MAX_DEPTH = 5;
+  static constexpr auto MAX_DEPTH = 6;
 
   std::array<std::vector<std::string>, MAX_DEPTH> data_;
 };

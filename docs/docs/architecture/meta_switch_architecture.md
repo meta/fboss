@@ -423,7 +423,7 @@ A few notes:
     * BMC to external interface shall not be changed (from fboss_lite layer)
       * `weutil` capable of reading chassis EEPROM.
     * BMC SW need to meet all the requirements in this document
-      * [https://github.com/facebook/fboss/blob/main/fboss/docs/openbmc_software_requirements.md](https://github.com/facebook/fboss/blob/main/fboss/docs/openbmc_software_requirements.md)
+      * [Meta/OpenBMC Software Requirements](/docs/openbmc/openbmc_software_requirements)
       * While most of the requirements in this document are already implemented
         in fboss_lite BMC layer, vendors and partners are required to verify
         these features.
@@ -432,7 +432,7 @@ A few notes:
       identical contents, one hooked up to BMC only (read through BMC’s weutil),
       another to CPU only.
 
-## 6. X86 and the Subsystem Managed by it
+## 6. X86 and the Subsystem Managed by It
 
 ### 6.1 COMe (X86 CPU subsystem)
 
@@ -440,7 +440,7 @@ A few notes:
   * The CPU shall be powerful enough to run all Meta services (platform services,
     qsfp_service, agent) as well as ASIC SDK.
     * AMD FireRange (16 cores, 4.40GHz, 55W TDP or more powerful) is recommended.
-    * It is recommended JDMs use Meta's latest COMe module (Netlake2.0).
+    * It is mandatory that JDMs and ODMs use Meta's latest COMe module (Netlake2.0). Any exception will require Meta's approval.
     * While COMe does not necessarily have its own EEPROM, SCM (SUP or CPU board)
       shall have its own EEPROM
     * 2x 32GB DDR5 DIMM with ECC shall be used.

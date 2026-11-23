@@ -4,6 +4,7 @@ distro_infra/parts/ipxe/ipxev6.efi
 image_builder/logs
 image_builder/output
 kernel/dist
+kernel/.build
 distro_cli/.artifacts
 image_builder/templates/centos-09.0/root
 *.iso

@@ -91,6 +91,10 @@ void NeighborUpdaterNoopImpl::sentNeighborSolicitationForIntf(
     InterfaceID /*intfID*/,
     IPAddressV6 /*ip*/) {}
 
+void NeighborUpdaterNoopImpl::resolveNdpForIntf(
+    InterfaceID /*intfID*/,
+    IPAddressV6 /*ip*/) {}
+
 void NeighborUpdaterNoopImpl::receivedNdpMineForIntf(
     InterfaceID /*intfID*/,
     IPAddressV6 /*ip*/,
@@ -126,6 +130,10 @@ void NeighborUpdaterNoopImpl::receivedArpNotMine(
     ArpOpCode /*op*/) {}
 
 void NeighborUpdaterNoopImpl::sentArpRequestForIntf(
+    InterfaceID /*intfID*/,
+    IPAddressV4 /*ip*/) {}
+
+void NeighborUpdaterNoopImpl::resolveArpForIntf(
     InterfaceID /*intfID*/,
     IPAddressV4 /*ip*/) {}
 

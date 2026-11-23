@@ -11,7 +11,6 @@
 
 #include <folly/Conv.h>
 #include <folly/FileUtil.h>
-#include <folly/Format.h>
 #include <folly/logging/xlog.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 
@@ -308,19 +307,14 @@ std::optional<uint8_t> lookupAppSelCode(
   const auto mediaCode = static_cast<uint8_t>(
       extractFromMediaInterfaceUnion<SMFMediaInterfaceCode>(
           *port.mediaLaneCode()));
-  const auto hostLaneCount = static_cast<uint8_t>(*port.hostLanes()->count());
-  const auto startHostLane = static_cast<uint8_t>(
-      *port.hostLanes()->start() % CmisModule::kMaxOsfpNumLanes);
-  for (const auto& capability : cmis->getModuleCapabilities()) {
-    const auto& startLanes = capability.hostStartLanes;
-    if (capability.moduleMediaInterface == mediaCode &&
-        capability.hostLaneCount == hostLaneCount &&
-        std::find(startLanes.begin(), startLanes.end(), startHostLane) !=
-            startLanes.end()) {
-      return capability.ApSelCode;
-    }
+  auto capability = cmis->selectApplicationField(
+      mediaCode,
+      static_cast<uint8_t>(*port.hostLanes()->start()),
+      *port.hostLanes()->count());
+  if (!capability) {
+    return std::nullopt;
   }
-  return std::nullopt;
+  return capability->ApSelCode;
 }
 
 uint8_t findAppSelCode(QsfpModule* module, const PortSpeedConfig& port) {

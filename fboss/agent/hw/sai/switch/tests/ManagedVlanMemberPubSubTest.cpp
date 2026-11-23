@@ -12,7 +12,6 @@
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
 #include "fboss/agent/state/Port.h"
 #include "fboss/agent/state/SwitchState.h"
-#include "fboss/agent/state/Vlan.h"
 #include "fboss/agent/types.h"
 
 #include <gtest/gtest.h>

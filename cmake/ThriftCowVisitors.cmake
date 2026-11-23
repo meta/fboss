@@ -3,17 +3,19 @@
 # In general, libraries and binaries in fboss/foo/bar are built by
 # cmake/FooBar.cmake
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   patch_cpp2
   fboss/thrift_cow/patch.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   cow_visitor_results_cpp2
   fboss/thrift_cow/visitors/results.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -54,6 +56,6 @@ target_link_libraries(thrift_cow_visitors
   fsdb_oper_cpp2
   patch_cpp2
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   ${RE2}
 )

@@ -68,7 +68,7 @@ HwSwitchThriftClientTable::HwSwitchThriftClientTable(
 
 apache::thrift::Client<FbossHwCtrl>* HwSwitchThriftClientTable::getClient(
     SwitchID switchId) {
-  if (clientInfos_.find(switchId) == clientInfos_.end()) {
+  if (!clientInfos_.contains(switchId)) {
     throw FbossError("No client found for switch ", switchId);
   }
   return clientInfos_.at(switchId).first.get();

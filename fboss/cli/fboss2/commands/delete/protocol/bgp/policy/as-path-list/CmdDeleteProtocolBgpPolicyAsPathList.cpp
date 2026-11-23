@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/as-path-list/CmdDeleteProtocolBgpPolicyAsPathList.h"
+#include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -150,5 +151,12 @@ void CmdDeleteProtocolBgpPolicyAsPathList::printOutput(const RetType& output) {
 template void CmdHandler<
     CmdDeleteProtocolBgpPolicyAsPathList,
     CmdDeleteProtocolBgpPolicyAsPathListTraits>::run();
+
+std::vector<std::string>
+CmdDeleteProtocolBgpPolicyAsPathListTraits::completeArgs(
+    const std::vector<std::string>& typed) {
+  return utils::completion::completePositions(
+      typed, {{}, {std::string(kRegexKeyword)}});
+}
 
 } // namespace facebook::fboss

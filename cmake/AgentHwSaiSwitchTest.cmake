@@ -25,6 +25,7 @@ add_executable(switch_test
     fboss/agent/hw/sai/switch/tests/SamplePacketManagerTest.cpp
     fboss/agent/hw/sai/switch/tests/SchedulerManagerTest.cpp
     fboss/agent/hw/sai/switch/tests/SwitchManagerTest.cpp
+    fboss/agent/hw/sai/switch/tests/CsigManagerTest.cpp
     fboss/agent/hw/sai/switch/tests/SystemPortManagerTest.cpp
     fboss/agent/hw/sai/switch/tests/UnsupportedFeatureTest.cpp
     fboss/agent/hw/sai/switch/tests/UdfManagerTest.cpp
@@ -32,6 +33,7 @@ add_executable(switch_test
     fboss/agent/hw/sai/switch/tests/VlanManagerTest.cpp
     fboss/agent/hw/sai/switch/tests/TunnelManagerTest.cpp
     fboss/agent/hw/sai/switch/tests/Srv6TunnelManagerTest.cpp
+    fboss/agent/hw/sai/switch/tests/VxlanTunnelManagerTest.cpp
     fboss/agent/hw/sai/switch/tests/Srv6ManagerTest.cpp
     fboss/agent/hw/sai/switch/tests/DropReasonUtilsTest.cpp
     fboss/agent/hw/sai/switch/tests/VirtualChannelManagerTest.cpp

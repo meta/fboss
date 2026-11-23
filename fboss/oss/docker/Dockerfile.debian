@@ -35,5 +35,3 @@ RUN apt install -y doxygen graphviz aspell aspell-en bc libyaml-dev libyaml-liby
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
 RUN python3 -m pip install setuptools 'Cython>=3.0,<3.2' wheel auditwheel patchelf pyyaml filelock
-# ============================================================
-RUN python3 -m pip config set global.break-system-packages false

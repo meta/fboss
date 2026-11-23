@@ -1,7 +1,21 @@
 load("@fbcode_macros//build_defs:python_binary.bzl", "python_binary")
 load("@fbcode_macros//build_defs:python_library.bzl", "python_library")
 
-oncall("fboss_distro")
+oncall("fboss_oss")
+
+python_library(
+    name = "component_version",
+    srcs = ["component_version.py"],
+)
+
+python_library(
+    name = "package_fboss_lib",
+    srcs = {"package-fboss.py": "package_fboss.py"},
+    deps = [
+        ":component_version",
+        ":platform_configs_utils",
+    ],
+)
 
 python_library(
     name = "platform_configs_utils",
@@ -34,7 +48,10 @@ python_library(
     name = "package_lib",
     srcs = ["package.py"],
     labels = ["autodeps2_generated"],
-    deps = [":platform_configs_utils"],
+    deps = [
+        ":component_version",
+        ":platform_configs_utils",
+    ],
 )
 
 python_binary(

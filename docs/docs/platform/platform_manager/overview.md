@@ -34,15 +34,15 @@ files such that the same generic software can run on all platforms.
 - **Platform Specific Configuration (provided by Vendors):** It has information
   about the FRUs, I2C devices and how they can be accessed.
 
-  The configuration format is defined in [platform_manager_config.thrift](https://github.com/facebook/fboss/blob/main/fboss/platform/platform_manager/platform_manager_config.thrift).
+  The configuration format is defined in [platform_manager_config.thrift](https://github.com/meta/fboss/blob/main/fboss/platform/platform_manager/platform_manager_config.thrift).
 
-  See here for a [sample config](https://github.com/facebook/fboss/blob/main/fboss/configs/platforms/generic/sample/platform_stack/platform_manager.json) .
+  See here for a [sample config](https://github.com/meta/fboss/blob/main/fboss/configs/platforms/generic/sample/platform_stack/platform_manager.json) .
 
 
 - **Platform Agnostic Software (developed by Meta):** Meta will write and maintain the software.
 
 
-  See here for the [source code](https://github.com/facebook/fboss/tree/main/fboss/platform/platform_manager).
+  See here for the [source code](https://github.com/meta/fboss/tree/main/fboss/platform/platform_manager).
 
 
 ## Documentation
@@ -85,7 +85,7 @@ files such that the same generic software can run on all platforms.
 ## Vendor Expectations
 
 - **Configuration**: Vendor will provide the platform specific configuration
-  according to the [specification](https://github.com/facebook/fboss/blob/main/fboss/platform/platform_manager/platform_manager_config.thrift)
+  according to the [specification](https://github.com/meta/fboss/blob/main/fboss/platform/platform_manager/platform_manager_config.thrift)
   in fboss repository.
 - **Handoff**: Vendor will run PlatformManager as part of the handoff. The running
   and testing instructions will be provided in fboss repository.

@@ -265,7 +265,6 @@ class FirstInterfaceIDWithPortsTest : public ::testing::Test {
   createInterface(InterfaceID intfId, VlanID vlanId, bool isVirtual = false) {
     auto intf = std::make_shared<Interface>();
     intf->set<switch_state_tags::interfaceId>(intfId);
-    intf->setRouterID(RouterID(0));
     intf->setType(cfg::InterfaceType::VLAN);
     intf->setVlanID(vlanId);
     intf->setName(fmt::format("intf{}", static_cast<int>(intfId)));

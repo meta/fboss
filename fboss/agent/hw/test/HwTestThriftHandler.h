@@ -98,13 +98,16 @@ class HwTestThriftHandler : public AgentHwTestCtrlSvIf {
       bool injectCorrectable) override;
 
   void injectSwitchReachabilityChangeNotification() override;
-  void getRouteInfo(RouteInfo& routeInfo, std::unique_ptr<IpPrefix> prefix)
-      override;
+  void getRouteInfo(
+      RouteInfo& routeInfo,
+      std::unique_ptr<IpPrefix> prefix,
+      int32_t routerID) override;
   bool isRouteHit(std::unique_ptr<IpPrefix> prefix) override;
   void clearRouteHit(std::unique_ptr<IpPrefix> prefix) override;
   bool isRouteToNexthop(
       std::unique_ptr<IpPrefix> prefix,
-      std::unique_ptr<network::thrift::BinaryAddress> nexthop) override;
+      std::unique_ptr<network::thrift::BinaryAddress> nexthop,
+      int32_t routerID) override;
   bool isProgrammedInHw(
       int intfID,
       std::unique_ptr<IpPrefix> prefix,
@@ -269,6 +272,12 @@ class HwTestThriftHandler : public AgentHwTestCtrlSvIf {
       std::unique_ptr<std::string> regex) override;
 
   int64_t getFb303Counter(std::unique_ptr<std::string> key) override;
+
+  // Platform-agnostic; defined once in HwTestLifecycleThriftHandler.cpp.
+  void notifyTestLifecycleEvent(
+      TestLifecycleEventResult& result,
+      std::unique_ptr<std::string> attemptUuid,
+      TestLifecycleEvent event) override;
 
  private:
   HwSwitch* hwSwitch_;

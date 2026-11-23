@@ -362,7 +362,8 @@ TEST_F(AgentFabricSwitchSelfLoopTest, portDrained) {
     auto switchId = getCurrentSwitchIdForTesting();
     auto switchIndex =
         getSw()->getSwitchInfoTable().getSwitchIndexFromSwitchId(switchId);
-    const auto& dropStats = *getHwSwitchStats(switchIndex).switchDropStats();
+    auto hwSwitchStats = getHwSwitchStats(switchIndex);
+    const auto& dropStats = *hwSwitchStats.switchDropStats();
     EXPECT_EQ(*dropStats.globalDrops(), 0);
   };
   verifyAcrossWarmBoots(setup, verify);

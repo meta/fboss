@@ -780,6 +780,9 @@ bool LookupClassRouteUpdater::addRouteToMultiNextHopMap(
     std::optional<std::pair<folly::IPAddress, VlanID>> addedNeighborIPandVlan,
     const RidAndCidr& ridAndCidr) {
   for (const auto& nextHop : getNextHops(newState, route->getForwardInfo())) {
+    if (nextHop.resolvedInNextLevel()) {
+      continue;
+    }
     auto vlanID =
         newState->getInterfaces()->getNodeIf(nextHop.intf())->getVlanID();
     if (!belongsToSubnetInCache(vlanID, nextHop.addr())) {
@@ -823,6 +826,9 @@ LookupClassRouteUpdater::addRouteAndFindClassID(
   std::set<folly::IPAddress> neighborsWithClassId;
   for (const auto& nextHop :
        getNextHops(newState, addedRoute->getForwardInfo())) {
+    if (nextHop.resolvedInNextLevel()) {
+      continue;
+    }
     auto vlanID =
         newState->getInterfaces()->getNodeIf(nextHop.intf())->getVlanID();
     if (!belongsToSubnetInCache(vlanID, nextHop.addr())) {
@@ -1043,6 +1049,9 @@ void LookupClassRouteUpdater::processRouteRemoved(
   auto& newState = stateDelta.newState();
   for (const auto& nextHop :
        getNextHops(oldState, removedRoute->getForwardInfo())) {
+    if (nextHop.resolvedInNextLevel()) {
+      continue;
+    }
     auto vlanID =
         newState->getInterfaces()->getNodeIf(nextHop.intf())->getVlanID();
     if (!belongsToSubnetInCache(vlanID, nextHop.addr())) {

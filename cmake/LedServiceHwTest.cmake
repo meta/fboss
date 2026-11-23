@@ -18,7 +18,7 @@ target_link_libraries(led_service_hw_test
   common_file_utils
   platform_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )
 
 install(TARGETS led_service_hw_test)

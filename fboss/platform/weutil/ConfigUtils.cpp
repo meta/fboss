@@ -1,7 +1,6 @@
 // (c) Facebook, Inc. and its affiliates. Confidential and proprietary.
 #include "fboss/platform/weutil/ConfigUtils.h"
 
-#include <folly/Format.h>
 #include <folly/String.h>
 #include <re2/re2.h>
 #include <thrift/lib/cpp2/protocol/Serializer.h>
@@ -155,8 +154,7 @@ std::unordered_map<std::string, FruEeprom> ConfigUtils::getFruEepromList() {
   // have to add it explicitly. ```
   if (config_.platformName().value() == "MERU800BFA" ||
       config_.platformName().value() == "MERU800BIA" ||
-      config_.platformName().value() == "BLACKWOLF800BANW" ||
-      config_.platformName().value() == "SAINTPAUL") {
+      config_.platformName().value() == "BLACKWOLF800BANW") {
     std::string eepromName = "SCM";
     FruEeprom fruEeprom;
     fruEeprom.path = "/run/devmap/eeproms/MERU_SCM_EEPROM";

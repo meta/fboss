@@ -12,6 +12,8 @@ cpp_unittest(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     network_access = network_access_utils.none(),
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     deps = [
         "//fboss/qsfp_service/module:qsfp-module",
         "//fboss/qsfp_service/module/tests:fake-transceiver-impl",
@@ -28,6 +30,8 @@ cpp_unittest(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     network_access = network_access_utils.none(),
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     deps = [
         ":fake-transceiver-impl",
         ":transceiver-tests-helper",
@@ -50,6 +54,8 @@ cpp_unittest(
     ],
     compiler_flags = QSFP_COMMON_COMPILER_FLAGS,
     network_access = network_access_utils.none(),
+    # Links the x86-64-only vendor SAI SDK.
+    target_compatible_with = ["ovr_config//cpu:x86_64"],
     deps = [
         "fbsource//third-party/googletest:gmock",
         "fbsource//xplat/folly:memory",

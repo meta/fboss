@@ -1,23 +1,26 @@
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   bsp_tests_config_cpp2
   fboss/platform/bsp_tests/bsp_tests_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   fbiob_device_config_cpp2
   fboss/platform/bsp_tests/fbiob_device_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
 )
 
-add_fbthrift_cpp_library(
+thrift_add_library(
   bsp_tests_runtime_config_cpp2
   fboss/platform/bsp_tests/bsp_tests_runtime_config.thrift
+  LANGUAGE cpp2
   OPTIONS
     json
     reflection
@@ -52,6 +55,8 @@ target_link_libraries(bsp_test_utils
   platform_manager_config_cpp2
   platform_manager_fan_cpld_manager
   platform_manager_pci_explorer
+  gpiod_line
+  ${LIBGPIOD}
   Folly::folly
   ${RE2}
 )
@@ -71,7 +76,7 @@ target_link_libraries(bsp_test_environment
   platform_manager_config_cpp2
   platform_manager_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
   fmt::fmt
 )
 
@@ -111,5 +116,5 @@ target_link_libraries(runtime_config_builder_test
   bsp_test_environment
   platform_manager_utils
   Folly::folly
-  FBThrift::thriftcpp2
+  thrift::rpc
 )

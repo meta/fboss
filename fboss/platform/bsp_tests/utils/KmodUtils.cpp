@@ -3,7 +3,6 @@
 #include "fboss/platform/bsp_tests/utils/KmodUtils.h"
 
 #include <fmt/format.h>
-#include <folly/Format.h>
 #include <folly/logging/xlog.h>
 #include <gtest/gtest.h>
 #include <re2/re2.h>

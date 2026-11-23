@@ -21,6 +21,7 @@
 
 #include <fmt/format.h>
 #include <folly/IPAddress.h>
+#include <folly/portability/GFlags.h>
 #include <gtest/gtest.h>
 
 #include <set>
@@ -231,10 +232,7 @@ StateDelta mySidToSwitchStateUpdate(
 
 StateDelta noOpRibToSwitchStateUpdate(
     const SwitchIdScopeResolver* /*resolver*/,
-    RouterID /*vrf*/,
-    const IPv4NetworkToRouteMap& /*v4NetworkToRoute*/,
-    const IPv6NetworkToRouteMap& /*v6NetworkToRoute*/,
-    const LabelToRouteMap& /*labelToRoute*/,
+    const std::vector<RibVrfFib>& /*vrfFibs*/,
     const NextHopIDManager* /*nextHopIDManager*/,
     const MySidTable& /*mySidTable*/,
     void* cookie) {
@@ -396,10 +394,7 @@ StateDelta mySidToSwitchStateUpdateViaRibUpdater(
 // re-resolution to be observable in SwitchState.
 StateDelta routeToSwitchStateUpdateViaRibUpdater(
     const SwitchIdScopeResolver* resolver,
-    RouterID vrf,
-    const IPv4NetworkToRouteMap& v4NetworkToRoute,
-    const IPv6NetworkToRouteMap& v6NetworkToRoute,
-    const LabelToRouteMap& labelToRoute,
+    const std::vector<RibVrfFib>& vrfFibs,
     const NextHopIDManager* nextHopIDManager,
     const MySidTable& mySidTable,
     void* cookie) {
@@ -409,10 +404,7 @@ StateDelta routeToSwitchStateUpdateViaRibUpdater(
 
   RibToSwitchStateUpdater updater(
       resolver,
-      vrf,
-      v4NetworkToRoute,
-      v6NetworkToRoute,
-      labelToRoute,
+      vrfFibs,
       nextHopIDManager,
       mySidTable,
       RibToSwitchStateUpdater::UPDATE_MYSID);
@@ -902,6 +894,53 @@ TEST_F(RibMySidValidationTest, rejectBindingSidWithWrongTunnelType) {
       FbossError);
 
   EXPECT_EQ(rib_.getMySidTableCopy().size(), 0);
+}
+
+TEST_F(RibMySidValidationTest, rejectMixedBindingSidWithoutMixedFlag) {
+  folly::FlagSaver flagSaver;
+  FLAGS_allow_mixed_ip_srv6_nhop_groups = false;
+
+  auto entry = makeMySidEntry("fc00:100::1", 48, MySidType::BINDING_MICRO_SID);
+  NextHopThrift plainNhop;
+  plainNhop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddressV6("2001:db8::2"));
+  entry.nextHops() = {makeSrv6NextHop("2001:db8::1"), plainNhop};
+
+  EXPECT_THROW(
+      rib_.update(
+          scopeResolver(),
+          {entry},
+          {},
+          "mixed binding sid without mixed flag",
+          mySidToSwitchStateUpdate,
+          &switchState_),
+      FbossError);
+
+  EXPECT_EQ(rib_.getMySidTableCopy().size(), 0);
+}
+
+TEST_F(RibMySidValidationTest, acceptMixedBindingSidWithMixedFlag) {
+  folly::FlagSaver flagSaver;
+  FLAGS_allow_mixed_ip_srv6_nhop_groups = true;
+
+  auto entry = makeMySidEntry("fc00:100::1", 48, MySidType::BINDING_MICRO_SID);
+  NextHopThrift plainNhop;
+  plainNhop.address() =
+      facebook::network::toBinaryAddress(folly::IPAddressV6("2001:db8::2"));
+  entry.nextHops() = {makeSrv6NextHop("2001:db8::1"), plainNhop};
+
+  rib_.update(
+      scopeResolver(),
+      {entry},
+      {},
+      "mixed binding sid with mixed flag",
+      mySidToSwitchStateUpdate,
+      &switchState_);
+
+  const auto mySidTable = rib_.getMySidTableCopy();
+  const auto prefix = makeSidPrefix("fc00:100::1", 48);
+  ASSERT_NE(mySidTable.find(prefix), mySidTable.end());
+  EXPECT_TRUE(mySidTable.at(prefix).unresolveNextHopsId().has_value());
 }
 
 TEST_F(RibMySidValidationTest, acceptBindingSidWithNamedNhg) {
@@ -3052,6 +3091,29 @@ TEST_F(RibMySidNextHopTest, routeUpdateResolvesMySidNextHops) {
 
   EXPECT_TRUE(
       rib_->getMySidTableCopy().at(prefix).resolvedNextHopsId().has_value());
+}
+
+TEST_F(RibMySidNextHopTest, routeInOtherVrfDoesNotResolveMySidNextHops) {
+  const RouterID kOtherVrf(1001);
+  rib_->ensureVrf(kOtherVrf);
+  rib_->update(
+      scopeResolver(),
+      {makeMySidEntryWithNextHops("fc00:100::1", 48, {"2001:db8::1"})},
+      {},
+      "add mysid with unresolvable nexthop",
+      mySidToSwitchStateUpdate,
+      &switchState_);
+
+  RoutingInformationBase::RouterIDAndNetworkToInterfaceRoutes interfaceRoutes;
+  interfaceRoutes[kOtherVrf][{folly::IPAddress("2001:db8::"), 64}] = {
+      InterfaceID(1), folly::IPAddress("2001:db8::2")};
+  rib_->updateRemoteInterfaceRoutes(
+      scopeResolver(), interfaceRoutes, {}, noopFibUpdate, &switchState_);
+
+  EXPECT_FALSE(rib_->getMySidTableCopy()
+                   .at(makeSidPrefix("fc00:100::1", 48))
+                   .resolvedNextHopsId()
+                   .has_value());
 }
 
 TEST_F(RibMySidNextHopTest, routeDeleteUnresolvesMySidNextHops) {

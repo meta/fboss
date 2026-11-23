@@ -4,7 +4,10 @@ import json
 import os
 from typing import Any
 
-from fboss.lib.asic_config_v3.base_generator import BaseAsicConfigGenerator
+from fboss.lib.asic_config_v3.base_generator import (
+    BaseAsicConfigGenerator,
+    GeneratedVariant,
+)
 from fboss.lib.asic_config_v3.paths import AsicConfigPaths
 from fboss.lib.platform_mapping_v2.platform_mapping_v2 import PlatformMappingParser
 from fboss.lib.platform_mapping_v2.read_files_utils import (
@@ -167,8 +170,8 @@ class BroadcomDnxGenerator(BaseAsicConfigGenerator):
                 f"Conditional setting '{name}' sets {target}.{key} to a non-string value"
             )
 
-    def generate(self) -> str:
-        """Build the full ASIC config and return it as a JSON string.
+    def generate(self) -> GeneratedVariant:
+        """Build the full ASIC config and return its serialized JSON payload.
 
         Priority order (later steps override earlier ones on key overlap):
 
@@ -185,7 +188,7 @@ class BroadcomDnxGenerator(BaseAsicConfigGenerator):
         self._generate_lane_and_polarity_maps()
         self._execute_apply_effects()
 
-        return self._serialize()
+        return GeneratedVariant(common=self._serialize())
 
     def _serialize(self) -> str:
         """Render the key-value map as JSON in the thrift AsicConfig layout."""

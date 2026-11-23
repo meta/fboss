@@ -355,10 +355,10 @@ SaiPortManager::getSaiRxReach(
             ? SAI_PORT_SERDES_REACH_MODE_NR
             : SAI_PORT_SERDES_REACH_MODE_ER);
   }
+  return rxReach;
 #else
   throw FbossError("RxReach is not supported in this SAI version");
 #endif
-  return rxReach;
 }
 
 void SaiPortManager::fillInSupportedVendorExtStats(
