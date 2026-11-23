@@ -57,23 +57,23 @@ NameToPathResult resolveFieldAndRecurse(
   auto result = notFoundResult;
   bool found = false;
   auto idTry = folly::tryTo<std::int16_t>(token);
-  apache::thrift::op::for_each_field_id<StructType>(
-      [&]<class FieldId>(FieldId) {
-        if (found) {
-          return;
-        }
-        if (!idTry.hasError()) {
-          if (static_cast<std::int16_t>(FieldId::value) != idTry.value()) {
-            return;
-          }
-        } else {
-          if (token != apache::thrift::op::get_name_v<StructType, FieldId>) {
-            return;
-          }
-        }
-        found = true;
-        result = recurse(std::forward<Path>(path)(FieldId{}));
-      });
+  apache::thrift::op::for_each_field_id<StructType>([&]<class FieldId>(
+                                                        FieldId) {
+    if (found) {
+      return;
+    }
+    if (!idTry.hasError()) {
+      if (static_cast<std::int16_t>(FieldId::value) != idTry.value()) {
+        return;
+      }
+    } else {
+      if (token != apache::thrift::op::get_field_name<StructType, FieldId>()) {
+        return;
+      }
+    }
+    found = true;
+    result = recurse(std::forward<Path>(path)(FieldId{}));
+  });
   return result;
 }
 
