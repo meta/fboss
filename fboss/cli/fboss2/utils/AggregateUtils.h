@@ -23,7 +23,7 @@ void aggregationHelper(
     double& aggAnswer) {
   apache::thrift::op::for_each_field_id<RowType>([&]<class Id>(Id) {
     auto field_ref = apache::thrift::op::get<Id>(row);
-    auto field_name = apache::thrift::op::get_name_v<RowType, Id>;
+    auto field_name = apache::thrift::op::get_field_name<RowType, Id>();
     const auto& aggColumn = parsedAggs->columnName;
     const auto& aggOp = parsedAggs->aggOp;
     // this is the colum being aggregated

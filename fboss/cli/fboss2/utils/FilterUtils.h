@@ -30,7 +30,7 @@ bool satisfiesFilterTerm(
     const ValidFilterMapType& validFilterMap) {
   bool satisfies = false;
   apache::thrift::op::for_each_field_id<RowType>([&]<class Id>(Id) {
-    auto field_name = apache::thrift::op::get_name_v<RowType, Id>;
+    auto field_name = apache::thrift::op::get_field_name<RowType, Id>();
     auto field_ref = apache::thrift::op::get<Id>(row);
 
     const auto& filterKey = std::get<0>(filterTerm);

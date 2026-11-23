@@ -492,7 +492,7 @@ CmdHandler<CmdTypeT, CmdTypeTraits>::getValidFilters() {
             // Use the field name directly as map key - get_name_v returns a
             // folly::StringPiece pointing to static storage (string literal)
             const auto& field_name_view =
-                apache::thrift::op::get_name_v<NestedType, InnerId>;
+                apache::thrift::op::get_field_name<NestedType, InnerId>();
             // Create a string for TypeVerifier constructor
             std::string field_name_str(field_name_view);
 
@@ -567,7 +567,7 @@ const ValidAggMapType CmdHandler<CmdTypeT, CmdTypeTraits>::getValidAggs() {
             // Use the field name directly as map key - get_name_v returns a
             // folly::StringPiece pointing to static storage (string literal)
             const auto& field_name_view =
-                apache::thrift::op::get_name_v<NestedType, InnerId>;
+                apache::thrift::op::get_field_name<NestedType, InnerId>();
             // Create a string for AggInfo constructor
             std::string field_name_str(field_name_view);
 
