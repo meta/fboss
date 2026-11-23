@@ -32,7 +32,7 @@ Every row has exactly these 9 columns, in this order:
 |--------|------------|------------------|
 | **PhyId** | Unique ID of the PHY, starting at 0. It must match the PHY's `physicalID` in the platform mapping, which is the static mapping `CHIP_ID` minus 1 (see [Platform Mapping](https://meta.github.io/fboss/docs/developing/platform_mapping/#external-phys-xphy)). | `0` |
 | **PhyCoreId** | Core within the PHY chip, for PHYs with more than one core. Set it to `0` for single-core PHYs such as Agera3. FBOSS doesn't use this value today. | `0` |
-| **PimId** | PIM the PHY is on. Use the same value as `PimId` in `PLATFORM_BspMapping.csv`; this is `1` on single-PIM platforms. | `1` |
+| **PimId** | PIM the PHY is on. Use the same value as `PimId` in `PLATFORM_BspMapping.csv`; this is `1` on fixed (non-PIM) platforms. | `1` |
 | **PhyResetPath** | sysfs file that resets this PHY. Each PHY has its own reset path. | `/run/devmap/rtms/rtm_ctrl_mdio_l_2_1/rtm_reset_2` |
 | **IoControlType** | Management interface. Only `MDIO` is supported. | `MDIO` |
 | **IoControllerId** | ID of the MDIO controller the PHY is on. PHYs on the same MDIO bus share this ID. | `2` |
