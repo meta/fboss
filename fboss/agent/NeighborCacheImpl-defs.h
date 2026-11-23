@@ -265,11 +265,11 @@ SwSwitch::StateUpdateFn NeighborCacheImpl<NTable>::getUpdateFnToProgramEntry(
         intfNew->getType() == cfg::InterfaceType::VLAN) {
       auto vlanID = intfNew->getVlanID();
       if (ncachehelpers::isReachable(newNode) &&
-          exceedsMacLimit(state, fields.port, vlanID, fields.mac)) {
+          exceedsMacLimit(sw, state, fields.port, vlanID, fields.mac)) {
         XLOG(ERR) << "Neighbor " << fields.ip.str() << " would take "
                   << fields.port.str()
                   << " over its MAC limit, error-disabling it";
-        sw_->stats()->l2LearnPortLimitErrorDisable();
+        sw->stats()->l2LearnPortLimitErrorDisable();
         return MacTableUtils::errorDisablePortForMacLimit(
             state, fields.port.phyPortID());
       }
@@ -607,10 +607,11 @@ NeighborCacheEntry<NTable>* NeighborCacheImpl<NTable>::addOrUpdateEntryInternal(
 
 template <typename NTable>
 bool NeighborCacheImpl<NTable>::exceedsMacLimit(
+    SwSwitch* sw,
     const std::shared_ptr<SwitchState>& state,
     const PortDescriptor& port,
     VlanID vlanID,
-    folly::MacAddress mac) const {
+    folly::MacAddress mac) {
   if (!port.isPhysicalPort()) {
     return false;
   }
@@ -619,7 +620,7 @@ bool NeighborCacheImpl<NTable>::exceedsMacLimit(
     return false;
   }
   auto limit = MacTableUtils::getMaxL2EntriesPerPort(
-      state, portNode, *sw_->getScopeResolver());
+      state, portNode, *sw->getScopeResolver());
   return limit &&
       MacTableUtils::exceedsMacLimit(state, port, vlanID, mac, *limit);
 }

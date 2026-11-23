@@ -128,11 +128,14 @@ class NeighborCacheImpl {
   bool isNewEntryOnMacLimitDisabledPort(
       AddressType ip,
       const PortDescriptor& port);
-  bool exceedsMacLimit(
+  // static: called from the getUpdateFnToProgramEntry() state-update lambda,
+  // which must not capture `this` (see the by-value captures above).
+  static bool exceedsMacLimit(
+      SwSwitch* sw,
       const std::shared_ptr<SwitchState>& state,
       const PortDescriptor& port,
       VlanID vlanID,
-      folly::MacAddress mac) const;
+      folly::MacAddress mac);
   // These are used to program entries into the SwitchState
   bool programEntry(Entry* entry);
   bool
