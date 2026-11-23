@@ -80,7 +80,7 @@ void ConfigDiffer::compareI2cDeviceConfigs(
         [&pmUnitName, &versionInfo, &name, &config1, &config2, this]<class Id>(
             Id) {
           const auto fieldName =
-              apache::thrift::op::get_name_v<I2cDeviceConfig, Id>;
+              apache::thrift::op::get_field_name<I2cDeviceConfig, Id>();
 
           if (fieldName == "pmUnitScopedName") {
             return;
