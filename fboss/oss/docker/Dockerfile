@@ -62,6 +62,23 @@ RUN dnf install -y python3.12 python3.12-devel python3.12-pip && \
 RUN ln -sf /usr/bin/python3 /usr/bin/python && \
     ln -sf /usr/bin/pip3.12 /usr/bin/pip
 
+# KIWI runs only in a KVM guest. Install the launcher and virtiofs tooling now,
+# rather than modifying dependencies in the image-build runtime container.
+# Boxed plugin 0.2.58 requires KIWI's pre-Typer launcher (10.3.10).
+# The VM still runs image-building KIWI 11.0.1 via --kiwi-version.
+COPY fboss/oss/docker/configure_kiwi_boxed.py /tmp/configure_kiwi_boxed.py
+RUN dnf install -y kiwi policycoreutils python3-kiwi \
+    dracut-kiwi-live dracut-kiwi-overlay dnf-plugin-versionlock \
+    dracut-kiwi-oem-dump kiwi-systemdeps-image-validation \
+    syslinux btrfs-progs mtools glibc-static qemu-kvm-core qemu-img virtiofsd && \
+    KIWI_SITE_PKG=$(python3 -s -c 'import site; print(site.getsitepackages()[0])') && \
+    python3 -m pip install 'kiwi==10.3.10' 'kiwi-boxed-plugin==0.2.58' --target "$KIWI_SITE_PKG" && \
+    python3 -s /tmp/configure_kiwi_boxed.py && \
+    ln -sf "$KIWI_SITE_PKG/bin/kiwi-ng" /usr/local/bin/kiwi-ng-3 && \
+    kiwi-ng-3 system boxbuild --list-boxes && \
+    /usr/libexec/virtiofsd --help | grep -q -- '--inode-file-handles' && \
+    rm /tmp/configure_kiwi_boxed.py
+
 # Necessary for using update-alternatives.
 RUN rpm -e binutils --nodeps
 

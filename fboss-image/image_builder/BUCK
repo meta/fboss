@@ -1,3 +1,4 @@
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 load("@fbcode_macros//build_defs:python_unittest.bzl", "python_unittest")
 load("@fbsource//tools/build_defs/testinfra:network_access_utils.bzl", "network_access_utils")
 
@@ -28,4 +29,16 @@ python_unittest(
         "templates/centos-09.0/root_files/usr/local/libexec/fboss-firstboot-report": "firstboot/reporter",
     },
     deps = ["fbsource//third-party/pypi/parameterized:parameterized"],
+)
+
+export_file(
+    name = "build_image_in_container.sh",
+    src = "bin/build_image_in_container.sh",
+    visibility = ["//fboss/github/fboss-image/distro_cli/tests:"],
+)
+
+export_file(
+    name = "boxbuild.sh",
+    src = "lib/boxbuild.sh",
+    visibility = ["//fboss/github/fboss-image/distro_cli/tests:"],
 )
