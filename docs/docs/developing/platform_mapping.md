@@ -101,6 +101,48 @@ The CSV has a single data row with the following columns:
 | **A/Z_INTERFACE_TYPE** | Interface type of connection. | [enum names](https://github.com/meta/fboss/blob/main/fboss/lib/phy/phy.thrift#L79) |
 
 
+### External PHYs (XPHY)
+
+An external PHY (retimer or gearbox) between the NPU and the port uses the same CSV files and columns. Each XPHY type has two core types, `<XPHY>_SYSTEM` (NPU side) and `<XPHY>_LINE` (port side), listed in [`CoreType`](https://github.com/meta/fboss/blob/main/fboss/lib/platform_mapping_v2/platform_mapping_config.thrift). The examples below use the Broadcom Agera3 retimer (`AGERA3_SYSTEM`, `AGERA3_LINE`) on [Ladakh](https://github.com/meta/fboss/tree/main/fboss/configs/platforms/celestica/ladakh800bcls/platform_mapping); substitute your XPHY's core types.
+
+#### Static mapping
+
+A port that goes through an XPHY has two rows per lane instead of one:
+
+1. NPU to the XPHY system side (`Z_CHIP_TYPE` = `XPHY`, `Z_CORE_TYPE` = `<XPHY>_SYSTEM`).
+2. XPHY line side to the backplane or transceiver (`A_CHIP_TYPE` = `XPHY`, `A_CORE_TYPE` = `<XPHY>_LINE`).
+
+A port that connects the NPU straight to the backplane or a transceiver still has one row per lane.
+
+```
+A_SLOT_ID,A_CHIP_ID,A_CHIP_TYPE,A_CORE_ID,A_CORE_TYPE,A_CORE_LANE,A_PHYSICAL_TX_LANE,A_PHYSICAL_RX_LANE,A_TX_POLARITY_SWAP,A_RX_POLARITY_SWAP,Z_SLOT_ID,Z_CHIP_ID,Z_CHIP_TYPE,Z_CORE_ID,Z_CORE_TYPE,Z_CORE_LANE,Z_PHYSICAL_TX_LANE,Z_PHYSICAL_RX_LANE,Z_TX_POLARITY_SWAP,Z_RX_POLARITY_SWAP
+1,1,NPU,40,TH6_NIF,0,7,2,Y,N,1,1,XPHY,0,AGERA3_SYSTEM,8,0,0,N,N
+1,1,XPHY,0,AGERA3_LINE,0,6,6,Y,Y,1,43,BACKPLANE,0,EXAMAX,0,0,0,N,N
+```
+
+These two rows are the same lane: NPU core 40 lane 0 enters XPHY chip 1 on system lane 8, and leaves on line lane 0 toward backplane connector 43.
+
+Follow these rules for XPHY rows:
+
+- **CHIP_ID** numbers the XPHYs from 1. The generator sets each XPHY's `physicalID` to `CHIP_ID - 1`, and that value must equal the PHY's `PhyId` in the [BSP mapping](https://meta.github.io/fboss/docs/developing/bsp_mapping/#external-phy-mapping). Ladakh uses `CHIP_ID` 1 to 32 for `PhyId` 0 to 31.
+- **CORE_ID** is `0`.
+- **CORE_LANE** on the system side is the line-side lane plus 8, on the same XPHY chip and core. The generator pairs the two sides of a lane this way for every XPHY, which fits 8 lanes per side; an XPHY with a different lane count needs generator support. On Ladakh and Leh, XPHY chip `N` uses line lanes `16(N-1)` to `16(N-1)+7` and system lanes `16(N-1)+8` to `16(N-1)+15`; for example, chip 2 uses line lanes 16 to 23 and system lanes 24 to 31.
+
+#### Signal integrity settings
+
+Add one row per XPHY lane for each side, the same way as for NPU lanes, with `CHIP_TYPE` = `XPHY` and `CORE_TYPE` = `<XPHY>_SYSTEM` or `<XPHY>_LINE`.
+
+#### Profile settings
+
+For each port speed that goes through an XPHY, add two rows: one for NPU to XPHY and one for XPHY to backplane (or transceiver). Fill in the lane count, modulation, FEC, media type and interface types for each:
+
+```
+Port_Speed(mbps),A_CHIP_TYPE,Z_CHIP_TYPE,NUM_LANES,Modulation,A_FEC,Z_FEC,MEDIA_TYPE,A_Interface_Type,Z_Interface_Type
+200000,NPU,XPHY,1,PAM4,RS544_2N,NONE,BACKPLANE,KR,KR
+200000,XPHY,BACKPLANE,1,PAM4,RS544_2N,,BACKPLANE,KR,
+```
+
+
 ## Platform Mapping Generation Workflow
 ### Platform Mapping JSON Generation Tool
 We provide a script to help external FBOSS vendors generate their respective `platform_mapping.json` file.
