@@ -274,6 +274,19 @@ target_include_directories(show_nexthopgroups_model
   PUBLIC ${PROJECT_BINARY_DIR}
 )
 
+add_library(show_pbr_model)
+thrift_generate(
+  show_pbr_model
+  fboss/cli/fboss2/commands/show/pbr/model.thrift
+  LANGUAGE cpp2
+  OPTIONS
+    json
+  INCLUDE_DIRECTORIES
+    ${PROJECT_SOURCE_DIR}
+    ${THRIFT_INCLUDE_DIR}
+)
+target_include_directories(show_pbr_model PUBLIC ${PROJECT_BINARY_DIR})
+
 add_library(show_ndp_model)
 thrift_generate(
   show_ndp_model
