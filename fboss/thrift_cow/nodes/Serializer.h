@@ -306,7 +306,7 @@ struct WritableImpl<apache::thrift::type_class::structure> {
   static inline bool remove(TType& node, const std::string& token) {
     bool removed = false;
     apache::thrift::op::for_each_field_id<TType>([&]<class Id>(Id) {
-      auto fieldName = apache::thrift::op::get_name_v<TType, Id>;
+      auto fieldName = apache::thrift::op::get_field_name<TType, Id>();
       if (fieldName != token) {
         return;
       }
@@ -329,7 +329,7 @@ struct WritableImpl<apache::thrift::type_class::structure> {
       return;
     }
     apache::thrift::op::for_each_field_id<TType>([&]<class Id>(Id) {
-      auto fieldName = apache::thrift::op::get_name_v<TType, Id>;
+      auto fieldName = apache::thrift::op::get_field_name<TType, Id>();
       if (fieldName != token) {
         return;
       }

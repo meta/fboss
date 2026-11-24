@@ -97,7 +97,7 @@ std::string getMemberName(bool useId) {
     return folly::to<std::string>(
         folly::to_underlying(op::get_field_id_v<TType, Id>));
   } else {
-    return std::string(op::get_name_v<TType, Id>);
+    return std::string(op::get_field_name<TType, Id>());
   }
 }
 
@@ -114,7 +114,7 @@ void visitMember(const std::string& key, Func&& f) {
   } else {
     bool found = false;
     op::for_each_field_id<TType>([&]<class Id>(Id) {
-      if (!found && op::get_name_v<TType, Id> == key) {
+      if (!found && op::get_field_name<TType, Id>() == key) {
         found = true;
         f(Id{});
       }
