@@ -6,7 +6,6 @@
 #include <set>
 #include <vector>
 #include "common/base/Random.h"
-#include "common/init/Init.h"
 #include "fboss/lib/RadixTree.h"
 #include "fboss/lib/test/PyRadixWrapper.h"
 

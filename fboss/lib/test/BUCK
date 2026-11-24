@@ -67,7 +67,6 @@ cpp_benchmark(
         "fbsource//xplat/folly:network_address",
         ":py_radix_wrapper",
         "//common/base:random",
-        "//common/init:init",
         "//fboss/lib:radix_tree",
     ],
 )
