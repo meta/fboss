@@ -1,0 +1,606 @@
+{
+  "platformConfigToFeatures": {
+    "darwin": [
+        24,
+        18,
+        27,
+        28,
+        9,
+        10
+    ],
+    "darwin_mix": [
+        24,
+        18,
+        27,
+        28,
+        9,
+        10
+    ],
+    "darwin_original": [
+        24,
+        20,
+        18,
+        27,
+        28,
+        9,
+        10
+    ],
+    "elbert_2x16Q_6x8DD": [
+        24,
+        20,
+        18,
+        25,
+        27,
+        28,
+        9,
+        10
+    ],
+    "elbert_5x16Q_3x8DD": [
+        24,
+        20,
+        18,
+        25,
+        27,
+        28,
+        9,
+        10
+    ],
+    "elbert_8x16Q": [
+        24,
+        20,
+        18,
+        27,
+        28,
+        9,
+        10
+    ],
+    "fuji_5x16Q": [
+        24,
+        20,
+        18,
+        25,
+        27,
+        28,
+        9,
+        10
+    ],
+    "fuji_8x16Q": [
+        24,
+        20,
+        18,
+        25,
+        27,
+        28,
+        9,
+        10
+    ],
+    "icecube800banw": [
+        24,
+        20,
+        26,
+        28,
+        9,
+        10
+    ],
+    "icecube800bc": [
+        24,
+        20,
+        26,
+        28,
+        9,
+        10
+    ],
+    "icetea800bc": [
+        24,
+        20,
+        26,
+        28,
+        9,
+        10
+    ],
+    "janga800bic": [
+        24,
+        20,
+        26,
+        29
+    ],
+    "ladakh800bcls": [
+        24,
+        25,
+        26,
+        28,
+        9,
+        10
+    ],
+    "ladakh800bcls_evt": [
+        24,
+        25,
+        26,
+        28,
+        9,
+        10
+    ],
+    "ladakh800bcls_postevt": [
+        24,
+        25,
+        26,
+        28,
+        9,
+        10
+    ],
+    "leh800bcls": [
+        24,
+        25,
+        26,
+        28,
+        9,
+        10
+    ],
+    "meru400bfu": [
+        24,
+        18,
+        27
+    ],
+    "meru400biu": [
+        24,
+        18,
+        27,
+        29
+    ],
+    "meru800bfa": [
+        24,
+        20,
+        26
+    ],
+    "meru800bia": [
+        24,
+        20,
+        26,
+        29
+    ],
+    "meru800bia_c0": [
+        24,
+        20,
+        26,
+        29
+    ],
+    "minipack3ba": [
+        24,
+        20,
+        26,
+        28,
+        9,
+        10
+    ],
+    "minipack3bta": [
+        24,
+        20,
+        26,
+        10
+    ],
+    "minipack3n": [
+        24,
+        20,
+        26,
+        28,
+        10
+    ],
+    "minipack_7x16Q_1x16O": [
+        24,
+        18,
+        25,
+        27,
+        28,
+        9,
+        10
+    ],
+    "montblanc": [
+        24,
+        20,
+        26,
+        28,
+        9,
+        10
+    ],
+    "morgan800cc": [
+        24,
+        20,
+        26,
+        28,
+        9,
+        10
+    ],
+    "tahan800bc": [
+        24,
+        20,
+        26,
+        28,
+        9,
+        10
+    ],
+    "tahansb800bc": [
+        24,
+        20,
+        26,
+        28,
+        9,
+        10
+    ],
+    "tahansb800bc_fp_only": [
+        24,
+        20,
+        26,
+        28,
+        9,
+        10
+    ],
+    "wedge100s": [
+        24,
+        18,
+        27,
+        9,
+        10
+    ],
+    "wedge400": [
+        24,
+        20,
+        18,
+        27,
+        28,
+        9,
+        10
+    ],
+    "wedge400c": [
+        24,
+        20,
+        18,
+        27,
+        28,
+        9,
+        10
+    ],
+    "wedge800bact": [
+        24,
+        20,
+        26,
+        28,
+        9,
+        10
+    ],
+    "wedge800bnhp": [
+        24,
+        20,
+        26,
+        28,
+        9,
+        10
+    ],
+    "wedge800cact": [
+        24,
+        20,
+        26,
+        28,
+        9,
+        10
+    ],
+    "wedge800cnhp": [
+        24,
+        20,
+        26,
+        28,
+        9,
+        10
+    ],
+    "yamp_8x16Q": [
+        24,
+        18,
+        25,
+        27,
+        28,
+        9,
+        10
+    ]
+  },
+  "platformConfigToFeatureNames": {
+    "darwin": [
+        "ACTIVE_TRANSCEIVER",
+        "REMEDIATION",
+        "BMC_CLASSIC",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "darwin_mix": [
+        "ACTIVE_TRANSCEIVER",
+        "REMEDIATION",
+        "BMC_CLASSIC",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "darwin_original": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "REMEDIATION",
+        "BMC_CLASSIC",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "elbert_2x16Q_6x8DD": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "REMEDIATION",
+        "XPHY",
+        "BMC_CLASSIC",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "elbert_5x16Q_3x8DD": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "REMEDIATION",
+        "XPHY",
+        "BMC_CLASSIC",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "elbert_8x16Q": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "REMEDIATION",
+        "BMC_CLASSIC",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "fuji_5x16Q": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "REMEDIATION",
+        "XPHY",
+        "BMC_CLASSIC",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "fuji_8x16Q": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "REMEDIATION",
+        "XPHY",
+        "BMC_CLASSIC",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "icecube800banw": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "icecube800bc": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "icetea800bc": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "janga800bic": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "DSF_INTERFACE_NODE"
+    ],
+    "ladakh800bcls": [
+        "ACTIVE_TRANSCEIVER",
+        "XPHY",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "ladakh800bcls_evt": [
+        "ACTIVE_TRANSCEIVER",
+        "XPHY",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "ladakh800bcls_postevt": [
+        "ACTIVE_TRANSCEIVER",
+        "XPHY",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "leh800bcls": [
+        "ACTIVE_TRANSCEIVER",
+        "XPHY",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "meru400bfu": [
+        "ACTIVE_TRANSCEIVER",
+        "REMEDIATION",
+        "BMC_CLASSIC"
+    ],
+    "meru400biu": [
+        "ACTIVE_TRANSCEIVER",
+        "REMEDIATION",
+        "BMC_CLASSIC",
+        "DSF_INTERFACE_NODE"
+    ],
+    "meru800bfa": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE"
+    ],
+    "meru800bia": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "DSF_INTERFACE_NODE"
+    ],
+    "meru800bia_c0": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "DSF_INTERFACE_NODE"
+    ],
+    "minipack3ba": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "minipack3bta": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "PTP"
+    ],
+    "minipack3n": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "PTP"
+    ],
+    "minipack_7x16Q_1x16O": [
+        "ACTIVE_TRANSCEIVER",
+        "REMEDIATION",
+        "XPHY",
+        "BMC_CLASSIC",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "montblanc": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "morgan800cc": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "tahan800bc": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "tahansb800bc": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "tahansb800bc_fp_only": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "wedge100s": [
+        "ACTIVE_TRANSCEIVER",
+        "REMEDIATION",
+        "BMC_CLASSIC",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "wedge400": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "REMEDIATION",
+        "BMC_CLASSIC",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "wedge400c": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "REMEDIATION",
+        "BMC_CLASSIC",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "wedge800bact": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "wedge800bnhp": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "wedge800cact": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "wedge800cnhp": [
+        "ACTIVE_TRANSCEIVER",
+        "VDM",
+        "BMC_LITE",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ],
+    "yamp_8x16Q": [
+        "ACTIVE_TRANSCEIVER",
+        "REMEDIATION",
+        "XPHY",
+        "BMC_CLASSIC",
+        "ASIC_LAG",
+        "MAC_LEARNING",
+        "PTP"
+    ]
+  }
+}
