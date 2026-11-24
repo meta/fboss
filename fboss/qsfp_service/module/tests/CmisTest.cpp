@@ -62,6 +62,7 @@ class MockCmisModule : public CmisModule {
   using CmisModule::getInterfaceCodeForAppSel;
   using CmisModule::getLaneValuePtr;
   using CmisModule::getMaxNumBanks;
+  using CmisModule::getMediaInterfaceId;
   using CmisModule::getQsfpValuePtr;
   using CmisModule::getTunableLaserStatus;
   using CmisModule::getVdmLaneValueF16;
@@ -176,14 +177,18 @@ uint8_t readBankedUpperPageByte(
 const std::vector<uint8_t> k3x200GActiveAppSel =
     {0x90, 0x90, 0x94, 0x94, 0x98, 0x98, 0x00, 0x00};
 
-ProgramTransceiverState make3x200GZrProgramState() {
+ProgramTransceiverState makeZrProgramState(
+    cfg::PortSpeed speed,
+    uint8_t numHostLanes,
+    const std::vector<uint8_t>& startHostLanes,
+    uint8_t appSelCode) {
   ProgramTransceiverState programTcvrState;
-  for (uint8_t startHostLane : {0, 2, 4}) {
+  for (uint8_t startHostLane : startHostLanes) {
     TransceiverPortState portState;
     portState.portName = fmt::format("eth1/1/{}", startHostLane + 1);
     portState.startHostLane = startHostLane;
-    portState.speed = cfg::PortSpeed::TWOHUNDREDG;
-    portState.numHostLanes = 2;
+    portState.speed = speed;
+    portState.numHostLanes = numHostLanes;
     cfg::OpticalChannelConfig optChanConfig;
     cfg::FrequencyConfig freqConfig;
     freqConfig.frequencyGrid() = FrequencyGrid::LASER_6P25GHZ;
@@ -192,11 +197,15 @@ ProgramTransceiverState make3x200GZrProgramState() {
     freqConfig.centerFrequencyConfig() = centerFreq;
     optChanConfig.frequencyConfig() = freqConfig;
     optChanConfig.txPower0P01Dbm() = 0;
-    optChanConfig.appSelCode() = 9;
+    optChanConfig.appSelCode() = appSelCode;
     portState.opticalChannelConfig = optChanConfig;
     programTcvrState.ports.emplace(portState.portName, portState);
   }
   return programTcvrState;
+}
+
+ProgramTransceiverState make3x200GZrProgramState() {
+  return makeZrProgramState(cfg::PortSpeed::TWOHUNDREDG, 2, {0, 2, 4}, 9);
 }
 } // namespace
 
@@ -4424,5 +4433,40 @@ TEST_F(CmisTest, cmis800GZr400GSplitting800GDatapathIsNotValidPerPort) {
       cfg::PortSpeed::FOURHUNDREDG, 0, 4, 4 /* requestedAppSel */));
   EXPECT_TRUE(xcvr->isRequestValidMultiportSpeedConfig(
       cfg::PortSpeed::EIGHTHUNDREDG, 0, 8, 2 /* requestedAppSel */));
+}
+
+// AppSel 3 (400GAUI-4-S) and AppSel 4 (400GAUI-4-L) share media code 0x68 and
+// lane count. Moving from 1x800G to 2x400G programs all lanes, and must use
+// the AppSel from config on both datapaths rather than one derived from speed.
+TEST_F(CmisTest, cmis800GZr2x400GProgramsConfiguredAppSel) {
+  TransceiverPropertiesManager::initDefault();
+  for (uint8_t appSel : {3, 4}) {
+    auto xcvr = overrideCmisModule<Cmis800GZr3x200GTransceiver>(
+        TransceiverID(1), TransceiverModuleIdentifier::OSFP);
+    auto programTcvrState =
+        makeZrProgramState(cfg::PortSpeed::FOURHUNDREDG, 4, {0, 4}, appSel);
+
+    xcvr->programTransceiver(programTcvrState, false);
+
+    const uint8_t dp0 = appSel << 4;
+    const uint8_t dp4 = dp0 | (4 << 1);
+    EXPECT_EQ(
+        readUpperPage(lastQsfpImpl(), kPage11h, kActiveAppSelOffset, 8),
+        std::vector<uint8_t>({dp0, dp0, dp0, dp0, dp4, dp4, dp4, dp4}))
+        << "appSel " << static_cast<int>(appSel);
+    // One deinit and one init covering both datapaths
+    EXPECT_EQ(
+        lastQsfpImpl()->getUpperPageWriteCount(
+            kPage10h, kDataPathDeinitOffset - 128),
+        2)
+        << "appSel " << static_cast<int>(appSel);
+
+    // The shared media lane reports the 400G port code, not 1x800G's
+    xcvr->refresh();
+    std::vector<MediaInterfaceId> mediaInterface(xcvr->numMediaLanes());
+    ASSERT_TRUE(xcvr->getMediaInterfaceId(mediaInterface));
+    EXPECT_EQ(*mediaInterface[0].code(), MediaInterfaceCode::ZR_400G)
+        << "appSel " << static_cast<int>(appSel);
+  }
 }
 } // namespace facebook::fboss

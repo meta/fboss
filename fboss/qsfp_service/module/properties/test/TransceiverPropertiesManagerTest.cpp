@@ -546,8 +546,8 @@ TEST_F(TransceiverPropertiesManagerTest, MediaLaneCodeToMediaInterfaceCode) {
       FbossError);
 }
 
-// The port width picks the media interface code; with a width no port uses,
-// the first port's code wins
+// ZR breakouts share the module's media lane code, so the port width picks the
+// code; without a width, or with one no port uses, the first port's code wins
 TEST_F(TransceiverPropertiesManagerTest, MediaLaneCodeWithHostLanes) {
   initDefault();
 
@@ -556,6 +556,10 @@ TEST_F(TransceiverPropertiesManagerTest, MediaLaneCodeWithHostLanes) {
         TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(
             mediaLaneCode, 8),
         MediaInterfaceCode::ZR_800G);
+    EXPECT_EQ(
+        TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(
+            mediaLaneCode, 4),
+        MediaInterfaceCode::ZR_400G);
     EXPECT_EQ(
         TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(
             mediaLaneCode, 1),

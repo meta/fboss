@@ -577,7 +577,21 @@ constexpr auto kDefaultTransceiverPropertiesJson = R"({
             {"speed": 200000, "hostLanes": {"start": 2, "count": 2}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x6A}, "mediaInterfaceCode": 46},
             {"speed": 200000, "hostLanes": {"start": 4, "count": 2}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x6A}, "mediaInterfaceCode": 46}
           ]
-        }
+        },
+        {
+          "combinationName": "2x400G-ZR",
+          "ports": [
+            {"speed": 400000, "hostLanes": {"start": 0, "count": 4}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x68}, "mediaInterfaceCode": 45},
+            {"speed": 400000, "hostLanes": {"start": 4, "count": 4}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x68}, "mediaInterfaceCode": 45}
+          ]
+        },
+        {
+          "combinationName": "2x400G-ZR-OIF-ZRA",
+          "ports": [
+            {"speed": 400000, "hostLanes": {"start": 0, "count": 4}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x6C}, "mediaInterfaceCode": 45},
+            {"speed": 400000, "hostLanes": {"start": 4, "count": 4}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x6C}, "mediaInterfaceCode": 45}
+          ]
+        },
       ]
     },
     "30": {

@@ -574,13 +574,19 @@ void HwTransceiverUtils::verify400gProfile(
         *mediaId.media()->smfCode() == SMFMediaInterfaceCode::LR4_10_400G ||
         *mediaId.media()->smfCode() == SMFMediaInterfaceCode::DR4_400G ||
         *mediaId.media()->smfCode() == SMFMediaInterfaceCode::DR2_400G ||
-        *mediaId.media()->smfCode() == SMFMediaInterfaceCode::FR2_400G);
+        *mediaId.media()->smfCode() == SMFMediaInterfaceCode::FR2_400G ||
+        // ZR media codes are shared between 1x800G and 2x400G; port width is
+        // checked via code()
+        *mediaId.media()->smfCode() ==
+            SMFMediaInterfaceCode::ZR_OROADM_FLEXO_8E_DPO_800G ||
+        *mediaId.media()->smfCode() == SMFMediaInterfaceCode::ZR_OIF_ZRA_800G);
     EXPECT_TRUE(
         *mediaId.code() == MediaInterfaceCode::FR4_400G ||
         *mediaId.code() == MediaInterfaceCode::LR4_400G_10KM ||
         *mediaId.code() == MediaInterfaceCode::DR4_400G ||
         *mediaId.code() == MediaInterfaceCode::DR2_400G ||
-        *mediaId.code() == MediaInterfaceCode::FR2_400G);
+        *mediaId.code() == MediaInterfaceCode::FR2_400G ||
+        *mediaId.code() == MediaInterfaceCode::ZR_400G);
   }
 }
 
