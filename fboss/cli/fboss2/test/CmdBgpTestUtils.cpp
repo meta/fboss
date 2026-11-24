@@ -113,7 +113,7 @@ TIpPrefix getPrefix(const std::string& ipAddress) {
 }
 
 TBgpPath buildPath(
-    const std::string& prefixAddress,
+    const std::string& /* prefixAddress */,
     const std::string& nextHopAddress,
     const std::string& peerId,
     const std::string& peerDescription,

@@ -47,8 +47,8 @@ cpp_library(
     ],
     exported_deps = [
         "//configerator/distribution/api:scoped-configerator-fake",
-        "//neteng/fboss/bgp/if:bgp_route_types-cpp2-types",
-        "//neteng/fboss/bgp/if:bgp_thrift-cpp2-types",
+        "//neteng/fboss/bgp/if:bgp_route_types-cpp2-serialization",
+        "//neteng/fboss/bgp/if:bgp_thrift-cpp2-serialization",
     ],
     external_deps = [("boost", None, "boost_algorithm")],
     exported_external_deps = [
