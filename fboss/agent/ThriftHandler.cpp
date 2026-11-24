@@ -661,6 +661,31 @@ AclEntryThrift populateAclEntryThrift(const AclEntry& aclEntry) {
   if (aclEntry.getLookupClassPort()) {
     aclEntryThrift.lookupClassPort() = aclEntry.getLookupClassPort().value();
   }
+  if (aclEntry.getEtherType()) {
+    aclEntryThrift.etherType() = aclEntry.getEtherType().value();
+  }
+  if (aclEntry.getDstIpV6Word3()) {
+    aclEntryThrift.dstIpV6Word3() = aclEntry.getDstIpV6Word3().value();
+  }
+  if (aclEntry.getDstIpV6Word2()) {
+    aclEntryThrift.dstIpV6Word2() = aclEntry.getDstIpV6Word2().value();
+  }
+  if (aclEntry.getTrafficClass()) {
+    aclEntryThrift.trafficClass() = aclEntry.getTrafficClass().value();
+  }
+  if (aclEntry.getNextHopGroupId()) {
+    aclEntryThrift.nextHopGroupId() = aclEntry.getNextHopGroupId().value();
+  }
+  if (const auto& action = aclEntry.getAclAction()) {
+    if (const auto& nhgId =
+            action->cref<switch_state_tags::redirectNextHopGroupId>()) {
+      aclEntryThrift.redirectNextHopGroupId() = nhgId->cref();
+    }
+    if (const auto& counter =
+            action->cref<switch_state_tags::trafficCounter>()) {
+      aclEntryThrift.counterName() = *counter->toThrift().name();
+    }
+  }
   return aclEntryThrift;
 }
 

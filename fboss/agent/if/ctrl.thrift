@@ -825,6 +825,13 @@ struct AclEntryThrift {
   // Ingress port class ID this entry matches on. Mirrors
   // switch_config.AclEntry.lookupClassPort.
   25: optional switch_config.AclLookupClassPort lookupClassPort;
+  26: optional switch_config.EtherType etherType;
+  27: optional i64 dstIpV6Word3;
+  28: optional i64 dstIpV6Word2;
+  29: optional byte trafficClass;
+  30: optional i64 nextHopGroupId;
+  31: optional i64 redirectNextHopGroupId;
+  32: optional string counterName;
 }
 
 struct AclTableThrift {
