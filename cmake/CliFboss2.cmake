@@ -907,6 +907,8 @@ add_library(fboss2_lib
   fboss/cli/fboss2/commands/show/mysid/CmdShowMySid.cpp
   fboss/cli/fboss2/commands/show/nexthopgroups/CmdShowNextHopGroups.h
   fboss/cli/fboss2/commands/show/nexthopgroups/CmdShowNextHopGroups.cpp
+  fboss/cli/fboss2/commands/show/pbr/CmdShowPbr.h
+  fboss/cli/fboss2/commands/show/pbr/CmdShowPbr.cpp
   fboss/cli/fboss2/commands/show/interface/CmdShowInterface.h
   fboss/cli/fboss2/commands/show/interface/CmdShowInterface.cpp
   fboss/cli/fboss2/commands/show/interface/flaps/CmdShowInterfaceFlaps.h
@@ -1137,6 +1139,7 @@ target_link_libraries(fboss2_lib
   show_mysid_model
   show_nexthopgroups_model
   show_ndp_model
+  show_pbr_model
   show_port_model
   show_product_model
   show_reboot_history_model
