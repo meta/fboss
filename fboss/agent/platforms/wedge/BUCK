@@ -6,6 +6,9 @@ load("//fboss/build:build_info.bzl", "gen_sdk_build_info_src")
 
 oncall("fboss_agent_push")
 
+# broadcom-xgs-robo has no platform010-aarch64 build of these versions.
+_X86_64_ONLY_SDK_VERSIONS = ["6.5.29"]
+
 [
     gen_sdk_build_info_src(
         name = "wedge_agent_{}_sdk_build_info".format(sdk.major_version),
@@ -21,6 +24,7 @@ oncall("fboss_agent_push")
             "wedge_agent.cpp",
             ":wedge_agent_{}_sdk_build_info".format(sdk.major_version),
         ],
+        compatible_with = ["ovr_config//cpu:x86_64"] if sdk.major_version in _X86_64_ONLY_SDK_VERSIONS else [],
         linker_flags = [
             "--export-dynamic",
             "--unresolved-symbols=ignore-all",
@@ -43,6 +47,7 @@ oncall("fboss_agent_push")
             "fboss/lib/test/test_version.sh",
             "$(exe_target :wedge_agent_{})".format(sdk.major_version),
         ],
+        compatible_with = ["ovr_config//cpu:x86_64"] if sdk.major_version in _X86_64_ONLY_SDK_VERSIONS else [],
         type = "simple",
     )
     for sdk in BCM_SDKS
