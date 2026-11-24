@@ -1244,6 +1244,79 @@ TYPED_TEST(ThriftTestAllSwitchTypes, getAclTableGroup) {
   }
 }
 
+TYPED_TEST(ThriftTestAllSwitchTypes, getAclTableGroupReportsPbrFields) {
+  if (this->isFabric()) {
+    GTEST_SKIP();
+  }
+  SCOPE_EXIT {
+    FLAGS_enable_acl_table_group = false;
+  };
+  FLAGS_enable_acl_table_group = true;
+  cfg::SwitchConfig config = testConfigA(this->getSwitchIdAndType().second);
+  cfg::AclTable cfgTable;
+  cfgTable.name() = "test-table";
+  cfg::AclTableGroup tableGroup;
+  tableGroup.name() = "test-table-group";
+  tableGroup.stage() = cfg::AclStage::INGRESS;
+  tableGroup.aclTables() = {cfgTable};
+  config.aclTableGroups() = {tableGroup};
+  this->sw_->applyConfig("New config with acl table group", config);
+
+  auto pbrEntry = std::make_shared<AclEntry>(1, std::string("pbr_tc2"));
+  pbrEntry->setEtherType(cfg::EtherType::IPv6);
+  pbrEntry->setDstIpV6Word3(0xfdadff00);
+  pbrEntry->setDstIpV6Word2(0x2704);
+  pbrEntry->setTrafficClass(2);
+  pbrEntry->setNextHopGroupId(100);
+  MatchAction action;
+  action.setRedirectNextHopGroupId(200);
+  cfg::TrafficCounter counter;
+  counter.name() = "CLASS_2_nhg";
+  action.setTrafficCounter(counter);
+  pbrEntry->setAclAction(action);
+  auto plainEntry = std::make_shared<AclEntry>(2, std::string("plain"));
+  this->sw_->updateStateBlocking("Add PBR entry", [&](const auto& state) {
+    auto newState = state;
+    for (const auto& [matcher, groupMap] :
+         std::as_const(*state->getAclTableGroups())) {
+      auto table = groupMap->getAclTableGroup(cfg::AclStage::INGRESS)
+                       ->getAclTableMap()
+                       ->getTable("test-table");
+      auto aclMap = table->getAclMap()->clone();
+      aclMap->addEntry(pbrEntry);
+      aclMap->addEntry(plainEntry);
+      table->modify(&newState, HwSwitchMatcher(matcher), cfg::AclStage::INGRESS)
+          ->setAclMap(std::move(aclMap));
+    }
+    return newState;
+  });
+
+  AclTableThrift aclTables;
+  ThriftHandler(this->sw_).getAclTableGroup(aclTables);
+  std::map<std::string, AclEntryThrift> nameToEntry;
+  for (const auto& thriftEntry :
+       aclTables.aclTableEntries()->at("test-table")) {
+    nameToEntry[*thriftEntry.name()] = thriftEntry;
+  }
+  ASSERT_EQ(nameToEntry.size(), 2);
+  const auto& pbrThrift = nameToEntry.at("pbr_tc2");
+  EXPECT_EQ(pbrThrift.etherType(), cfg::EtherType::IPv6);
+  EXPECT_EQ(pbrThrift.dstIpV6Word3(), 0xfdadff00);
+  EXPECT_EQ(pbrThrift.dstIpV6Word2(), 0x2704);
+  EXPECT_EQ(pbrThrift.trafficClass(), 2);
+  EXPECT_EQ(pbrThrift.nextHopGroupId(), 100);
+  EXPECT_EQ(pbrThrift.redirectNextHopGroupId(), 200);
+  EXPECT_EQ(pbrThrift.counterName(), "CLASS_2_nhg");
+  const auto& plainThrift = nameToEntry.at("plain");
+  EXPECT_FALSE(plainThrift.etherType().has_value());
+  EXPECT_FALSE(plainThrift.dstIpV6Word3().has_value());
+  EXPECT_FALSE(plainThrift.dstIpV6Word2().has_value());
+  EXPECT_FALSE(plainThrift.trafficClass().has_value());
+  EXPECT_FALSE(plainThrift.nextHopGroupId().has_value());
+  EXPECT_FALSE(plainThrift.redirectNextHopGroupId().has_value());
+  EXPECT_FALSE(plainThrift.counterName().has_value());
+}
+
 TYPED_TEST(ThriftTestAllSwitchTypes, getAclTable) {
   ThriftHandler handler(this->sw_);
 
