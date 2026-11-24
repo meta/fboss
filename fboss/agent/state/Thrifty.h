@@ -408,7 +408,7 @@ struct ThriftMultiSwitchMapNode : public ThriftMapNode<MAP, Traits, Resolver> {
   using InnerNode = typename InnerMap::Traits::Node;
 
   static auto kNodeName() {
-    return apache::thrift::op::get_class_name_v<typename InnerNode::ThriftType>;
+    return apache::thrift::op::get_class_name<typename InnerNode::ThriftType>();
   }
 
   void addNode(

@@ -441,9 +441,9 @@ bool isStateDeltaEmpty(const StateDelta& stateDelta) {
       }
       if (!isEmpty) {
         XLOG(INFO) << "Delta for "
-                   << apache::thrift::op::get_name_v<
-                          state::SwitchState,
-                          FieldIdTag> << " is not empty";
+                   << apache::thrift::op::
+                          get_field_name<state::SwitchState, FieldIdTag>()
+                   << " is not empty";
       }
       empty &= isEmpty;
     }
