@@ -7,9 +7,9 @@
 
 #include "fboss/agent/hw/sai/api/SaiApi.h"
 #include "fboss/agent/hw/sai/api/SaiAttribute.h"
+#include "fboss/agent/hw/sai/api/SaiVersion.h"
 #include "fboss/agent/hw/sai/api/Types.h"
 
-#include <string>
 #include <tuple>
 
 extern "C" {
@@ -43,10 +43,13 @@ struct SaiPolicerTraits {
         sai_int32_t>;
     using RedPacketAction =
         SaiAttribute<EnumType, SAI_POLICER_ATTR_RED_PACKET_ACTION, sai_int32_t>;
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+    using Label =
+        SaiAttribute<EnumType, SAI_POLICER_ATTR_LABEL, SaiCharArray32>;
+#endif
   };
 
   using AdapterKey = PolicerSaiId;
-  using AdapterHostKey = std::string;
   using CreateAttributes = std::tuple<
       Attributes::Type,
       Attributes::Mode,
@@ -56,7 +59,13 @@ struct SaiPolicerTraits {
       Attributes::Pbs,
       Attributes::GreenPacketAction,
       Attributes::YellowPacketAction,
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      Attributes::RedPacketAction,
+      Attributes::Label>;
+#else
       Attributes::RedPacketAction>;
+#endif
+  using AdapterHostKey = CreateAttributes;
 };
 
 SAI_ATTRIBUTE_NAME(Policer, Type);
@@ -68,6 +77,9 @@ SAI_ATTRIBUTE_NAME(Policer, Pbs);
 SAI_ATTRIBUTE_NAME(Policer, GreenPacketAction);
 SAI_ATTRIBUTE_NAME(Policer, YellowPacketAction);
 SAI_ATTRIBUTE_NAME(Policer, RedPacketAction);
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+SAI_ATTRIBUTE_NAME(Policer, Label);
+#endif
 
 class PolicerApi : public SaiApi<PolicerApi> {
  public:

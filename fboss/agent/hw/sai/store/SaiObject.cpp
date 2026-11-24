@@ -412,18 +412,6 @@ SaiObject<SaiUdfGroupTraits>::follyDynamicToAdapterHostKey(
 }
 
 template <>
-folly::dynamic SaiObject<SaiPolicerTraits>::adapterHostKeyToFollyDynamic() {
-  return adapterHostKey_;
-}
-
-template <>
-typename SaiPolicerTraits::AdapterHostKey
-SaiObject<SaiPolicerTraits>::follyDynamicToAdapterHostKey(
-    const folly::dynamic& json) {
-  return json.asString();
-}
-
-template <>
 folly::dynamic
 SaiObject<SaiIsolationGroupTraits>::adapterHostKeyToFollyDynamic() {
   return adapterHostKey_;

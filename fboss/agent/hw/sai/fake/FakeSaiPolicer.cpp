@@ -5,6 +5,8 @@
 
 #include "fboss/agent/hw/sai/fake/FakeSai.h"
 
+#include <algorithm>
+
 using facebook::fboss::FakePolicer;
 using facebook::fboss::FakeSai;
 
@@ -40,6 +42,12 @@ sai_status_t setPolicerAttribute(
     case SAI_POLICER_ATTR_RED_PACKET_ACTION:
       policer.redPacketAction = attr.value.s32;
       break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+    case SAI_POLICER_ATTR_LABEL:
+      std::copy_n(
+          attr.value.chardata, policer.label.size(), policer.label.begin());
+      break;
+#endif
     default:
       return SAI_STATUS_INVALID_PARAMETER;
   }
@@ -136,6 +144,14 @@ sai_status_t get_policer_attribute_fn(
       case SAI_POLICER_ATTR_RED_PACKET_ACTION:
         attr_list[i].value.s32 = policer.redPacketAction;
         break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      case SAI_POLICER_ATTR_LABEL:
+        std::copy(
+            policer.label.begin(),
+            policer.label.end(),
+            attr_list[i].value.chardata);
+        break;
+#endif
       default:
         return SAI_STATUS_INVALID_PARAMETER;
     }

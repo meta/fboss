@@ -20,6 +20,9 @@ const std::map<int32_t, std::pair<std::string, std::size_t>> _PolicerMap{
     SAI_ATTR_MAP(Policer, GreenPacketAction),
     SAI_ATTR_MAP(Policer, YellowPacketAction),
     SAI_ATTR_MAP(Policer, RedPacketAction),
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+    SAI_ATTR_MAP(Policer, Label),
+#endif
 };
 } // namespace
 
@@ -57,6 +60,11 @@ void setPolicerAttributes(
       case SAI_POLICER_ATTR_PBS:
         attrLines.push_back(u64Attr(attr_list, i));
         break;
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+      case SAI_POLICER_ATTR_LABEL:
+        charDataAttr(attr_list, i, attrLines);
+        break;
+#endif
       default:
         attrLines.push_back(s32Attr(attr_list, i));
         break;

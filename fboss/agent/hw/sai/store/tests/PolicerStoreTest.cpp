@@ -22,7 +22,11 @@ class PolicerStoreTest : public SaiStoreTest {
         0,
         SAI_PACKET_ACTION_FORWARD,
         SAI_PACKET_ACTION_DROP,
-        SAI_PACKET_ACTION_DROP};
+        SAI_PACKET_ACTION_DROP,
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+        SaiCharArray32{},
+#endif
+    };
   }
 
   SaiEnhancedRemoteMirrorTraits::CreateAttributes mirrorAttributes(
@@ -68,58 +72,86 @@ class PolicerStoreTest : public SaiStoreTest {
   }
 };
 
-TEST_F(PolicerStoreTest, createLoadAndUpdateByName) {
+TEST_F(PolicerStoreTest, createLoadAndReplaceByAttributes) {
   auto& store = saiStore->get<SaiPolicerTraits>();
-  auto policer = store.setObject("mirror0", attributes());
+  auto policer = store.setObject(attributes(), attributes());
   auto id = policer->adapterKey();
-  EXPECT_EQ(policer->adapterHostKey(), "mirror0");
+  EXPECT_EQ(policer->adapterHostKey(), attributes());
   EXPECT_EQ(policer->attributes(), attributes());
-  auto loaded = createObj<SaiPolicerTraits>(id, "mirror0");
-  EXPECT_EQ(loaded.adapterHostKey(), "mirror0");
+  auto loaded = createObj<SaiPolicerTraits>(id);
+  EXPECT_EQ(loaded.adapterHostKey(), attributes());
   EXPECT_EQ(loaded.attributes(), attributes());
   loaded.release();
 
-  auto updated = store.setObject("mirror0", attributes(2000, 200));
-  EXPECT_EQ(updated->adapterKey(), id);
+  auto updatedAttributes = attributes(2000, 200);
+  auto updated = store.setObject(updatedAttributes, updatedAttributes);
+  EXPECT_NE(updated->adapterKey(), id);
+  EXPECT_EQ(updated->attributes(), updatedAttributes);
   EXPECT_EQ(
       saiApiTable->policerApi().getAttribute(
           id, SaiPolicerTraits::Attributes::Cir{}),
-      2000);
+      1000);
   EXPECT_EQ(
       saiApiTable->policerApi().getAttribute(
           id, SaiPolicerTraits::Attributes::Cbs{}),
-      200);
+      100);
 }
 
-TEST_F(PolicerStoreTest, independentSameRateNamesSurviveSerializedReload) {
+TEST_F(
+    PolicerStoreTest,
+    sharedAttributesSurviveReloadWithoutSerializedHostKeys) {
   auto& store = saiStore->get<SaiPolicerTraits>();
-  auto first = store.setObject("mirror0", attributes());
-  auto second = store.setObject("mirror1", attributes());
-  auto firstId = first->adapterKey();
-  auto secondId = second->adapterKey();
-  EXPECT_NE(firstId, secondId);
-  EXPECT_EQ(first->adapterHostKeyToFollyDynamic().asString(), "mirror0");
-  EXPECT_EQ(
-      SaiObject<SaiPolicerTraits>::follyDynamicToAdapterHostKey(
-          second->adapterHostKeyToFollyDynamic()),
-      "mirror1");
+  auto first = store.setObject(attributes(), attributes());
+  auto second = store.setObject(attributes(), attributes());
+  auto id = first->adapterKey();
+  EXPECT_EQ(first, second);
   auto keys = saiStore->adapterKeysFollyDynamic();
-  auto names = saiStore->adapterKeys2AdapterHostKeysFollyDynamic();
   saiStore->exitForWarmBoot();
   SaiStore reloaded(0);
-  reloaded.reload(&keys, &names);
+  reloaded.reload(&keys);
   auto& recovered = reloaded.get<SaiPolicerTraits>();
-  ASSERT_NE(recovered.get("mirror0"), nullptr);
-  ASSERT_NE(recovered.get("mirror1"), nullptr);
-  EXPECT_EQ(recovered.get("mirror0")->adapterKey(), firstId);
-  EXPECT_EQ(recovered.get("mirror1")->adapterKey(), secondId);
-  auto updated = recovered.setObject("mirror0", attributes(2000, 200));
-  EXPECT_EQ(updated->adapterKey(), firstId);
+  auto reclaimed = recovered.setObject(attributes(), attributes());
+  EXPECT_EQ(reclaimed->adapterKey(), id);
+  EXPECT_EQ(reclaimed->adapterHostKey(), attributes());
+  auto updatedAttributes = attributes(2000, 200);
+  auto updated = recovered.setObject(updatedAttributes, updatedAttributes);
+  EXPECT_NE(updated->adapterKey(), id);
+  EXPECT_EQ(updated->attributes(), updatedAttributes);
   EXPECT_EQ(
       saiApiTable->policerApi().getAttribute(
-          secondId, SaiPolicerTraits::Attributes::Cir{}),
+          id, SaiPolicerTraits::Attributes::Cir{}),
       1000);
 }
+
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+TEST_F(PolicerStoreTest, labelDistinguishesPolicersWithIdenticalSettings) {
+  using Label = SaiPolicerTraits::Attributes::Label;
+  auto firstAttrs = attributes();
+  auto secondAttrs = firstAttrs;
+  std::get<Label>(firstAttrs) = Label{SaiCharArray32{"first"}};
+  std::get<Label>(secondAttrs) = Label{SaiCharArray32{"second"}};
+
+  auto& store = saiStore->get<SaiPolicerTraits>();
+  auto first = store.setObject(firstAttrs, firstAttrs);
+  auto second = store.setObject(secondAttrs, secondAttrs);
+  const auto firstId = first->adapterKey();
+  const auto secondId = second->adapterKey();
+  EXPECT_NE(first, second);
+  EXPECT_NE(firstId, secondId);
+  EXPECT_EQ(store.setObject(firstAttrs, firstAttrs), first);
+  EXPECT_EQ(store.setObject(secondAttrs, secondAttrs), second);
+
+  auto keys = saiStore->adapterKeysFollyDynamic();
+  saiStore->exitForWarmBoot();
+  SaiStore reloaded(0);
+  reloaded.reload(&keys);
+  auto& recovered = reloaded.get<SaiPolicerTraits>();
+  auto firstRecovered = recovered.setObject(firstAttrs, firstAttrs);
+  auto secondRecovered = recovered.setObject(secondAttrs, secondAttrs);
+  EXPECT_EQ(firstRecovered->adapterKey(), firstId);
+  EXPECT_EQ(secondRecovered->adapterKey(), secondId);
+}
+#endif
 
 TEST_F(PolicerStoreTest, greUnboundMirrorReusesObjectAfterReload) {
   using Attr = SaiEnhancedRemoteMirrorTraits::Attributes;
@@ -144,20 +176,21 @@ TEST_F(PolicerStoreTest, greUnboundMirrorReusesObjectAfterReload) {
 
 TEST_F(PolicerStoreTest, grePolicerUpdatesReuseObjectAfterReload) {
   auto& policers = saiStore->get<SaiPolicerTraits>();
-  auto first = policers.setObject("mirror0", attributes());
-  auto second = policers.setObject("mirror1", attributes());
+  auto first = policers.setObject(attributes(), attributes());
+  auto second =
+      policers.setObject(attributes(2000, 200), attributes(2000, 200));
   auto firstAttrs = mirrorAttributes(
       SaiEnhancedRemoteMirrorTraits::Attributes::Policer{first->adapterKey()});
   auto secondAttrs = mirrorAttributes(
       SaiEnhancedRemoteMirrorTraits::Attributes::Policer{second->adapterKey()});
-  auto firstKey = detail::adapterHostKey<SaiEnhancedRemoteMirrorTraits>(
-      MirrorSaiId{0}, firstAttrs);
-  auto secondKey = detail::adapterHostKey<SaiEnhancedRemoteMirrorTraits>(
-      MirrorSaiId{0}, secondAttrs);
-  EXPECT_EQ(firstKey, secondKey);
+  SaiEnhancedRemoteMirrorTraits::AdapterHostKey key{
+      SAI_MIRROR_SESSION_TYPE_ENHANCED_REMOTE,
+      42,
+      folly::IPAddress{"10.0.0.1"},
+      folly::IPAddress{"10.0.0.2"}};
   auto& mirrors = saiStore->get<SaiEnhancedRemoteMirrorTraits>();
-  auto firstMirror = mirrors.setObject(firstKey, firstAttrs);
-  auto secondMirror = mirrors.setObject(secondKey, secondAttrs);
+  auto firstMirror = mirrors.setObject(key, firstAttrs);
+  auto secondMirror = mirrors.setObject(key, secondAttrs);
   auto firstId = firstMirror->adapterKey();
   auto secondId = secondMirror->adapterKey();
   EXPECT_EQ(firstId, secondId);
@@ -167,9 +200,9 @@ TEST_F(PolicerStoreTest, grePolicerUpdatesReuseObjectAfterReload) {
   SaiStore reloaded(0);
   reloaded.reload(&keys, &names);
   auto& recovered = reloaded.get<SaiEnhancedRemoteMirrorTraits>();
-  ASSERT_NE(recovered.get(firstKey), nullptr);
-  EXPECT_EQ(recovered.get(firstKey)->adapterKey(), firstId);
-  EXPECT_EQ(recovered.get(firstKey)->attributes(), secondAttrs);
+  ASSERT_NE(recovered.get(key), nullptr);
+  EXPECT_EQ(recovered.get(key)->adapterKey(), firstId);
+  EXPECT_EQ(recovered.get(key)->attributes(), secondAttrs);
   EXPECT_EQ(recovered.size(), 1);
   reloaded.removeUnexpectedUnclaimedWarmbootHandles();
   EXPECT_TRUE(fs->mirrorManager.map().empty());
@@ -179,7 +212,7 @@ TEST_F(PolicerStoreTest, grePolicerUpdatesReuseObjectAfterReload) {
 TEST_F(PolicerStoreTest, greAttributeUpdatesReuseObject) {
   using Attr = SaiEnhancedRemoteMirrorTraits::Attributes;
   auto policer =
-      saiStore->get<SaiPolicerTraits>().setObject("mirror0", attributes());
+      saiStore->get<SaiPolicerTraits>().setObject(attributes(), attributes());
   auto attrs = mirrorAttributes(Attr::Policer{policer->adapterKey()});
   auto key = detail::adapterHostKey<SaiEnhancedRemoteMirrorTraits>(
       MirrorSaiId{0}, attrs);
@@ -244,18 +277,21 @@ TEST_F(PolicerStoreTest, sflowUnboundMirrorReusesObjectAfterReload) {
 TEST_F(PolicerStoreTest, sflowPolicerUpdatesReuseObjectAfterReload) {
   using Attr = SaiSflowMirrorTraits::Attributes;
   auto& policers = saiStore->get<SaiPolicerTraits>();
-  auto first = policers.setObject("sflow0", attributes());
-  auto second = policers.setObject("sflow1", attributes());
+  auto first = policers.setObject(attributes(), attributes());
+  auto second =
+      policers.setObject(attributes(2000, 200), attributes(2000, 200));
   auto firstAttrs = sflowMirrorAttributes(Attr::Policer{first->adapterKey()});
   auto secondAttrs = sflowMirrorAttributes(Attr::Policer{second->adapterKey()});
-  auto firstKey =
-      detail::adapterHostKey<SaiSflowMirrorTraits>(MirrorSaiId{0}, firstAttrs);
-  auto secondKey =
-      detail::adapterHostKey<SaiSflowMirrorTraits>(MirrorSaiId{0}, secondAttrs);
-  ASSERT_EQ(firstKey, secondKey);
+  SaiSflowMirrorTraits::AdapterHostKey key{
+      SAI_MIRROR_SESSION_TYPE_SFLOW,
+      42,
+      folly::IPAddress{"10.0.0.1"},
+      folly::IPAddress{"10.0.0.2"},
+      1234,
+      6343};
   auto& mirrors = saiStore->get<SaiSflowMirrorTraits>();
-  auto firstMirror = mirrors.setObject(firstKey, firstAttrs);
-  auto secondMirror = mirrors.setObject(secondKey, secondAttrs);
+  auto firstMirror = mirrors.setObject(key, firstAttrs);
+  auto secondMirror = mirrors.setObject(key, secondAttrs);
   auto firstId = firstMirror->adapterKey();
   auto secondId = secondMirror->adapterKey();
   EXPECT_EQ(firstId, secondId);
@@ -265,9 +301,9 @@ TEST_F(PolicerStoreTest, sflowPolicerUpdatesReuseObjectAfterReload) {
   SaiStore reloaded(0);
   reloaded.reload(&keys, &names);
   auto& recovered = reloaded.get<SaiSflowMirrorTraits>();
-  ASSERT_NE(recovered.get(firstKey), nullptr);
-  EXPECT_EQ(recovered.get(firstKey)->adapterKey(), firstId);
-  EXPECT_EQ(recovered.get(firstKey)->attributes(), secondAttrs);
+  ASSERT_NE(recovered.get(key), nullptr);
+  EXPECT_EQ(recovered.get(key)->adapterKey(), firstId);
+  EXPECT_EQ(recovered.get(key)->attributes(), secondAttrs);
   EXPECT_EQ(recovered.size(), 1);
   reloaded.removeUnexpectedUnclaimedWarmbootHandles();
   EXPECT_TRUE(fs->mirrorManager.map().empty());
@@ -276,7 +312,7 @@ TEST_F(PolicerStoreTest, sflowPolicerUpdatesReuseObjectAfterReload) {
 
 TEST_F(PolicerStoreTest, mirrorStoreBindAndUnbind) {
   auto policer =
-      saiStore->get<SaiPolicerTraits>().setObject("mirror0", attributes());
+      saiStore->get<SaiPolicerTraits>().setObject(attributes(), attributes());
   auto attrs = mirrorAttributes();
   auto key = detail::adapterHostKey<SaiEnhancedRemoteMirrorTraits>(
       MirrorSaiId{0}, attrs);

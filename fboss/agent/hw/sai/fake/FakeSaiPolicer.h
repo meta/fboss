@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "fboss/agent/hw/sai/api/Types.h"
 #include "fboss/agent/hw/sai/fake/FakeManager.h"
 
 namespace facebook::fboss {
@@ -20,6 +21,9 @@ struct FakePolicer {
   sai_int32_t greenPacketAction{SAI_PACKET_ACTION_FORWARD};
   sai_int32_t yellowPacketAction{SAI_PACKET_ACTION_FORWARD};
   sai_int32_t redPacketAction{SAI_PACKET_ACTION_DROP};
+#if SAI_API_VERSION >= SAI_VERSION(1, 16, 0)
+  SaiCharArray32 label{};
+#endif
 };
 
 using FakePolicerManager = FakeManager<sai_object_id_t, FakePolicer, 1>;
