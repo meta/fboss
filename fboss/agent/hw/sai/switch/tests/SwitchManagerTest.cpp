@@ -12,10 +12,12 @@
 #include "fboss/agent/hw/sai/api/SwitchApi.h"
 #include "fboss/agent/hw/sai/fake/FakeSai.h"
 #include "fboss/agent/hw/sai/switch/SaiSwitch.h"
+#include "fboss/agent/hw/sai/switch/SaiSwitchManager.h"
 #include "fboss/agent/hw/sai/switch/tests/ManagerTestBase.h"
 #include "fboss/agent/hw/switch_asics/FakeAsic.h"
 #include "fboss/agent/platforms/sai/SaiFakePlatform.h"
 #include "fboss/agent/platforms/sai/SaiPlatform.h"
+#include "fboss/agent/state/LoadBalancer.h"
 
 #include <folly/Synchronized.h>
 #include <folly/logging/LogHandler.h>
@@ -28,11 +30,107 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
 #include <vector>
 
 using namespace facebook::fboss;
 
 class SwitchManagerTest : public ManagerTestBase {};
+
+namespace {
+
+class HashDetachFakeAsic : public FakeAsic {
+ public:
+  HashDetachFakeAsic(
+      std::optional<int64_t> switchId,
+      const cfg::SwitchInfo& switchInfo)
+      : FakeAsic(switchId, switchInfo) {}
+
+  bool isSupported(Feature feature) const override {
+    if (feature == Feature::SAI_HASH_FIELDS_CLEAR_BEFORE_SET) {
+      return false;
+    }
+    return FakeAsic::isSupported(feature);
+  }
+};
+
+class HashDetachFakePlatform : public SaiFakePlatform {
+ public:
+  explicit HashDetachFakePlatform(
+      std::unique_ptr<PlatformProductInfo> productInfo)
+      : SaiFakePlatform(std::move(productInfo)) {}
+
+  HwAsic* getAsic() const override {
+    return asic_.get();
+  }
+
+ private:
+  void setupAsic(
+      std::optional<int64_t> switchId,
+      const cfg::SwitchInfo& switchInfo,
+      std::optional<HwAsic::FabricNodeRole> /*fabricNodeRole*/) override {
+    asic_ = std::make_unique<HashDetachFakeAsic>(switchId, switchInfo);
+  }
+
+  std::unique_ptr<HashDetachFakeAsic> asic_;
+};
+
+class SaiHashDetachTest : public ManagerTestBase {
+ protected:
+  std::unique_ptr<SaiPlatform> createSaiPlatformForTest(
+      std::unique_ptr<PlatformProductInfo> productInfo) override {
+    return std::make_unique<HashDetachFakePlatform>(std::move(productInfo));
+  }
+};
+
+std::shared_ptr<LoadBalancer> makeLoadBalancer(
+    LoadBalancerID id,
+    LoadBalancer::IPv4Fields ipv4Fields,
+    LoadBalancer::TransportFields transportFields) {
+  return std::make_shared<LoadBalancer>(
+      id,
+      cfg::HashingAlgorithm::CRC,
+      65515,
+      std::move(ipv4Fields),
+      LoadBalancer::IPv6Fields{},
+      std::move(transportFields),
+      LoadBalancer::MPLSFields{},
+      LoadBalancer::UdfGroupIds{});
+}
+
+} // namespace
+
+TEST_F(SaiHashDetachTest, removeLoadBalancerDetachesHashesBeforeRelease) {
+  auto ecmpLoadBalancer = makeLoadBalancer(
+      LoadBalancerID::ECMP,
+      {cfg::IPv4Field::SOURCE_ADDRESS},
+      {cfg::TransportField::SOURCE_PORT});
+  auto lagLoadBalancer = makeLoadBalancer(
+      LoadBalancerID::AGGREGATE_PORT,
+      {cfg::IPv4Field::DESTINATION_ADDRESS},
+      {cfg::TransportField::DESTINATION_PORT});
+
+  auto& switchManager = saiManagerTable->switchManager();
+  switchManager.addOrUpdateLoadBalancer(ecmpLoadBalancer);
+  switchManager.addOrUpdateLoadBalancer(lagLoadBalancer);
+
+  auto& fakeSwitch =
+      FakeSai::getInstance()->switchManager.get(switchManager.getSwitchSaiId());
+  const auto ecmpHashId = fakeSwitch.ecmpHashV4Id();
+  const auto lagHashId = fakeSwitch.lagHashV4Id();
+  ASSERT_NE(ecmpHashId, SAI_NULL_OBJECT_ID);
+  ASSERT_NE(lagHashId, SAI_NULL_OBJECT_ID);
+  ASSERT_TRUE(FakeSai::getInstance()->hashManager.exists(ecmpHashId));
+  ASSERT_TRUE(FakeSai::getInstance()->hashManager.exists(lagHashId));
+
+  switchManager.removeLoadBalancer(ecmpLoadBalancer);
+  EXPECT_EQ(fakeSwitch.ecmpHashV4Id(), SAI_NULL_OBJECT_ID);
+  EXPECT_FALSE(FakeSai::getInstance()->hashManager.exists(ecmpHashId));
+
+  switchManager.removeLoadBalancer(lagLoadBalancer);
+  EXPECT_EQ(fakeSwitch.lagHashV4Id(), SAI_NULL_OBJECT_ID);
+  EXPECT_FALSE(FakeSai::getInstance()->hashManager.exists(lagHashId));
+}
 
 TEST_F(SwitchManagerTest, serDeser) {
   auto saiSwitch = static_cast<SaiSwitch*>(saiPlatform->getHwSwitch());
