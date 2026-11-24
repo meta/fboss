@@ -31,4 +31,11 @@ struct AclEntry {
   // Ingress port class ID this entry matches on, rendered for display.
   // Unset when the entry does not qualify on the ingress port class ID.
   22: optional string lookupClassPort;
+  23: optional string etherType;
+  24: optional i64 dstIpV6Word3;
+  25: optional i64 dstIpV6Word2;
+  26: optional i16 trafficClass;
+  27: optional i64 nextHopGroupId;
+  28: optional i64 redirectNextHopGroupId;
+  29: optional string counterName;
 }

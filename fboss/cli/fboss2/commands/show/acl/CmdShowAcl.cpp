@@ -12,6 +12,8 @@
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
 #include <fboss/agent/if/gen-cpp2/ctrl_types.h>
+#include <fmt/format.h>
+#include <thrift/lib/cpp/util/EnumUtils.h>
 #include <iostream>
 #include <map>
 #include <string>
@@ -109,7 +111,34 @@ void CmdShowAcl::printOutput(const RetType& model, std::ostream& out) {
         out << "   lookup class port: " << aclEntry.lookupClassPort().value()
             << std::endl;
       }
+      if (aclEntry.etherType()) {
+        out << "   ether type: " << *aclEntry.etherType() << std::endl;
+      }
+      if (aclEntry.dstIpV6Word3()) {
+        out << fmt::format(
+                   "   dst ipv6 word3: {:#010x}", *aclEntry.dstIpV6Word3())
+            << std::endl;
+      }
+      if (aclEntry.dstIpV6Word2()) {
+        out << fmt::format(
+                   "   dst ipv6 word2: {:#010x}", *aclEntry.dstIpV6Word2())
+            << std::endl;
+      }
+      if (aclEntry.trafficClass()) {
+        out << "   traffic class: " << *aclEntry.trafficClass() << std::endl;
+      }
+      if (aclEntry.nextHopGroupId()) {
+        out << "   route dst nhg id: " << *aclEntry.nextHopGroupId()
+            << std::endl;
+      }
       out << "   action: " << aclEntry.actionType().value() << std::endl;
+      if (aclEntry.redirectNextHopGroupId()) {
+        out << "   redirect nhg id: " << *aclEntry.redirectNextHopGroupId()
+            << std::endl;
+      }
+      if (aclEntry.counterName()) {
+        out << "   counter: " << *aclEntry.counterName() << std::endl;
+      }
       if (folly::copy(aclEntry.enabled().value())) {
         out << "   enabled: " << folly::copy(aclEntry.enabled().value())
             << std::endl;
@@ -199,6 +228,28 @@ RetType CmdShowAcl::createModel(facebook::fboss::AclTableThrift entries) {
       if (apache::thrift::get_pointer(entry.lookupClassPort())) {
         aclDetails.lookupClassPort() = utils::getAclLookupClassPortStr(
             entry.lookupClassPort().to_optional());
+      }
+      if (entry.etherType()) {
+        aclDetails.etherType() =
+            apache::thrift::util::enumNameSafe(*entry.etherType());
+      }
+      if (entry.dstIpV6Word3()) {
+        aclDetails.dstIpV6Word3() = *entry.dstIpV6Word3();
+      }
+      if (entry.dstIpV6Word2()) {
+        aclDetails.dstIpV6Word2() = *entry.dstIpV6Word2();
+      }
+      if (entry.trafficClass()) {
+        aclDetails.trafficClass() = *entry.trafficClass();
+      }
+      if (entry.nextHopGroupId()) {
+        aclDetails.nextHopGroupId() = *entry.nextHopGroupId();
+      }
+      if (entry.redirectNextHopGroupId()) {
+        aclDetails.redirectNextHopGroupId() = *entry.redirectNextHopGroupId();
+      }
+      if (entry.counterName()) {
+        aclDetails.counterName() = *entry.counterName();
       }
       aclDetails.actionType() = entry.actionType().value();
       if (apache::thrift::get_pointer(entry.enabled())) {
