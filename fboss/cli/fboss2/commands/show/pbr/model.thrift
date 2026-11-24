@@ -17,4 +17,6 @@ struct PbrClassEntry {
   1: string forwardingClass;
   2: string redirectNextHopGroup;
   3: string aclEntry;
+  4: optional i64 packets;
+  5: optional i64 bytes;
 }

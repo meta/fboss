@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <map>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -29,7 +30,8 @@ class CmdShowPbr : public CmdHandler<CmdShowPbr, CmdShowPbrTraits> {
   RetType queryClient(const HostInfo& hostInfo);
   RetType createModel(
       const std::vector<Policy>& policies,
-      const AclTableThrift& aclTables);
+      const AclTableThrift& aclTables,
+      const std::map<std::string, int64_t>& counters);
   void printOutput(const RetType& model, std::ostream& out = std::cout);
 
   static RetType sampleModel();
