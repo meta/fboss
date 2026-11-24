@@ -143,6 +143,12 @@ class MockFbossCtrlAgent : public apache::thrift::ServiceHandler<FbossCtrl> {
           apache::thrift::HandlerCallbackPtr<
               std::unique_ptr<std::map<std::string, int64_t>>>,
           std::unique_ptr<std::string> regex));
+  MOCK_METHOD2(
+      async_eb_getSelectedCounters,
+      void(
+          apache::thrift::HandlerCallbackPtr<
+              std::unique_ptr<std::map<std::string, int64_t>>>,
+          std::unique_ptr<std::vector<std::string>> keys));
   MOCK_METHOD(
       void,
       getTeFlowTableDetails,

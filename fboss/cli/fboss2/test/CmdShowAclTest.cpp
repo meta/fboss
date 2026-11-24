@@ -48,6 +48,17 @@ std::map<std::string, std::vector<AclEntryThrift>> createAclTableEntries() {
   return aclTableEntries;
 }
 
+AclTableThrift createCountedAclTable() {
+  AclEntryThrift counted;
+  counted.name() = "plain_ipv6";
+  counted.priority() = 100002;
+  counted.counterName() = "plain_ipv6_counter";
+  counted.actionType() = "permit";
+  AclTableThrift tables;
+  tables.aclTableEntries()["PbrAclTable"] = {counted};
+  return tables;
+}
+
 class CmdShowAclTestFixture : public CmdHandlerTestBase {
  public:
   AclTableThrift aclTableEntries;
@@ -184,6 +195,71 @@ Acl: srv6_decap
    dst ipv6 word2: 0x00002704
    action: permit
    counter: srv6_decap_counter
+
+)");
+}
+
+TEST_F(CmdShowAclTestFixture, queryClientReadsCounters) {
+  setupMockedAgentServer();
+  auto tables = createCountedAclTable();
+  EXPECT_CALL(getMockAgent(), getAclTableGroup(_))
+      .WillOnce([&](auto& aclTables) { aclTables = tables; });
+  EXPECT_CALL(getMockAgent(), getMultiSwitchRunState(_))
+      .WillOnce([](auto& runState) { runState.multiSwitchEnabled() = false; });
+  EXPECT_CALL(getMockAgent(), async_eb_getSelectedCounters(_, _))
+      .WillOnce([](auto callback, auto keys) {
+        EXPECT_THAT(
+            *keys,
+            ElementsAre(
+                "plain_ipv6_counter.packets.sum",
+                "plain_ipv6_counter.bytes.sum"));
+        callback->result(
+            std::map<std::string, int64_t>{
+                {"plain_ipv6_counter.packets.sum", 1234}});
+      });
+
+  auto model = CmdShowAcl().queryClient(localhost());
+
+  const auto& entry = model.aclTableEntries()->at("PbrAclTable").at(0);
+  EXPECT_EQ(entry.packets(), 1234);
+  EXPECT_FALSE(entry.bytes().has_value());
+}
+
+TEST_F(CmdShowAclTestFixture, printOutputCounters) {
+  AclEntryThrift counted;
+  counted.name() = "plain_ipv6";
+  counted.priority() = 100002;
+  counted.counterName() = "plain_ipv6_counter";
+  counted.actionType() = "permit";
+
+  AclEntryThrift notExported;
+  notExported.name() = "te_pol_tc2";
+  notExported.priority() = 50000;
+  notExported.counterName() = "CLASS_2_lspgrp_silver";
+  notExported.actionType() = "permit";
+
+  AclTableThrift tables;
+  tables.aclTableEntries()["PbrAclTable"] = {counted, notExported};
+  std::map<std::string, int64_t> counters = {
+      {"plain_ipv6_counter.packets.sum", 1234},
+      {"plain_ipv6_counter.bytes.sum", 567},
+  };
+
+  auto cmd = CmdShowAcl();
+  std::stringstream ss;
+  cmd.printOutput(cmd.createModel(tables, counters), ss);
+  EXPECT_EQ(ss.str(), R"(ACL Table Name: PbrAclTable
+Acl: plain_ipv6
+   priority: 100002
+   action: permit
+   counter: plain_ipv6_counter
+   packets: 1234
+   bytes: 567
+
+Acl: te_pol_tc2
+   priority: 50000
+   action: permit
+   counter: CLASS_2_lspgrp_silver
 
 )");
 }
