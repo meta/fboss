@@ -10,6 +10,7 @@
 
 #include "fboss/qsfp_service/module/cmis/CmisHelper.h"
 #include "fboss/qsfp_service/module/cmis/CmisModule.h"
+#include "fboss/qsfp_service/module/cmis/CmisFieldInfo.h"
 #include "fboss/qsfp_service/module/cmis/gen-cpp2/cmis_types.h"
 #include "fboss/qsfp_service/module/properties/TransceiverPropertiesManager.h"
 #include "fboss/qsfp_service/module/tests/FakeTransceiverImpl.h"
@@ -4468,5 +4469,13 @@ TEST_F(CmisTest, cmis800GZr2x400GProgramsConfiguredAppSel) {
     EXPECT_EQ(*mediaInterface[0].code(), MediaInterfaceCode::ZR_400G)
         << "appSel " << static_cast<int>(appSel);
   }
+
+
+// Regression test for #1651 Bug 1: same signed-boundary decode as Sff.
+TEST(CmisFieldInfoGetTempTest, decodesSignedBoundary) {
+  EXPECT_DOUBLE_EQ(CmisFieldInfo::getTemp(0x8000), -128.0);
+  EXPECT_DOUBLE_EQ(CmisFieldInfo::getTemp(0x7FFF), 127.99609375);
+  EXPECT_DOUBLE_EQ(CmisFieldInfo::getTemp(0xFF00), -1.0);
+  EXPECT_DOUBLE_EQ(CmisFieldInfo::getTemp(0x1980), 25.5);
 }
 } // namespace facebook::fboss
