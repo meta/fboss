@@ -1,7 +1,12 @@
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 load("//fboss/qsfp_service:qsfp_service.bzl", "QSFP_COMMON_COMPILER_FLAGS")
 
 oncall("fboss_optics_phy")
+
+export_file(name = "I2cLogBuffer.cpp")
+
+export_file(name = "QsfpModule.cpp")
 
 cpp_library(
     name = "qsfp-module",
@@ -57,18 +62,18 @@ cpp_library(
         "fbsource//xplat/folly/logging:logging",
         "//fboss/agent:fboss-error",
         "//fboss/agent:fboss-types",
-        "//fboss/agent:switch_config-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
         "//fboss/lib/firmware_storage:firmware_storage",
-        "//fboss/lib/phy:phy-cpp2-types",
-        "//fboss/lib/phy:prbs-cpp2-types",
+        "//fboss/lib/phy:phy-cpp2-serialization",
+        "//fboss/lib/phy:prbs-cpp2-serialization",
         "//fboss/lib/usb:i2-api",
         "//fboss/qsfp_service:transceiver-manager",
-        "//fboss/qsfp_service/if:config-cpp2-types",
-        "//fboss/qsfp_service/if:transceiver-cpp2-types",
+        "//fboss/qsfp_service/if:config-cpp2-serialization",
+        "//fboss/qsfp_service/if:transceiver-cpp2-serialization",
         "//fboss/qsfp_service/lib:qsfp-service-client",
-        "//fboss/qsfp_service/module/cmis:cmis-cpp2-types",
-        "//fboss/qsfp_service/module/sff:sff-cpp2-types",
-        "//fboss/qsfp_service/module/sff:sff8472-cpp2-types",
+        "//fboss/qsfp_service/module/cmis:cmis-cpp2-serialization",
+        "//fboss/qsfp_service/module/sff:sff-cpp2-serialization",
+        "//fboss/qsfp_service/module/sff:sff8472-cpp2-serialization",
     ],
     external_deps = [
         ("boost", None, "boost_algorithm"),
@@ -104,7 +109,7 @@ cpp_library(
         "fbsource//xplat/folly/init:init",
         "fbsource//xplat/folly/io:iobuf",
         "fbsource//xplat/folly/logging:logging",
-        "//fboss/qsfp_service/module/cmis:cmis-cpp2-types",
+        "//fboss/qsfp_service/module/cmis:cmis-cpp2-serialization",
     ],
     exported_deps = [
         "fbsource//xplat/folly:string",
@@ -112,15 +117,15 @@ cpp_library(
         "fbsource//xplat/folly/io/async:async_base",
         "//fboss/agent:fboss-error",
         "//fboss/agent:fboss-types",
-        "//fboss/agent:switch_config-cpp2-types",
-        "//fboss/agent/if:ctrl-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/lib/firmware_storage:firmware_storage",
-        "//fboss/lib/phy:phy-cpp2-types",
-        "//fboss/lib/phy:prbs-cpp2-types",
+        "//fboss/lib/phy:phy-cpp2-serialization",
+        "//fboss/lib/phy:prbs-cpp2-serialization",
         "//fboss/lib/usb:transceiver_access_parameter",
-        "//fboss/qsfp_service/if:config-cpp2-types",
-        "//fboss/qsfp_service/if:port_state-cpp2-types",
-        "//fboss/qsfp_service/if:transceiver-cpp2-types",
+        "//fboss/qsfp_service/if:config-cpp2-serialization",
+        "//fboss/qsfp_service/if:port_state-cpp2-serialization",
+        "//fboss/qsfp_service/if:transceiver-cpp2-serialization",
     ],
     external_deps = ["gflags"],
     exported_external_deps = [
@@ -141,12 +146,12 @@ cpp_library(
         "fbsource//xplat/folly:file_util",
         "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/logging:logging",
-        "//fboss/qsfp_service/module/cmis:cmis-cpp2-types",
-        "//fboss/qsfp_service/module/sff:sff-cpp2-types",
-        "//fboss/qsfp_service/module/sff:sff8472-cpp2-types",
+        "//fboss/qsfp_service/module/cmis:cmis-cpp2-serialization",
+        "//fboss/qsfp_service/module/sff:sff-cpp2-serialization",
+        "//fboss/qsfp_service/module/sff:sff8472-cpp2-serialization",
     ],
     exported_deps = [
         "//fboss/lib/usb:transceiver_access_parameter",
-        "//fboss/qsfp_service/if:config-cpp2-types",
+        "//fboss/qsfp_service/if:config-cpp2-serialization",
     ],
 )

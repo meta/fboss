@@ -1,9 +1,12 @@
 load("@fbcode_macros//build_defs:cpp_binary.bzl", "cpp_binary")
 load("@fbcode_macros//build_defs:cpp_library.bzl", "cpp_library")
 load("@fbcode_macros//build_defs:custom_unittest.bzl", "custom_unittest")
+load("@fbcode_macros//build_defs:export_files.bzl", "export_file")
 load("//fboss/qsfp_service:qsfp_service.bzl", "QSFP_COMMON_COMPILER_FLAGS", "all_qsfp_core_libs", "all_qsfp_service_binaries")
 
 oncall("fboss_optics_phy")
+
+export_file(name = "TransceiverManager.cpp")
 
 # Default qsfp service binary
 # TODO(ccpowers): remove thisonce we support deploying a different qsfp service
@@ -117,7 +120,7 @@ cpp_library(
     ],
     exported_deps = [
         ":transceiver-manager",
-        "//fboss/qsfp_service/if:transceiver-cpp2-types",
+        "//fboss/qsfp_service/if:transceiver-cpp2-serialization",
     ],
 )
 
@@ -141,7 +144,7 @@ cpp_library(
     exported_deps = [
         "fbsource//xplat/folly/io/async:async_base",
         "//fboss/agent:fboss-types",
-        "//fboss/qsfp_service/if:transceiver-cpp2-types",
+        "//fboss/qsfp_service/if:transceiver-cpp2-serialization",
     ],
 )
 
@@ -191,23 +194,23 @@ cpp_library(
         ":transceiver-validator",
         "//fboss/agent:fboss-error",
         "//fboss/agent:fboss-types",
-        "//fboss/agent:platform_config-cpp2-types",
-        "//fboss/agent:switch_config-cpp2-types",
-        "//fboss/agent/if:ctrl-cpp2-types",
+        "//fboss/agent:platform_config-cpp2-serialization",
+        "//fboss/agent:switch_config-cpp2-serialization",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/agent/platforms/common:platform_mapping",
         "//fboss/lib:thread_heartbeat",
         "//fboss/lib/firmware_storage:firmware_storage",
-        "//fboss/lib/i2c:i2c_controller_stats-cpp2-types",
+        "//fboss/lib/i2c:i2c_controller_stats-cpp2-serialization",
         "//fboss/lib/link_snapshots:snapshot_manager",
-        "//fboss/lib/phy:phy-cpp2-types",
+        "//fboss/lib/phy:phy-cpp2-serialization",
         "//fboss/lib/phy:phy_management_base",
-        "//fboss/lib/phy:prbs-cpp2-types",
+        "//fboss/lib/phy:prbs-cpp2-serialization",
         "//fboss/lib/usb:i2-api",
         "//fboss/lib/usb:transceiver_access_parameter",
         "//fboss/qsfp_service/fsdb:fsdb-syncer",
-        "//fboss/qsfp_service/if:config-cpp2-types",
-        "//fboss/qsfp_service/if:port_state-cpp2-types",
-        "//fboss/qsfp_service/if:transceiver-cpp2-types",
+        "//fboss/qsfp_service/if:config-cpp2-serialization",
+        "//fboss/qsfp_service/if:port_state-cpp2-serialization",
+        "//fboss/qsfp_service/if:transceiver-cpp2-serialization",
         "//thrift/lib/cpp/util:enum_utils",
     ],
     exported_external_deps = [
@@ -233,7 +236,7 @@ cpp_library(
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
-        "//fboss/qsfp_service/if:config-cpp2-types",
+        "//fboss/qsfp_service/if:config-cpp2-serialization",
     ],
 )
 
@@ -250,7 +253,7 @@ cpp_library(
         "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/logging:logging",
         "//fboss/lib:alert_logger",
-        "//fboss/qsfp_service/if:transceiver_validation-cpp2-types",
+        "//fboss/qsfp_service/if:transceiver_validation-cpp2-serialization",
         "//thrift/lib/cpp/util:enum_utils",
     ],
 )
@@ -336,11 +339,11 @@ cpp_library(
         ":transceiver-manager",
         "//fboss/agent:fboss-error",
         "//fboss/agent:fboss-types",
-        "//fboss/agent:switch_config-cpp2-types",
-        "//fboss/agent/if:ctrl-cpp2-types",
+        "//fboss/agent:switch_config-cpp2-serialization",
+        "//fboss/agent/if:ctrl-cpp2-serialization",
         "//fboss/fsdb/common:flags",
         "//fboss/lib/config:fboss_config_utils",
-        "//fboss/qsfp_service/if:transceiver-cpp2-types",
+        "//fboss/qsfp_service/if:transceiver-cpp2-serialization",
         "//thrift/lib/cpp/util:enum_utils",
     ],
     exported_external_deps = [
