@@ -143,6 +143,51 @@ Acl: aclTable2_cpuPolicing-high-slow-protocols-mac
   EXPECT_EQ(output, expectOutput);
 }
 
+TEST_F(CmdShowAclTestFixture, printOutputPbrFields) {
+  AclEntryThrift pbrEntry;
+  pbrEntry.name() = "te_pol_tc2";
+  pbrEntry.priority() = 50000;
+  pbrEntry.trafficClass() = 2;
+  pbrEntry.nextHopGroupId() = 100;
+  pbrEntry.redirectNextHopGroupId() = 200;
+  pbrEntry.counterName() = "CLASS_2_lspgrp_silver";
+  pbrEntry.actionType() = "permit";
+
+  AclEntryThrift countingEntry;
+  countingEntry.name() = "srv6_decap";
+  countingEntry.priority() = 100000;
+  countingEntry.etherType() = cfg::EtherType::IPv6;
+  countingEntry.dstIpV6Word3() = 0xfdadff00;
+  countingEntry.dstIpV6Word2() = 0x2704;
+  countingEntry.counterName() = "srv6_decap_counter";
+  countingEntry.actionType() = "permit";
+
+  AclTableThrift tables;
+  tables.aclTableEntries()["PbrAclTable"] = {pbrEntry, countingEntry};
+
+  auto cmd = CmdShowAcl();
+  std::stringstream ss;
+  cmd.printOutput(cmd.createModel(tables), ss);
+  EXPECT_EQ(ss.str(), R"(ACL Table Name: PbrAclTable
+Acl: te_pol_tc2
+   priority: 50000
+   traffic class: 2
+   route dst nhg id: 100
+   action: permit
+   redirect nhg id: 200
+   counter: CLASS_2_lspgrp_silver
+
+Acl: srv6_decap
+   priority: 100000
+   ether type: IPv6
+   dst ipv6 word3: 0xfdadff00
+   dst ipv6 word2: 0x00002704
+   action: permit
+   counter: srv6_decap_counter
+
+)");
+}
+
 // CLI reference wiki hooks: a human description and a non-empty sample model.
 // Property checks only (no golden text).
 TEST_F(CmdShowAclTestFixture, wikiDocHooks) {
