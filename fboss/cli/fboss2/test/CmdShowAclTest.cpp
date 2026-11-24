@@ -100,7 +100,7 @@ TEST_F(CmdShowAclTestFixture, queryClient) {
 
 TEST_F(CmdShowAclTestFixture, printOutput) {
   auto cmd = CmdShowAcl();
-  auto model = cmd.createModel(aclTableEntries);
+  auto model = cmd.createModel(aclTableEntries, {});
 
   std::stringstream ss;
   cmd.printOutput(model, ss);
@@ -167,7 +167,7 @@ TEST_F(CmdShowAclTestFixture, printOutputPbrFields) {
 
   auto cmd = CmdShowAcl();
   std::stringstream ss;
-  cmd.printOutput(cmd.createModel(tables), ss);
+  cmd.printOutput(cmd.createModel(tables, {}), ss);
   EXPECT_EQ(ss.str(), R"(ACL Table Name: PbrAclTable
 Acl: te_pol_tc2
    priority: 50000

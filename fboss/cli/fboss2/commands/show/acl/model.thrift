@@ -38,4 +38,6 @@ struct AclEntry {
   27: optional i64 nextHopGroupId;
   28: optional i64 redirectNextHopGroupId;
   29: optional string counterName;
+  30: optional i64 packets;
+  31: optional i64 bytes;
 }

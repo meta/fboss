@@ -13,6 +13,7 @@
 #include <fboss/agent/if/gen-cpp2/ctrl_types.h>
 #include <fboss/agent/if/gen-cpp2/fboss_types.h>
 #include <iostream>
+#include <map>
 #include <string_view>
 #include "fboss/cli/fboss2/CmdHandler.h"
 #include "fboss/cli/fboss2/commands/show/acl/gen-cpp2/model_types.h"
@@ -41,7 +42,9 @@ class CmdShowAcl : public CmdHandler<CmdShowAcl, CmdShowAclTraits> {
 
   void printOutput(const RetType& model, std::ostream& out = std::cout);
 
-  RetType createModel(facebook::fboss::AclTableThrift entries);
+  RetType createModel(
+      facebook::fboss::AclTableThrift entries,
+      const std::map<std::string, int64_t>& counters);
 
   // Canned, synthetic model (no real switch data) used to render a
   // deterministic example for the CLI reference wiki. No live switch.

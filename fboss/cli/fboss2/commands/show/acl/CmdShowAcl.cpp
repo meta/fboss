@@ -13,6 +13,7 @@
 
 #include <fboss/agent/if/gen-cpp2/ctrl_types.h>
 #include <fmt/format.h>
+#include <folly/MapUtil.h>
 #include <thrift/lib/cpp/util/EnumUtils.h>
 #include <iostream>
 #include <map>
@@ -34,7 +35,20 @@ RetType CmdShowAcl::queryClient(const HostInfo& hostInfo) {
       utils::createClient<facebook::fboss::FbossCtrlAsyncClient>(hostInfo);
   client->sync_getAclTableGroup(entries);
 
-  return createModel(entries);
+  std::vector<std::string> counterKeys;
+  for (const auto& [_, tableEntries] : *entries.aclTableEntries()) {
+    for (const auto& entry : tableEntries) {
+      if (entry.counterName()) {
+        counterKeys.push_back(*entry.counterName() + ".packets.sum");
+        counterKeys.push_back(*entry.counterName() + ".bytes.sum");
+      }
+    }
+  }
+  if (counterKeys.empty()) {
+    return createModel(entries, {});
+  }
+  return createModel(
+      entries, utils::sumAgentFb303Counters(hostInfo, counterKeys));
 }
 
 void CmdShowAcl::printOutput(const RetType& model, std::ostream& out) {
@@ -139,6 +153,12 @@ void CmdShowAcl::printOutput(const RetType& model, std::ostream& out) {
       if (aclEntry.counterName()) {
         out << "   counter: " << *aclEntry.counterName() << std::endl;
       }
+      if (aclEntry.packets()) {
+        out << "   packets: " << *aclEntry.packets() << std::endl;
+      }
+      if (aclEntry.bytes()) {
+        out << "   bytes: " << *aclEntry.bytes() << std::endl;
+      }
       if (folly::copy(aclEntry.enabled().value())) {
         out << "   enabled: " << folly::copy(aclEntry.enabled().value())
             << std::endl;
@@ -148,7 +168,9 @@ void CmdShowAcl::printOutput(const RetType& model, std::ostream& out) {
   }
 }
 
-RetType CmdShowAcl::createModel(facebook::fboss::AclTableThrift entries) {
+RetType CmdShowAcl::createModel(
+    facebook::fboss::AclTableThrift entries,
+    const std::map<std::string, int64_t>& counters) {
   RetType model;
   std::map<std::string, std::vector<facebook::fboss::AclEntryThrift>>
       aclTableEntries = entries.aclTableEntries().value();
@@ -250,6 +272,14 @@ RetType CmdShowAcl::createModel(facebook::fboss::AclTableThrift entries) {
       }
       if (entry.counterName()) {
         aclDetails.counterName() = *entry.counterName();
+        if (auto packets = folly::get_optional(
+                counters, *entry.counterName() + ".packets.sum")) {
+          aclDetails.packets() = *packets;
+        }
+        if (auto bytes = folly::get_optional(
+                counters, *entry.counterName() + ".bytes.sum")) {
+          aclDetails.bytes() = *bytes;
+        }
       }
       aclDetails.actionType() = entry.actionType().value();
       if (apache::thrift::get_pointer(entry.enabled())) {
