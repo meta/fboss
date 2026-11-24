@@ -80,7 +80,9 @@ class AgentEnsemblePrbsTest : public AgentEnsembleLinkTest {
   // through PRBS on the ASIC or transceiver system side, so they must be
   // excluded from every other PRBS mode.
   bool isZrModule(PortID port) {
-    return checkValidMedia(port, MediaInterfaceCode::ZR_800G);
+    return checkValidMedia(port, MediaInterfaceCode::ZR_800G) ||
+        checkValidMedia(port, MediaInterfaceCode::ZR_400G) ||
+        checkValidMedia(port, MediaInterfaceCode::ZR_200G);
   }
 
   bool checkPrbsSupported(

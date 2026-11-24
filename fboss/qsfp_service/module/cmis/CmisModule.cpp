@@ -1520,9 +1520,17 @@ bool CmisModule::getMediaInterfaceId(
       MediaInterfaceUnion media;
       media.smfCode() = smfMediaInterface;
       if (TransceiverPropertiesManager::isKnown(getModuleMediaInterface())) {
+        // The media lane code alone can't tell a ZR 2x400G port from 1x800G
+        std::optional<int> numHostLanes;
+        if (!flatMem_) {
+          if (auto capability =
+                  getCapabilityForAppSel(getCurrentAppSelCode(lane))) {
+            numHostLanes = capability->hostLaneCount;
+          }
+        }
         mediaInterface[lane].code() =
             TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(
-                static_cast<uint8_t>(smfMediaInterface));
+                static_cast<uint8_t>(smfMediaInterface), numHostLanes);
       } else {
         mediaInterface[lane].code() =
             CmisHelper::getMediaInterfaceCode<SMFMediaInterfaceCode>(

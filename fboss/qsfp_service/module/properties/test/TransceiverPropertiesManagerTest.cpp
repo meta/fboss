@@ -535,7 +535,7 @@ TEST_F(TransceiverPropertiesManagerTest, MediaLaneCodeToMediaInterfaceCode) {
       MediaInterfaceCode::ZR_800G);
   EXPECT_EQ(
       TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(0x6A),
-      MediaInterfaceCode::ZR_800G);
+      MediaInterfaceCode::ZR_200G);
   EXPECT_EQ(
       TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(0x7F),
       MediaInterfaceCode::DR8_1600G);
@@ -543,6 +543,32 @@ TEST_F(TransceiverPropertiesManagerTest, MediaLaneCodeToMediaInterfaceCode) {
   // Unknown code throws
   EXPECT_THROW(
       TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(0xFF),
+      FbossError);
+}
+
+// The port width picks the media interface code; with a width no port uses,
+// the first port's code wins
+TEST_F(TransceiverPropertiesManagerTest, MediaLaneCodeWithHostLanes) {
+  initDefault();
+
+  for (uint8_t mediaLaneCode : {0x68, 0x6C}) {
+    EXPECT_EQ(
+        TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(
+            mediaLaneCode, 8),
+        MediaInterfaceCode::ZR_800G);
+    EXPECT_EQ(
+        TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(
+            mediaLaneCode, 1),
+        MediaInterfaceCode::ZR_800G);
+  }
+  EXPECT_EQ(
+      TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(0x6A, 2),
+      MediaInterfaceCode::ZR_200G);
+  EXPECT_EQ(
+      TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(0x1D, 4),
+      MediaInterfaceCode::FR4_400G);
+  EXPECT_THROW(
+      TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(0xFF, 4),
       FbossError);
 }
 

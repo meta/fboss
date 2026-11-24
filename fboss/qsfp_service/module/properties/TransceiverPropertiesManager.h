@@ -3,10 +3,12 @@
 #pragma once
 
 #include <array>
+#include <map>
 #include <optional>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
@@ -95,9 +97,13 @@ class TransceiverPropertiesManager {
   static bool isInitialized();
 
   // Look up the MediaInterfaceCode for a raw media lane code byte.
-  // Uses the mediaInterfaceCode field from PortSpeedConfig entries.
+  // Uses the mediaInterfaceCode field from PortSpeedConfig entries. Ports of
+  // different widths can share a media lane code (ZR 0x68 is both 1x800G and
+  // 2x400G), so pass the port's host lane count when known. Without it, or if
+  // no port has that width, the first port in the config with the code wins.
   static MediaInterfaceCode mediaLaneCodeToMediaInterfaceCode(
-      uint8_t mediaLaneCodeByte);
+      uint8_t mediaLaneCodeByte,
+      std::optional<int> numHostLanes = std::nullopt);
 
   // Reset state (for testing)
   static void reset();
@@ -123,6 +129,9 @@ class TransceiverPropertiesManager {
   // mediaLaneCode → MediaInterfaceCode reverse map (built at init time)
   std::unordered_map<int32_t, MediaInterfaceCode>
       mediaLaneCodeToMediaInterfaceCodeMap_;
+  // {mediaLaneCode, numHostLanes} → MediaInterfaceCode
+  std::map<std::pair<int32_t, int>, MediaInterfaceCode>
+      mediaLaneCodeAndHostLanesToMediaInterfaceCodeMap_;
 
   // SMF derivation index: smfCode byte → list of candidate entries
   std::unordered_map<uint8_t, std::vector<SmfCandidate>> smfDerivationMap_;

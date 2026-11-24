@@ -559,7 +559,7 @@ void HwTransceiverUtils::verify200gProfile(
         *mediaId.code() == MediaInterfaceCode::DR1_200G ||
         *mediaId.code() == MediaInterfaceCode::FR1_200G ||
         *mediaId.code() == MediaInterfaceCode::FR2_200G ||
-        *mediaId.code() == MediaInterfaceCode::ZR_800G);
+        *mediaId.code() == MediaInterfaceCode::ZR_200G);
   }
 }
 

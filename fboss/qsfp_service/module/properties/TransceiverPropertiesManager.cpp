@@ -100,6 +100,7 @@ void TransceiverPropertiesManager::initFromJson(const std::string& configJson) {
   self.codeToPropsMap_.clear();
   self.smfDerivationMap_.clear();
   self.mediaLaneCodeToMediaInterfaceCodeMap_.clear();
+  self.mediaLaneCodeAndHostLanesToMediaInterfaceCodeMap_.clear();
 
   for (const auto& [codeValue, props] : *self.config_.smfTransceivers()) {
     self.codeToPropsMap_[codeValue] = &props;
@@ -157,8 +158,11 @@ void TransceiverPropertiesManager::initFromJson(const std::string& configJson) {
             static_cast<MediaInterfaceCode>(*port.mediaInterfaceCode());
         if (mediaInterfaceCode != MediaInterfaceCode::UNKNOWN &&
             mediaLaneCode != 0) {
-          self.mediaLaneCodeToMediaInterfaceCodeMap_[mediaLaneCode] =
-              mediaInterfaceCode;
+          self.mediaLaneCodeToMediaInterfaceCodeMap_.try_emplace(
+              mediaLaneCode, mediaInterfaceCode);
+          self.mediaLaneCodeAndHostLanesToMediaInterfaceCodeMap_.try_emplace(
+              std::make_pair(mediaLaneCode, *port.hostLanes()->count()),
+              mediaInterfaceCode);
         }
       }
     }
@@ -321,10 +325,19 @@ MediaInterfaceCode TransceiverPropertiesManager::deriveSmfCode(
 
 MediaInterfaceCode
 TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(
-    uint8_t mediaLaneCodeByte) {
+    uint8_t mediaLaneCodeByte,
+    std::optional<int> numHostLanes) {
   auto& self = instance();
   if (!self.initialized_) {
     throw FbossError("TransceiverPropertiesManager not initialized");
+  }
+  if (numHostLanes) {
+    auto widthIt = self.mediaLaneCodeAndHostLanesToMediaInterfaceCodeMap_.find(
+        std::make_pair(static_cast<int32_t>(mediaLaneCodeByte), *numHostLanes));
+    if (widthIt !=
+        self.mediaLaneCodeAndHostLanesToMediaInterfaceCodeMap_.end()) {
+      return widthIt->second;
+    }
   }
   auto it = self.mediaLaneCodeToMediaInterfaceCodeMap_.find(
       static_cast<int32_t>(mediaLaneCodeByte));
@@ -342,6 +355,7 @@ void TransceiverPropertiesManager::reset() {
   self.codeToPropsMap_.clear();
   self.smfDerivationMap_.clear();
   self.mediaLaneCodeToMediaInterfaceCodeMap_.clear();
+  self.mediaLaneCodeAndHostLanesToMediaInterfaceCodeMap_.clear();
 }
 
 } // namespace facebook::fboss

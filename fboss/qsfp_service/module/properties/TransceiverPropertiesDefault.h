@@ -573,9 +573,9 @@ constexpr auto kDefaultTransceiverPropertiesJson = R"({
         {
           "combinationName": "3x200G-ZR-FlexO-6e-DPO",
           "ports": [
-            {"speed": 200000, "hostLanes": {"start": 0, "count": 2}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x6A}, "mediaInterfaceCode": 26},
-            {"speed": 200000, "hostLanes": {"start": 2, "count": 2}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x6A}, "mediaInterfaceCode": 26},
-            {"speed": 200000, "hostLanes": {"start": 4, "count": 2}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x6A}, "mediaInterfaceCode": 26}
+            {"speed": 200000, "hostLanes": {"start": 0, "count": 2}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x6A}, "mediaInterfaceCode": 46},
+            {"speed": 200000, "hostLanes": {"start": 2, "count": 2}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x6A}, "mediaInterfaceCode": 46},
+            {"speed": 200000, "hostLanes": {"start": 4, "count": 2}, "mediaLanes": {"start": 0, "count": 1}, "mediaLaneCode": {"smfCode": 0x6A}, "mediaInterfaceCode": 46}
           ]
         }
       ]

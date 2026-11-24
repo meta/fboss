@@ -383,7 +383,8 @@ std::vector<MediaInterfaceCode> getExpectedMediaInterfaceCodes(
             *port.mediaLaneCode());
     auto mediaInterfaceCode =
         TransceiverPropertiesManager::mediaLaneCodeToMediaInterfaceCode(
-            static_cast<uint8_t>(mediaLaneCodeValue));
+            static_cast<uint8_t>(mediaLaneCodeValue),
+            *port.hostLanes()->count());
     if (mediaInterfaceCode == MediaInterfaceCode::UNKNOWN) {
       throw FbossError(
           "Unknown SMF media interface code 0x",
