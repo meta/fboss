@@ -165,6 +165,7 @@ class MockFbossCtrlAgent : public apache::thrift::ServiceHandler<FbossCtrl> {
       std::map<int32_t, facebook::fboss::InterfaceDetail>&;
   MOCK_METHOD(void, getAllInterfaces, (InterfaceDetailMap));
   MOCK_METHOD(void, getNextHopGroups, (std::vector<NextHopGroup>&, bool));
+  MOCK_METHOD(void, getAllPolicies, (std::vector<Policy>&));
   MOCK_METHOD(
       void,
       getNamedNextHopGroups,

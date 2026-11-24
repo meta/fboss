@@ -103,6 +103,47 @@ TEST_F(CmdShowPbrTestFixture, createModelWithoutPbrAclTableThrows) {
       std::runtime_error);
 }
 
+TEST_F(CmdShowPbrTestFixture, queryClientSkipsAclTablesWithoutPolicies) {
+  setupMockedAgentServer();
+  EXPECT_CALL(getMockAgent(), getAllPolicies(_)).WillOnce([](auto& result) {
+    result = {};
+  });
+  EXPECT_CALL(getMockAgent(), getAclTableGroup(_)).Times(0);
+
+  auto model = CmdShowPbr().queryClient(localhost());
+
+  EXPECT_TRUE(model.policies()->empty());
+}
+
+TEST_F(CmdShowPbrTestFixture, queryClientReadsInstalledEntryCounters) {
+  setupMockedAgentServer();
+  EXPECT_CALL(getMockAgent(), getAllPolicies(_)).WillOnce([&](auto& result) {
+    result = policies;
+  });
+  EXPECT_CALL(getMockAgent(), getAclTableGroup(_)).WillOnce([&](auto& result) {
+    result = aclTables;
+  });
+  EXPECT_CALL(getMockAgent(), getMultiSwitchRunState(_))
+      .WillOnce([](auto& runState) { runState.multiSwitchEnabled() = false; });
+  EXPECT_CALL(getMockAgent(), async_eb_getSelectedCounters(_, _))
+      .WillOnce([&](auto callback, auto keys) {
+        EXPECT_THAT(
+            *keys,
+            UnorderedElementsAre(
+                "counter_a2.packets.sum",
+                "counter_a2.bytes.sum",
+                "counter_a3.packets.sum",
+                "counter_a3.bytes.sum",
+                "counter_b2.packets.sum",
+                "counter_b2.bytes.sum"));
+        callback->result(std::map<std::string, int64_t>(counters));
+      });
+
+  auto model = CmdShowPbr().queryClient(localhost());
+
+  EXPECT_EQ(model.policies()->at(0).classes()->at(0).packets(), 100);
+}
+
 TEST_F(CmdShowPbrTestFixture, printOutput) {
   auto cmd = CmdShowPbr();
   std::stringstream ss;
