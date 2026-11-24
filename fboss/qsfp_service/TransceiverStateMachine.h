@@ -264,6 +264,9 @@ BOOST_MSM_EUML_EVENT(PORT_UP)
 BOOST_MSM_EUML_EVENT(ALL_PORTS_DOWN)
 // Reset transceiver will reset back to NOT_PRESENT
 BOOST_MSM_EUML_EVENT(RESET_TO_NOT_PRESENT)
+// CMIS identity changes need the same reset without changing normal reset
+// behavior for other callers.
+BOOST_MSM_EUML_EVENT(RESET_TO_NOT_PRESENT_ON_IDENTITY_CHANGE)
 // Reset to discover doesn't need another present detection or eeprom read
 // Usually uses on a present transceiver
 BOOST_MSM_EUML_EVENT(RESET_TO_DISCOVERED)
@@ -604,6 +607,15 @@ BOOST_MSM_EUML_TRANSITION_TABLE((
     XPHY_PORTS_PROGRAMMED  + RESET_TO_NOT_PRESENT                              / logStateChanged == NOT_PRESENT,
     IPHY_PORTS_PROGRAMMED  + RESET_TO_NOT_PRESENT                              / logStateChanged == NOT_PRESENT,
     UPGRADING              + RESET_TO_NOT_PRESENT                              / logStateChanged == NOT_PRESENT,
+    ACTIVE                 + RESET_TO_NOT_PRESENT_ON_IDENTITY_CHANGE            / logStateChanged == NOT_PRESENT,
+    INACTIVE               + RESET_TO_NOT_PRESENT_ON_IDENTITY_CHANGE            / logStateChanged == NOT_PRESENT,
+    TRANSCEIVER_READY      + RESET_TO_NOT_PRESENT_ON_IDENTITY_CHANGE            / logStateChanged == NOT_PRESENT,
+    TRANSCEIVER_PROGRAMMED + RESET_TO_NOT_PRESENT_ON_IDENTITY_CHANGE            / logStateChanged == NOT_PRESENT,
+    XPHY_PORTS_PROGRAMMED  + RESET_TO_NOT_PRESENT_ON_IDENTITY_CHANGE            / logStateChanged == NOT_PRESENT,
+    IPHY_PORTS_PROGRAMMED  + RESET_TO_NOT_PRESENT_ON_IDENTITY_CHANGE            / logStateChanged == NOT_PRESENT,
+    UPGRADING              + RESET_TO_NOT_PRESENT_ON_IDENTITY_CHANGE            / logStateChanged == NOT_PRESENT,
+    DISCOVERED             + RESET_TO_NOT_PRESENT_ON_IDENTITY_CHANGE            / logStateChanged == NOT_PRESENT,
+    PRESENT                + RESET_TO_NOT_PRESENT_ON_IDENTITY_CHANGE            / logStateChanged == NOT_PRESENT,
     // Remove transceiver only if all ports are down
     ACTIVE                 + REMOVE_TRANSCEIVER     [isSafeToRemove]           / logStateChanged == NOT_PRESENT,
     INACTIVE               + REMOVE_TRANSCEIVER     [isSafeToRemove]           / logStateChanged == NOT_PRESENT,

@@ -1032,6 +1032,7 @@ void QsfpModule::refreshLocked() {
   auto detectionStatus = detectPresenceLocked();
 
   auto willRefresh = !dirty_ && shouldRefresh(FLAGS_qsfp_data_refresh_interval);
+  bool identityChanged = false;
   QSFP_LOG_IF(DBG3, dirty_, this)
       << "dirty_ = " << dirty_ << ", willRefresh = " << willRefresh
       << ", present = " << detectionStatus.present
@@ -1073,12 +1074,38 @@ void QsfpModule::refreshLocked() {
       // case
       updateQsfpData(false);
     }
+    identityChanged = consumeTransceiverIdentityChange();
   }
 
   // If it's just regular refresh
   if (willRefresh) {
     periodicUpdateQsfpData();
     updateCmisStateChanged(moduleStatus);
+    identityChanged = consumeTransceiverIdentityChange();
+  }
+
+  if (identityChanged) {
+    // A CMIS-to-CMIS replacement can leave the platform presence bit asserted
+    // throughout the replacement. Reuse the normal OIR sequence so that all
+    // programming state is cleared before the new module is discovered.
+    QSFP_LOG(INFO, this)
+        << "Transceiver identity changed without a presence edge; "
+           "rediscovering transceiver";
+    dirty_ = true;
+    qsfpImpl_->updateTransceiverState(
+        TransceiverStateMachineEvent::
+            TCVR_EV_RESET_TO_NOT_PRESENT_ON_IDENTITY_CHANGE);
+    qsfpImpl_->updateTransceiverState(
+        TransceiverStateMachineEvent::TCVR_EV_EVENT_DETECT_TRANSCEIVER);
+
+    ensureOutOfReset();
+    updateQsfpData(true);
+    updateCmisStateChanged(moduleStatus);
+    if (present_) {
+      qsfpImpl_->updateTransceiverState(
+          TransceiverStateMachineEvent::TCVR_EV_READ_EEPROM);
+      updateQsfpData(false);
+    }
   }
 
   updateCachedTransceiverInfoLocked(moduleStatus);

@@ -88,6 +88,11 @@ void TransceiverStateMachineController::applyUpdate(
     case TransceiverStateMachineEvent::TCVR_EV_RESET_TO_NOT_PRESENT:
       lockedStateMachine->process_event(RESET_TO_NOT_PRESENT);
       break;
+    case TransceiverStateMachineEvent::
+        TCVR_EV_RESET_TO_NOT_PRESENT_ON_IDENTITY_CHANGE:
+      lockedStateMachine->process_event(
+          RESET_TO_NOT_PRESENT_ON_IDENTITY_CHANGE);
+      break;
     case TransceiverStateMachineEvent::TCVR_EV_RESET_TO_DISCOVERED:
       lockedStateMachine->process_event(RESET_TO_DISCOVERED);
       break;
