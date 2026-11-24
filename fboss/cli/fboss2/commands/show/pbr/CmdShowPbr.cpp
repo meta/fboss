@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp"
+#include "fboss/cli/fboss2/utils/Table.h"
 
 namespace facebook::fboss {
 
@@ -82,5 +83,61 @@ CmdShowPbr::RetType CmdShowPbr::createModel(
   }
   return model;
 }
+
+void CmdShowPbr::printOutput(const RetType& model, std::ostream& out) {
+  utils::Table table;
+  table.setHeader(
+      {"Policy",
+       "Default NHG",
+       "Programmed",
+       "Class",
+       "Redirect NHG",
+       "ACL Entry"});
+  for (const auto& policy : *model.policies()) {
+    const std::string programmed = *policy.programmed() ? "yes" : "no";
+    if (policy.classes()->empty()) {
+      table.addRow(
+          {*policy.name(),
+           *policy.defaultNextHopGroup(),
+           programmed,
+           "--",
+           "--",
+           "--"});
+    }
+    for (const auto& classEntry : *policy.classes()) {
+      table.addRow(
+          {*policy.name(),
+           *policy.defaultNextHopGroup(),
+           programmed,
+           *classEntry.forwardingClass(),
+           *classEntry.redirectNextHopGroup(),
+           *classEntry.aclEntry()});
+    }
+  }
+  out << table << std::endl;
+}
+
+std::string_view CmdShowPbrTraits::description() {
+  return "Displays the switch's PBR (class-based forwarding) policies: each policy's default next hop group, the next hop group each traffic class is redirected to, the PbrAclTable entry that implements it, and whether the policy is programmed. Programmed means every traffic class has its PbrAclTable entry, which the agent installs once a route names the policy's default next hop group. Use it to check PBR policy installation.";
+}
+
+CmdShowPbr::RetType CmdShowPbr::sampleModel() {
+  RetType model;
+
+  cli::PbrPolicyEntry policy;
+  policy.name() = "lspgrp_rb01-01_dc1-dc2-gold-class";
+  policy.defaultNextHopGroup() = "lspgrp_rb01-01_dc1-dc2-gold-class";
+  policy.programmed() = true;
+  cli::PbrClassEntry silver;
+  silver.forwardingClass() = "CLASS_2";
+  silver.redirectNextHopGroup() = "lspgrp_rb01-01_dc1-dc2-silver-class";
+  silver.aclEntry() = "lspgrp_rb01-01_dc1-dc2-gold-class_tc2";
+  policy.classes()->push_back(silver);
+  model.policies()->push_back(policy);
+
+  return model;
+}
+
+template void CmdHandler<CmdShowPbr, CmdShowPbrTraits>::run();
 
 } // namespace facebook::fboss

@@ -137,6 +137,7 @@
 #include "fboss/cli/fboss2/commands/show/mysid/CmdShowMySid.h"
 #include "fboss/cli/fboss2/commands/show/ndp/CmdShowNdp.h"
 #include "fboss/cli/fboss2/commands/show/nexthopgroups/CmdShowNextHopGroups.h"
+#include "fboss/cli/fboss2/commands/show/pbr/CmdShowPbr.h"
 #include "fboss/cli/fboss2/commands/show/port/CmdShowPort.h"
 #include "fboss/cli/fboss2/commands/show/port/CmdShowPortQueue.h"
 #ifndef IS_OSS
@@ -771,6 +772,12 @@ const CommandTree& kCommandTree() {
        "Show named next hop groups",
        commandHandler<CmdShowNamedNextHopGroups>,
        argTypeHandler<CmdShowNamedNextHopGroupsTraits>},
+
+      {"show",
+       "pbr",
+       "Show PBR policies",
+       commandHandler<CmdShowPbr>,
+       argTypeHandler<CmdShowPbrTraits>},
 
       {
           "show",
