@@ -218,10 +218,14 @@ class CmisModule : public QsfpModule {
 
   bool tcvrPortStateSupported(TransceiverPortState& portState) const override;
 
+  // requestedAppSel, when set, is the application the port will be programmed
+  // with (tunable optics take it from config); otherwise it is derived from
+  // the speed
   bool isRequestValidMultiportSpeedConfig(
       cfg::PortSpeed speed,
       uint8_t startHostLane,
-      uint8_t numLanes);
+      uint8_t numLanes,
+      std::optional<uint8_t> requestedAppSel = std::nullopt);
 
   // Public since its used for unit testing
   ApplicationAdvertisingFields getModuleCapabilities() {
@@ -537,16 +541,19 @@ class CmisModule : public QsfpModule {
       uint8_t numHostLanes);
 
   // Stage set 0 AppSel bytes setApplicationSelectCodeAllPorts programs for the
-  // port's bank, or nullopt if there is no valid speed combo
+  // port's bank, or nullopt if there is no valid speed combo. Lanes whose
+  // media code matches requestedAppSel are programmed with it.
   std::optional<AllLaneConfig> getAllPortsStageSet0Config(
       const TransceiverPortState& state,
-      uint8_t numHostLanes);
+      uint8_t numHostLanes,
+      std::optional<uint8_t> requestedAppSel = std::nullopt);
   // {deinit, init} intra-bank lane masks for programming all ports: deinit
   // covers lanes in the current and new configs, init covers lanes the new
   // config puts in an application
   std::pair<uint8_t, uint8_t> getAllPortsResetLaneMasks(
       const TransceiverPortState& state,
-      uint8_t numHostLanes);
+      uint8_t numHostLanes,
+      std::optional<uint8_t> requestedAppSel = std::nullopt);
 
   /*
    * Helper function to read an interface code (host or media) for a given
@@ -1273,7 +1280,18 @@ class CmisModule : public QsfpModule {
       uint8_t hostLaneMask);
   void setApplicationSelectCodeAllPorts(
       const TransceiverPortState& state,
-      uint8_t numHostLanes);
+      uint8_t numHostLanes,
+      std::optional<uint8_t> requestedAppSel);
+
+  std::optional<ApplicationAdvertisingField> getCapabilityForAppSel(
+      std::optional<uint8_t> appSelCode) const;
+  // True if an active datapath on lanes outside the port overlaps the port's
+  // lanes with a different lane count (e.g. 1x800G to 2x400G). Speed combos
+  // only carry media codes, which can be the same for both layouts.
+  bool portSplitsActiveDatapath(
+      const AllLaneConfig& activeCtrl,
+      uint8_t startHostLane,
+      uint8_t numLanes) const;
 
   // Sets the sampling percentage for
   // FEC errors if supported by transceiver.

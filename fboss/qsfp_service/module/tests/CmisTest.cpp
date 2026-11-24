@@ -4410,4 +4410,19 @@ TEST_F(CmisTest, programTransceiverSkipsResetOfJustInitializedLanes) {
           kPage10h, kDataPathDeinitOffset - 128),
       2);
 }
+// The ZR fixture comes up with 1x800G (AppSel 1, one 8-lane datapath), whose
+// media code 0x68 is shared with the 400G applications. Media codes alone make
+// 400G on lanes 0-3 look valid, but it would split the 800G datapath.
+TEST_F(CmisTest, cmis800GZr400GSplitting800GDatapathIsNotValidPerPort) {
+  TransceiverPropertiesManager::initDefault();
+  auto xcvr = overrideCmisModule<Cmis800GZr3x200GTransceiver>(
+      TransceiverID(1), TransceiverModuleIdentifier::OSFP);
+
+  EXPECT_FALSE(xcvr->isRequestValidMultiportSpeedConfig(
+      cfg::PortSpeed::FOURHUNDREDG, 0, 4));
+  EXPECT_FALSE(xcvr->isRequestValidMultiportSpeedConfig(
+      cfg::PortSpeed::FOURHUNDREDG, 0, 4, 4 /* requestedAppSel */));
+  EXPECT_TRUE(xcvr->isRequestValidMultiportSpeedConfig(
+      cfg::PortSpeed::EIGHTHUNDREDG, 0, 8, 2 /* requestedAppSel */));
+}
 } // namespace facebook::fboss

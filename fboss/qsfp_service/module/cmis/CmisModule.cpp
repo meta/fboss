@@ -671,6 +671,38 @@ bool isInfiniBandHostInterface(uint8_t hostInterface) {
           code <= ActiveCuHostInterfaceCode::IB_NDR) ||
       code == ActiveCuHostInterfaceCode::IB_XDR;
 }
+
+SmfSpeedApplicationMap getSmfSpeedApplicationMap(
+    MediaInterfaceCode mediaInterface,
+    cfg::PortSpeed speed,
+    const std::optional<CmisModule::ApplicationAdvertisingField>&
+        requestedCapability) {
+  // Several applications can share a media code at the same speed (e.g. ZR
+  // 0x68 and 0x6C at 400G), so the requested application decides which one
+  if (requestedCapability) {
+    return {
+        {speed,
+         {static_cast<SMFMediaInterfaceCode>(
+             requestedCapability->moduleMediaInterface)}}};
+  }
+  if (TransceiverPropertiesManager::isKnown(mediaInterface)) {
+    auto configCodes = TransceiverPropertiesManager::getMediaCodesForSpeed<
+        SMFMediaInterfaceCode>(mediaInterface, speed);
+    if (!configCodes.empty()) {
+      return {{speed, std::move(configCodes)}};
+    }
+  }
+  return CmisHelper::getSmfSpeedApplicationMapping();
+}
+
+SmfValidSpeedCombinations getSmfSpeedCombinations(
+    MediaInterfaceCode mediaInterface) {
+  if (!TransceiverPropertiesManager::isKnown(mediaInterface)) {
+    return {};
+  }
+  return TransceiverPropertiesManager::getSpeedCombinations<
+      SMFMediaInterfaceCode>(mediaInterface);
+}
 } // namespace
 
 std::optional<CmisModule::ApplicationAdvertisingField>
@@ -3187,7 +3219,9 @@ void CmisModule::setApplicationSelectCode(
  */
 std::optional<CmisModule::AllLaneConfig> CmisModule::getAllPortsStageSet0Config(
     const TransceiverPortState& state,
-    uint8_t numHostLanes) {
+    uint8_t numHostLanes,
+    std::optional<uint8_t> requestedAppSel) {
+  const auto requestedCapability = getCapabilityForAppSel(requestedAppSel);
   // Speed-combo lookups are bank-relative (intra-bank lane indices).
   const uint8_t intraStartHostLane = laneInBank(state.startHostLane);
   std::vector<uint8_t> laneProgramValues;
@@ -3204,15 +3238,6 @@ std::optional<CmisModule::AllLaneConfig> CmisModule::getAllPortsStageSet0Config(
             CmisHelper::getActiveSpeedApplication());
   } else {
     auto mediaInterface = getModuleMediaInterface();
-    std::vector<SMFMediaInterfaceCode> configCodes;
-    if (TransceiverPropertiesManager::isKnown(mediaInterface)) {
-      configCodes = TransceiverPropertiesManager::getMediaCodesForSpeed<
-          SMFMediaInterfaceCode>(mediaInterface, state.speed);
-    }
-    SmfSpeedApplicationMap configMapping;
-    if (!configCodes.empty()) {
-      configMapping[state.speed] = std::move(configCodes);
-    }
     laneProgramValues =
         CmisHelper::getValidMultiportSpeedConfig<SMFMediaInterfaceCode>(
             state.speed,
@@ -3221,13 +3246,9 @@ std::optional<CmisModule::AllLaneConfig> CmisModule::getAllPortsStageSet0Config(
             laneMask(intraStartHostLane, numHostLanes),
             getNameString(),
             moduleCapabilities_,
-            TransceiverPropertiesManager::isKnown(mediaInterface)
-                ? TransceiverPropertiesManager::getSpeedCombinations<
-                      SMFMediaInterfaceCode>(mediaInterface)
-                : std::vector<
-                      std::array<SMFMediaInterfaceCode, kMaxOsfpNumLanes>>{},
-            configMapping.empty() ? CmisHelper::getSmfSpeedApplicationMapping()
-                                  : configMapping);
+            getSmfSpeedCombinations(mediaInterface),
+            getSmfSpeedApplicationMap(
+                mediaInterface, state.speed, requestedCapability));
   }
   if (laneProgramValues.size() != kMaxOsfpNumLanes) {
     return std::nullopt;
@@ -3235,9 +3256,18 @@ std::optional<CmisModule::AllLaneConfig> CmisModule::getAllPortsStageSet0Config(
   AllLaneConfig stageSet0Config;
   for (auto lane = 0; lane < kMaxOsfpNumLanes;) {
     // Speed combos only carry the media interface per lane, so prefer the
-    // requesting port's lane count for every port in the combo
-    auto laneCapability =
-        selectApplicationField(laneProgramValues[lane], lane, numHostLanes);
+    // requested application, then the requesting port's lane count, for every
+    // port in the combo
+    std::optional<ApplicationAdvertisingField> laneCapability;
+    if (requestedCapability &&
+        requestedCapability->moduleMediaInterface == laneProgramValues[lane] &&
+        hasHostStartLane(*requestedCapability, lane)) {
+      laneCapability = requestedCapability;
+    }
+    if (!laneCapability) {
+      laneCapability =
+          selectApplicationField(laneProgramValues[lane], lane, numHostLanes);
+    }
     if (!laneCapability) {
       laneCapability =
           selectApplicationField(laneProgramValues[lane], lane, std::nullopt);
@@ -3270,7 +3300,8 @@ std::optional<CmisModule::AllLaneConfig> CmisModule::getAllPortsStageSet0Config(
  */
 std::pair<uint8_t, uint8_t> CmisModule::getAllPortsResetLaneMasks(
     const TransceiverPortState& state,
-    uint8_t numHostLanes) {
+    uint8_t numHostLanes,
+    std::optional<uint8_t> requestedAppSel) {
   // Programming all lanes changes the application on lanes outside this port,
   // so deinit every lane in the current and new configs and init every lane the
   // new config puts in an application
@@ -3278,7 +3309,8 @@ std::pair<uint8_t, uint8_t> CmisModule::getAllPortsResetLaneMasks(
   const uint8_t portLaneMask =
       laneMask(laneInBank(state.startHostLane), numHostLanes);
   uint8_t allPortsInitLaneMask = 0;
-  if (auto stageSet0Config = getAllPortsStageSet0Config(state, numHostLanes)) {
+  if (auto stageSet0Config =
+          getAllPortsStageSet0Config(state, numHostLanes, requestedAppSel)) {
     for (int lane = 0; lane < kMaxOsfpNumLanes; lane++) {
       if (((*stageSet0Config)[lane] & APP_SEL_MASK) >> APP_SEL_BITSHIFT) {
         allPortsInitLaneMask |= (1 << lane);
@@ -3304,11 +3336,13 @@ std::pair<uint8_t, uint8_t> CmisModule::getAllPortsResetLaneMasks(
  */
 void CmisModule::setApplicationSelectCodeAllPorts(
     const TransceiverPortState& state,
-    uint8_t numHostLanes) {
+    uint8_t numHostLanes,
+    std::optional<uint8_t> requestedAppSel) {
   // This programs the whole 8-lane bank that the port lives in. Stage-0 config
   // is bank-relative (intra-bank lane indices).
   const uint8_t bank = laneToBank(state.startHostLane);
-  auto stageSet0Config = getAllPortsStageSet0Config(state, numHostLanes);
+  auto stageSet0Config =
+      getAllPortsStageSet0Config(state, numHostLanes, requestedAppSel);
   if (!stageSet0Config) {
     XLOG(WARNING) << "Transceiver " << getNameString() << " port "
                   << state.startHostLane << ": "
@@ -3675,10 +3709,15 @@ void CmisModule::programPortApplicationSelectCode(
   std::optional<uint8_t> deinitLaneMask = std::nullopt;
   std::optional<uint8_t> initLaneMask = std::nullopt;
 
+  // Tunable optics are programmed with the AppSel from config, which must
+  // also drive the multiport checks and the all-ports programming
+  const std::optional<uint8_t> requestedAppSel =
+      isTunableOptics() ? std::optional<uint8_t>(appSelCode) : std::nullopt;
+
   if (!isRequestValidMultiportSpeedConfig(
-          state.speed, state.startHostLane, numHostLanes)) {
+          state.speed, state.startHostLane, numHostLanes, requestedAppSel)) {
     std::tie(deinitLaneMask, initLaneMask) =
-        getAllPortsResetLaneMasks(state, numHostLanes);
+        getAllPortsResetLaneMasks(state, numHostLanes, requestedAppSel);
     QSFP_LOG(INFO, this) << fmt::format(
         "Programming App sel on ALL lanes: speed={}, startHostLane={}, numHostLanes={}, deinitLaneMask={:#x}, initLaneMask={:#x}",
         apache::thrift::util::enumNameSafe(state.speed),
@@ -3690,7 +3729,8 @@ void CmisModule::programPortApplicationSelectCode(
         &CmisModule::setApplicationSelectCodeAllPorts,
         this,
         state,
-        numHostLanes);
+        numHostLanes,
+        requestedAppSel);
   }
 
   programApplicationSelectCode(
@@ -3716,7 +3756,8 @@ void CmisModule::programPortApplicationSelectCode(
 bool CmisModule::isRequestValidMultiportSpeedConfig(
     cfg::PortSpeed speed,
     uint8_t startHostLane,
-    uint8_t numLanes) {
+    uint8_t numLanes,
+    std::optional<uint8_t> requestedAppSel) {
   if (!isMultiPortOptics()) {
     // For non-multiport supporting optics, return true rightaway
     return true;
@@ -3730,16 +3771,23 @@ bool CmisModule::isRequestValidMultiportSpeedConfig(
 
   // Get the current speed config on the Multiport optics lanes. Avoid cache
   // and read from HW directly
-  AllLaneConfig currHwSpeedConfig;
+  AllLaneConfig activeCtrl;
   readCmisField(
-      CmisField::ACTIVE_CTRL_ALL_LANES, currHwSpeedConfig.data(), false, bank);
+      CmisField::ACTIVE_CTRL_ALL_LANES, activeCtrl.data(), false, bank);
+  AllLaneConfig currHwSpeedConfig;
   for (int laneId = 0; laneId < kMaxOsfpNumLanes; laneId++) {
     currHwSpeedConfig[laneId] =
-        (currHwSpeedConfig[laneId] & APP_SEL_MASK) >> APP_SEL_BITSHIFT;
+        (activeCtrl[laneId] & APP_SEL_MASK) >> APP_SEL_BITSHIFT;
   }
 
   uint8_t mask = laneMask(intraStartHostLane, numLanes);
   auto tcvrName = getNameString();
+
+  if (portSplitsActiveDatapath(activeCtrl, intraStartHostLane, numLanes)) {
+    QSFP_LOG(INFO, this) << fmt::format(
+        "Lanes {:#x} share an active datapath with other lanes", mask);
+    return false;
+  }
 
   if (isAecModule()) {
     return CmisHelper::checkSpeedCombo<ActiveCuHostInterfaceCode>(
@@ -3754,15 +3802,6 @@ bool CmisModule::isRequestValidMultiportSpeedConfig(
         CmisHelper::getActiveSpeedApplication());
   } else {
     auto mediaInterface = getModuleMediaInterface();
-    std::vector<SMFMediaInterfaceCode> configCodes;
-    if (TransceiverPropertiesManager::isKnown(mediaInterface)) {
-      configCodes = TransceiverPropertiesManager::getMediaCodesForSpeed<
-          SMFMediaInterfaceCode>(mediaInterface, speed);
-    }
-    SmfSpeedApplicationMap configMapping;
-    if (!configCodes.empty()) {
-      configMapping[speed] = std::move(configCodes);
-    }
     return CmisHelper::checkSpeedCombo<SMFMediaInterfaceCode>(
         speed,
         intraStartHostLane,
@@ -3771,14 +3810,48 @@ bool CmisModule::isRequestValidMultiportSpeedConfig(
         tcvrName,
         moduleCapabilities_,
         currHwSpeedConfig,
-        TransceiverPropertiesManager::isKnown(mediaInterface)
-            ? TransceiverPropertiesManager::getSpeedCombinations<
-                  SMFMediaInterfaceCode>(mediaInterface)
-            : std::vector<
-                  std::array<SMFMediaInterfaceCode, kMaxOsfpNumLanes>>{},
-        configMapping.empty() ? CmisHelper::getSmfSpeedApplicationMapping()
-                              : configMapping);
+        getSmfSpeedCombinations(mediaInterface),
+        getSmfSpeedApplicationMap(
+            mediaInterface, speed, getCapabilityForAppSel(requestedAppSel)));
   }
+}
+
+std::optional<CmisModule::ApplicationAdvertisingField>
+CmisModule::getCapabilityForAppSel(std::optional<uint8_t> appSelCode) const {
+  if (!appSelCode) {
+    return std::nullopt;
+  }
+  for (const auto& capability : moduleCapabilities_) {
+    if (capability.ApSelCode == *appSelCode) {
+      return capability;
+    }
+  }
+  return std::nullopt;
+}
+
+bool CmisModule::portSplitsActiveDatapath(
+    const AllLaneConfig& activeCtrl,
+    uint8_t startHostLane,
+    uint8_t numLanes) const {
+  const int portEnd = startHostLane + numLanes;
+  for (int lane = 0; lane < kMaxOsfpNumLanes; lane++) {
+    if (lane >= startHostLane && lane < portEnd) {
+      continue;
+    }
+    const uint8_t appSel =
+        (activeCtrl[lane] & APP_SEL_MASK) >> APP_SEL_BITSHIFT;
+    const auto capability = getCapabilityForAppSel(appSel);
+    if (appSel == 0 || !capability || capability->hostLaneCount == numLanes) {
+      continue;
+    }
+    const int dataPathStart =
+        (activeCtrl[lane] & DATA_PATH_ID_MASK) >> DATA_PATH_ID_BITSHIFT;
+    const int dataPathEnd = dataPathStart + capability->hostLaneCount;
+    if (dataPathStart < portEnd && startHostLane < dataPathEnd) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /*
