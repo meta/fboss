@@ -103,22 +103,6 @@
             }
           ]
       },
-      "CAC815321A1AC1HW": {
-          "versions": [
-            {
-              "fwType": 1,
-              "version": "1.7"
-            }
-          ]
-      },
-      "CAC81X321A1AC1HW": {
-          "versions": [
-            {
-              "fwType": 1,
-              "version": "1.7"
-            }
-          ]
-      },
       "CAC81X321A1BC1MT": {
           "versions": [
             {
