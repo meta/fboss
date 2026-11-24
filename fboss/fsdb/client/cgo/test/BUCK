@@ -14,7 +14,7 @@ cpp_unittest(
         "fbsource//xplat/folly/logging:logging",
         "//fboss/fsdb/client:fsdb_pub_sub",
         "//fboss/fsdb/client/cgo:fsdb_cgo_pub_sub_wrapper",
-        "//fboss/fsdb/if:fsdb_oper-cpp2-types",
+        "//fboss/fsdb/if:fsdb_oper-cpp2-serialization",
         "//fboss/fsdb/tests/client:fsdb_test_clients",
         "//fboss/fsdb/tests/utils:fsdb_test_server",
     ],
@@ -28,6 +28,8 @@ cpp_unittest(
     network_access = network_access_utils.none(),
     deps = [
         "fbsource//xplat/folly/init:phase",
+        "//fboss/fsdb/client:fsdb_stream_client",
         "//fboss/fsdb/client/cgo:fsdb_cgo_pub_sub_wrapper",
     ],
+    external_deps = ["gflags"],
 )

@@ -3,7 +3,10 @@
 #include "fboss/fsdb/client/cgo/FsdbCgoPubSubWrapper.h"
 
 #include <folly/init/Phase.h>
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
+
+#include "fboss/fsdb/client/FsdbStreamClient.h"
 
 using namespace facebook::fboss::fsdb;
 
@@ -55,6 +58,27 @@ TEST_F(FsdbCgoWrapperApiTest, FsdbSetFlagUnknownFlag) {
 TEST_F(FsdbCgoWrapperApiTest, FsdbSetFlagKnownFlag) {
   // logtostderr is a glog flag, always defined when glog is linked in.
   EXPECT_EQ(FsdbSetFlag("logtostderr", "1"), 0);
+}
+
+TEST_F(FsdbCgoWrapperApiTest, CreateFsdbWrapperSetsChunkTimeouts) {
+  gflags::FlagSaver flagSaver;
+  ASSERT_EQ(FsdbInit(FSDB_CGO_ABI_VERSION), 0);
+  FsdbWrapperHandle handle = CreateFsdbWrapper("chunk-timeout-defaults");
+  ASSERT_NE(handle, nullptr);
+  EXPECT_EQ(FLAGS_fsdb_state_chunk_timeout, 30);
+  EXPECT_EQ(FLAGS_fsdb_stat_chunk_timeout, 90);
+  DestroyFsdbWrapper(handle);
+}
+
+TEST_F(FsdbCgoWrapperApiTest, CreateFsdbWrapperKeepsConsumerChunkTimeout) {
+  gflags::FlagSaver flagSaver;
+  ASSERT_EQ(FsdbInit(FSDB_CGO_ABI_VERSION), 0);
+  ASSERT_EQ(FsdbSetFlag("fsdb_state_chunk_timeout", "0"), 0);
+  FsdbWrapperHandle handle = CreateFsdbWrapper("chunk-timeout-override");
+  ASSERT_NE(handle, nullptr);
+  EXPECT_EQ(FLAGS_fsdb_state_chunk_timeout, 0);
+  EXPECT_EQ(FLAGS_fsdb_stat_chunk_timeout, 90);
+  DestroyFsdbWrapper(handle);
 }
 
 // WaitForStateUpdates null-handle tests

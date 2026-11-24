@@ -14,6 +14,7 @@
 #include <stdexcept>
 
 #include "fboss/agent/gen-cpp2/switch_state_types.h"
+#include "fboss/fsdb/client/FsdbStreamClient.h"
 #include "fboss/fsdb/if/FsdbModel.h"
 #include "fboss/fsdb/if/gen-cpp2/fsdb_types.h"
 #include "fboss/lib/thrift_service_client/ConnectionOptions.h"
@@ -27,6 +28,22 @@ constexpr auto kPollInterval = std::chrono::milliseconds(100);
 // Bounds producer-side backpressure on a full queue. Past this, the FSDB
 // callback drops the update with an error log instead of stalling indefinitely.
 constexpr auto kEnqueueTimeout = std::chrono::milliseconds(100);
+// Subscribers here reach remote switches over the management network, so allow
+// more slack than on-switch clients: 6 missed 5s state heartbeats, and 3 missed
+// stats heartbeats at the 30s binary default.
+constexpr auto kStateChunkTimeoutSec = "30";
+constexpr auto kStatChunkTimeoutSec = "90";
+
+void applyChunkTimeoutDefaults() {
+  gflags::SetCommandLineOptionWithMode(
+      "fsdb_state_chunk_timeout",
+      kStateChunkTimeoutSec,
+      gflags::SET_FLAG_IF_DEFAULT);
+  gflags::SetCommandLineOptionWithMode(
+      "fsdb_stat_chunk_timeout",
+      kStatChunkTimeoutSec,
+      gflags::SET_FLAG_IF_DEFAULT);
+}
 
 // Polls `shuttingDown` every kPollInterval until first item or shutdown,
 // then non-blocking-drain up to `maxCount`. Empty vector on shutdown.
@@ -99,6 +116,10 @@ int32_t toConnectionState(fsdb::SubscriptionState state) {
 FsdbCgoPubSubWrapper::FsdbCgoPubSubWrapper(const std::string& clientId)
     : clientId_(clientId) {
   XLOG(INFO) << "FsdbCgoPubSubWrapper created for client: " << clientId_;
+
+  applyChunkTimeoutDefaults();
+  XLOG(INFO) << "FSDB chunk timeouts: state=" << FLAGS_fsdb_state_chunk_timeout
+             << "s stats=" << FLAGS_fsdb_stat_chunk_timeout << "s";
 
   pubSubMgr_ = std::make_unique<FsdbPubSubManager>(clientId_);
 }

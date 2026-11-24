@@ -186,6 +186,13 @@ bindings.
 - **Surplus stays queued.** If `WaitFor*` returns `count == max_count`, the
   unconsumed updates remain in the queue and are returned on the next call.
   No data loss, no truncation.
+- **Dead streams reconnect.** `CreateFsdbWrapper` sets
+  `fsdb_state_chunk_timeout=30` and `fsdb_stat_chunk_timeout=90` seconds.
+  FSDB heartbeats every stream, so a stream that goes silent past the timeout
+  is torn down and resubscribed, for example when the remote switch reboots
+  without closing the connection. A value set earlier with `FsdbSetFlag` wins;
+  `0` disables the timeout. The timeout needs the server to send heartbeats
+  (`serveHeartbeats`).
 
 ## Known limitations (v2)
 
