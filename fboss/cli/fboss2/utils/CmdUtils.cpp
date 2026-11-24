@@ -10,8 +10,10 @@
 #include "fboss/cli/fboss2/utils/CmdUtils.h"
 #include <fboss/agent/if/gen-cpp2/ctrl_types.h>
 #include <fboss/fsdb/oper/instantiations/FsdbPathConverter.h> // NOLINT(misc-include-cleaner)
+#include <folly/MapUtil.h>
 #include <folly/Utility.h>
 #include <folly/logging/xlog.h>
+#include <set>
 #include "folly/Conv.h"
 #ifndef IS_OSS
 #include "neteng/netwhoami/lib/cpp/Recover.h"
@@ -506,6 +508,39 @@ std::map<std::string, int64_t> getAgentFb303RegexCounters(
   } else {
     utils::createClient<apache::thrift::Client<FbossCtrl>>(hostInfo)
         ->sync_getRegexCounters(counters, regex);
+  }
+  return counters;
+}
+
+std::map<std::string, int64_t> sumAgentFb303Counters(
+    const HostInfo& hostInfo,
+    const std::vector<std::string>& keys) {
+  std::map<std::string, int64_t> counters;
+  const auto runState = utils::getMultiSwitchRunState(hostInfo);
+  if (!*runState.multiSwitchEnabled()) {
+    utils::createClient<apache::thrift::Client<FbossCtrl>>(hostInfo)
+        ->sync_getSelectedCounters(counters, keys);
+    return counters;
+  }
+  const std::set<std::string> uniqueKeys(keys.begin(), keys.end());
+  for (int i = 0; i < static_cast<int>(runState.hwIndexToRunState()->size());
+       i++) {
+    const auto prefix = folly::to<std::string>("switch.", i, ".");
+    std::vector<std::string> hwAgentKeys;
+    for (const auto& key : uniqueKeys) {
+      hwAgentKeys.push_back(key);
+      hwAgentKeys.push_back(prefix + key);
+    }
+    std::map<std::string, int64_t> hwAgentCounters;
+    utils::createClient<apache::thrift::Client<FbossCtrl>>(hostInfo, i)
+        ->sync_getSelectedCounters(hwAgentCounters, hwAgentKeys);
+    for (const auto& key : uniqueKeys) {
+      for (const auto& hwAgentKey : {key, prefix + key}) {
+        if (auto value = folly::get_optional(hwAgentCounters, hwAgentKey)) {
+          counters[key] += *value;
+        }
+      }
+    }
   }
   return counters;
 }
