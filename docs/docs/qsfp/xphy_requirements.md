@@ -53,6 +53,8 @@ qsfp_service (one process)
 | <span style={{whiteSpace: 'nowrap'}}><b>G-3</b></span> | **One process, many chips**<br/>A single process creates N switch objects, one per PHY chip, and may call into different switch objects concurrently from different threads. The SDK must be multi-thread safe: no races, data corruption or deadlocks under concurrent calls. |
 | <span style={{whiteSpace: 'nowrap'}}><b>G-4</b></span> | **No implicit behavior**<br/>The SDK avoids implementing features implicitly. When unavoidable, the vendor documents and shares the implicit behavior. |
 
+Reference pointers in our open source code for external PHY SAI programming: [SaiPhyRetimer.cpp](https://github.com/meta/fboss/blob/main/fboss/lib/phy/SaiPhyRetimer.cpp), [BspSaiPhyManager.cpp](https://github.com/meta/fboss/blob/main/fboss/lib/phy/BspSaiPhyManager.cpp), [SaiPhyPlatform.cpp](https://github.com/meta/fboss/blob/main/fboss/agent/platforms/sai/SaiPhyPlatform.cpp)
+
 ### 3.2 Delivery tiers for external PHYs
 
 | Tier | Features |
@@ -212,6 +214,10 @@ FBOSS reads these every 10 s on every port, both sides and all lanes, unless not
 - For platforms in production, Meta takes only patches on the SDK deployed in production.
 - For platforms in feature development, the vendor releases an SDK every 4 weeks. Each release enables more features or HW tests.
 
+#### Open source validation
+
+- Vendors are expected to qualify their external phy with FBOSS open source (OSS) tests.
+
 #### Warm boot upgrades
 
 - Every patch, other than an SDK upgrade, is warm-boot upgradeable and downgradeable.
@@ -255,7 +261,7 @@ FBOSS reads these every 10 s on every port, both sides and all lanes, unless not
 
 | ID | Requirement |
 | --- | --- |
-| <span style={{whiteSpace: 'nowrap'}}><b>SW-1</b></span> | **PHY mapping**<br/>The switch vendor provides, for every PHY: the PHY ID, MDIO controller, MDIO address, reset line and reference clock, plus the lane map and polarity on both sides (NPU side and line side). The lane map goes in the platform mapping CSVs (ASIC port to PHY, and PHY to transceiver or backplane). The controller and reset map goes in the BSP mapping CSV.<br/>Example: BSP mapping: [Ladakh800bcls_PhyBspMapping.csv](https://github.com/meta/fboss/blob/main/fboss/lib/bsp/bspmapping/input/Ladakh800bcls_PhyBspMapping.csv), [Leh800bcls_PhyBspMapping.csv](https://github.com/meta/fboss/blob/main/fboss/lib/bsp/bspmapping/input/Leh800bcls_PhyBspMapping.csv). Platform mapping: [ladakh800bcls_static_mapping.csv](https://github.com/meta/fboss/blob/main/fboss/configs/platforms/celestica/ladakh800bcls/platform_mapping/ladakh800bcls_static_mapping.csv). |
+| <span style={{whiteSpace: 'nowrap'}}><b>SW-1</b></span> | **PHY mapping**<br/>The switch vendor provides the per-PHY mapping in the BSP mapping CSV and the platform mapping CSVs.<br/>See [External PHY mapping in BSP mapping](../developing/bsp_mapping.md#external-phy-mapping) and [External PHYs (XPHY) in Platform mapping](../developing/platform_mapping.md#external-phys-xphy) for the file formats and examples. |
 
 ### 4.2 BSP requirements
 
