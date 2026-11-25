@@ -111,6 +111,7 @@ cpp_unittest(
     ],
     network_access = network_access_utils.all(),
     source_headers = [
+        "ResourceAccountantTestBase.h",
         "TestPacketFactory.h",
     ],
     supports_static_listing = False,
