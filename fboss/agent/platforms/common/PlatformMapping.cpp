@@ -342,9 +342,15 @@ const phy::DataPlanePhyChip& PlatformMapping::getPortIphyChip(
   if (itPlatformPort == platformPorts_.end()) {
     throw FbossError("Unrecoganized port:", portID);
   }
-  const auto& coreName =
-      itPlatformPort->second.mapping()->pins()[0].a()->chip().value();
-  return chips_.at(coreName);
+  const auto& pins = *itPlatformPort->second.mapping()->pins();
+  if (pins.empty()) {
+    throw FbossError("Port ", portID, " has no IPHY chip");
+  }
+  const auto& chip = chips_.at(*pins.front().a()->chip());
+  if (*chip.type() != phy::DataPlanePhyChipType::IPHY) {
+    throw FbossError("Port ", portID, " has no IPHY chip");
+  }
+  return chip;
 }
 
 cfg::PortSpeed PlatformMapping::getPortMaxSpeed(PortID portID) const {
@@ -712,10 +718,14 @@ PlatformMapping::getPortConfigOverrides(int32_t port) const {
         overrides.push_back(portConfigOverride);
       }
     } else if (auto chipList = portConfigOverride.factor()->chips()) {
-      auto chip = getPortIphyChip(PortID(port));
-      if (std::find(chipList->begin(), chipList->end(), chip) !=
-          chipList->end()) {
-        overrides.push_back(portConfigOverride);
+      const auto& pins = *getPlatformPort(port).mapping()->pins();
+      if (!pins.empty()) {
+        const auto& chip = chips_.at(*pins.front().a()->chip());
+        if (*chip.type() == phy::DataPlanePhyChipType::IPHY &&
+            std::find(chipList->begin(), chipList->end(), chip) !=
+                chipList->end()) {
+          overrides.push_back(portConfigOverride);
+        }
       }
     } else {
       // If factor.ports is empty, which means such override apply for all

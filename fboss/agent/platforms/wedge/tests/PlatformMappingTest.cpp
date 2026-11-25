@@ -1491,4 +1491,133 @@ TEST_F(PlatformMappingTest, VerifyGetTransceiverBankIdWithCoreId) {
   EXPECT_EQ(*bankId, 2);
 }
 
+class BackplaneCpoPlatformMappingTest : public ::testing::Test {
+ protected:
+  PlatformMapping mapping_{R"json({
+    "ports": {
+      "1": {
+        "mapping": {
+          "id": 1, "name": "eth1/8/5", "controllingPort": 1,
+          "pins": [
+            {"a": {"chip": "backplane", "lane": 0}, "z": {"end": {"chip": "cpo", "lane": 60}}},
+            {"a": {"chip": "backplane", "lane": 1}, "z": {"end": {"chip": "cpo", "lane": 61}}},
+            {"a": {"chip": "backplane", "lane": 2}, "z": {"end": {"chip": "cpo", "lane": 62}}},
+            {"a": {"chip": "backplane", "lane": 3}, "z": {"end": {"chip": "cpo", "lane": 63}}}
+          ]
+        },
+        "supportedProfiles": {
+          "52": {"pins": {"iphy": [], "transceiver": [
+            {"id": {"chip": "cpo", "lane": 60}},
+            {"id": {"chip": "cpo", "lane": 61}},
+            {"id": {"chip": "cpo", "lane": 62}},
+            {"id": {"chip": "cpo", "lane": 63}}
+          ]}}
+        }
+      }
+    },
+    "chips": [
+      {"name": "backplane", "type": 4, "physicalID": 0},
+      {"name": "cpo", "type": 3, "physicalID": 0, "coreId": 0}
+    ],
+    "platformSupportedProfiles": [
+      {"factor": {"profileID": 52}, "profile": {"speed": 800000}}
+    ]
+  })json"};
+
+  PlatformPortProfileConfigMatcher matcher() const {
+    return PlatformPortProfileConfigMatcher(
+        cfg::PortProfileID::PROFILE_800G_4_PAM4_RS544X2N_OPTICAL, PortID(1));
+  }
+};
+
+TEST_F(BackplaneCpoPlatformMappingTest, GlobalHostLanesWithoutIphy) {
+  const std::set<uint8_t> expectedLanes{60, 61, 62, 63};
+  EXPECT_EQ(expectedLanes, mapping_.getTransceiverHostLanes(matcher()));
+  EXPECT_EQ(0, mapping_.getTransceiverIdFromSwPort(PortID(1)));
+  const std::vector<PortID> expectedPorts{PortID(1)};
+  EXPECT_EQ(expectedPorts, mapping_.getSwPortListFromTransceiverId(0));
+  EXPECT_TRUE(mapping_.getPortIphyPinConfigs(matcher()).empty());
+  EXPECT_THROW(mapping_.getPortIphyChip(PortID(1)), FbossError);
+  auto profile = mapping_.getPortProfileConfig(matcher());
+  ASSERT_TRUE(profile.has_value());
+  EXPECT_EQ(cfg::PortSpeed::EIGHTHUNDREDG, *profile->speed());
+}
+
+TEST_F(
+    BackplaneCpoPlatformMappingTest,
+    BackplaneDoesNotMatchIphyChipOverrides) {
+  auto input = mapping_.toThrift();
+  cfg::PlatformPortConfigOverride override;
+  override.factor()->chips() = {input.chips()[0]};
+  input.portConfigOverrides() = {override};
+  PlatformMapping mapping(input);
+  EXPECT_TRUE(mapping.getPortConfigOverrides(1).empty());
+}
+
+class BackplaneRetimerCpoPlatformMappingTest : public ::testing::Test {
+ protected:
+  PlatformMapping mapping_{R"json({
+    "ports": {
+      "1": {
+        "mapping": {
+          "id": 1, "name": "eth1/8/5", "controllingPort": 1,
+          "pins": [
+            {"a": {"chip": "backplane", "lane": 0}, "z": {"junction": {"system": {"chip": "retimer_sys", "lane": 8}, "line": [{"a": {"chip": "retimer_line", "lane": 0}, "z": {"end": {"chip": "cpo", "lane": 60}}}]}}},
+            {"a": {"chip": "backplane", "lane": 1}, "z": {"junction": {"system": {"chip": "retimer_sys", "lane": 9}, "line": [{"a": {"chip": "retimer_line", "lane": 1}, "z": {"end": {"chip": "cpo", "lane": 61}}}]}}},
+            {"a": {"chip": "backplane", "lane": 2}, "z": {"junction": {"system": {"chip": "retimer_sys", "lane": 10}, "line": [{"a": {"chip": "retimer_line", "lane": 2}, "z": {"end": {"chip": "cpo", "lane": 62}}}]}}},
+            {"a": {"chip": "backplane", "lane": 3}, "z": {"junction": {"system": {"chip": "retimer_sys", "lane": 11}, "line": [{"a": {"chip": "retimer_line", "lane": 3}, "z": {"end": {"chip": "cpo", "lane": 63}}}]}}}
+          ]
+        },
+        "supportedProfiles": {
+          "52": {"pins": {"iphy": [], "transceiver": [
+            {"id": {"chip": "cpo", "lane": 60}},
+            {"id": {"chip": "cpo", "lane": 61}},
+            {"id": {"chip": "cpo", "lane": 62}},
+            {"id": {"chip": "cpo", "lane": 63}}
+          ], "xphySys": [
+            {"id": {"chip": "retimer_sys", "lane": 8}},
+            {"id": {"chip": "retimer_sys", "lane": 9}},
+            {"id": {"chip": "retimer_sys", "lane": 10}},
+            {"id": {"chip": "retimer_sys", "lane": 11}}
+          ], "xphyLine": [
+            {"id": {"chip": "retimer_line", "lane": 0}},
+            {"id": {"chip": "retimer_line", "lane": 1}},
+            {"id": {"chip": "retimer_line", "lane": 2}},
+            {"id": {"chip": "retimer_line", "lane": 3}}
+          ]}}
+        }
+      }
+    },
+    "chips": [
+      {"name": "backplane", "type": 4, "physicalID": 0},
+      {"name": "retimer_sys", "type": 2, "physicalID": 0},
+      {"name": "retimer_line", "type": 2, "physicalID": 0},
+      {"name": "cpo", "type": 3, "physicalID": 0, "coreId": 0}
+    ],
+    "platformSupportedProfiles": [
+      {"factor": {"profileID": 52}, "profile": {"speed": 800000,
+        "xphySystem": {"numLanes": 4, "modulation": 2, "fec": 1, "medium": 3},
+        "xphyLine": {"numLanes": 4, "modulation": 2, "fec": 11, "medium": 3}}}
+    ]
+  })json"};
+
+  PlatformPortProfileConfigMatcher matcher() const {
+    return PlatformPortProfileConfigMatcher(
+        cfg::PortProfileID::PROFILE_800G_4_PAM4_RS544X2N_OPTICAL, PortID(1));
+  }
+};
+
+TEST_F(BackplaneRetimerCpoPlatformMappingTest, HostLanesThroughRetimer) {
+  const std::set<uint8_t> expectedLanes{60, 61, 62, 63};
+  EXPECT_EQ(expectedLanes, mapping_.getTransceiverHostLanes(matcher()));
+  EXPECT_EQ(0, mapping_.getTransceiverIdFromSwPort(PortID(1)));
+  EXPECT_TRUE(mapping_.getPortIphyPinConfigs(matcher()).empty());
+  EXPECT_THROW(mapping_.getPortIphyChip(PortID(1)), FbossError);
+  EXPECT_EQ(
+      4,
+      mapping_.getPortXphySidePinConfigs(matcher(), phy::Side::SYSTEM).size());
+  EXPECT_EQ(
+      4, mapping_.getPortXphySidePinConfigs(matcher(), phy::Side::LINE).size());
+}
+
 } // namespace facebook::fboss::test
