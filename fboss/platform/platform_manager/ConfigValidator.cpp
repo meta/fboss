@@ -206,6 +206,63 @@ bool ConfigValidator::isValidFpgaIpBlockConfig(
   return true;
 }
 
+bool ConfigValidator::isValidElsfpLedCtrlBlockConfig(
+    const LedCtrlBlockConfig& elsfpLedCtrlBlockConfig) {
+  if (elsfpLedCtrlBlockConfig.pmUnitScopedNamePrefix()->empty()) {
+    XLOG(ERR) << "PmUnitScopedNamePrefix must be a non-empty string";
+    return false;
+  }
+  if (elsfpLedCtrlBlockConfig.pmUnitScopedNamePrefix()->ends_with('_')) {
+    XLOG(ERR) << "PmUnitScopedNamePrefix must not end with an underscore";
+    return false;
+  }
+  if (elsfpLedCtrlBlockConfig.deviceName()->empty()) {
+    XLOG(ERR) << "deviceName must be a non-empty string";
+    return false;
+  }
+  if (elsfpLedCtrlBlockConfig.csrOffsetCalc()->empty()) {
+    XLOG(ERR) << "csrOffsetCalc must be a non-empty string";
+    return false;
+  }
+  if (*elsfpLedCtrlBlockConfig.startPort() <= 0 ||
+      *elsfpLedCtrlBlockConfig.numPorts() <= 0) {
+    XLOG(ERR) << "startPort and numPorts must be positive integers";
+    return false;
+  }
+  if (*elsfpLedCtrlBlockConfig.ledPerPort() != 1) {
+    XLOG(ERR) << fmt::format(
+        "ELSFP LED per port must be 1, but got {}",
+        *elsfpLedCtrlBlockConfig.ledPerPort());
+    return false;
+  }
+  for (int16_t port = *elsfpLedCtrlBlockConfig.startPort();
+       port < *elsfpLedCtrlBlockConfig.startPort() +
+           *elsfpLedCtrlBlockConfig.numPorts();
+       port++) {
+    for (int16_t led = 1; led <= *elsfpLedCtrlBlockConfig.ledPerPort(); ++led) {
+      if (!isValidCsrOffsetCalc(
+              *elsfpLedCtrlBlockConfig.csrOffsetCalc(),
+              port,
+              *elsfpLedCtrlBlockConfig.startPort(),
+              led)) {
+        return false;
+      }
+
+      if (!elsfpLedCtrlBlockConfig.iobufOffsetCalc()->empty()) {
+        if (!isValidIobufOffsetCalc(
+                *elsfpLedCtrlBlockConfig.iobufOffsetCalc(),
+                port,
+                *elsfpLedCtrlBlockConfig.startPort(),
+                led)) {
+          return false;
+        }
+      }
+    }
+  }
+
+  return true;
+}
+
 bool ConfigValidator::isValidLedCtrlBlockConfig(
     const LedCtrlBlockConfig& ledCtrlBlockConfig) {
   if (ledCtrlBlockConfig.pmUnitScopedNamePrefix()->empty()) {
@@ -579,6 +636,22 @@ bool ConfigValidator::isValidPciDeviceConfig(
   }
   if (!isValidPortRanges(ledPortRanges)) {
     return false;
+  }
+
+  if (!pciDeviceConfig.elsfpLedCtrlBlockConfigs()->empty()) {
+    for (const auto& config : *pciDeviceConfig.elsfpLedCtrlBlockConfigs()) {
+      if (!isValidElsfpLedCtrlBlockConfig(config)) {
+        return false;
+      }
+    }
+
+    std::vector<std::pair<int16_t, int16_t>> elsfpLedPortRanges;
+    for (const auto& config : *pciDeviceConfig.elsfpLedCtrlBlockConfigs()) {
+      elsfpLedPortRanges.emplace_back(*config.startPort(), *config.numPorts());
+    }
+    if (!isValidPortRanges(elsfpLedPortRanges)) {
+      return false;
+    }
   }
 
   for (const auto& config : *pciDeviceConfig.xcvrCtrlBlockConfigs()) {

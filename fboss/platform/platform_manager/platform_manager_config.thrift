@@ -753,6 +753,7 @@ struct PciDeviceConfig {
   20: list<MdioBusBlockConfig> mdioBusBlockConfigs;
   21: list<I2cAdapterBlockConfig> i2cAdapterBlockConfigs;
   22: list<RtmCtrlBlockConfig> rtmCtrlBlockConfigs;
+  23: list<LedCtrlBlockConfig> elsfpLedCtrlBlockConfigs;
 }
 
 // These are the PmUnit slot types. Examples: "PIM_SLOT", "PSU_SLOT" and

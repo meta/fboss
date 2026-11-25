@@ -346,6 +346,16 @@
               "startPort": 17
             }
           ],
+          "elsfpLedCtrlBlockConfigs": [
+            {
+              "pmUnitScopedNamePrefix": "ELSFP_LED",
+              "deviceName": "elsfp_led",
+              "csrOffsetCalc": "0x40810 + ({portNum} - {startPort})*0x4",
+              "numPorts": 16,
+              "ledPerPort": 1,
+              "startPort": 1
+            }
+          ],
           "infoRomConfigs": [
             {
               "pmUnitScopedName": "MCB_IOB_INFO_ROM",
