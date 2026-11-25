@@ -350,6 +350,7 @@ struct Policer {
   1: PolicerMeterType meterType = PolicerMeterType.PACKETS;
   2: i64 committedInformationRate;
   3: i64 committedBurstSize;
+  4: string label;
 }
 
 /*
@@ -3019,4 +3020,5 @@ struct SwitchConfig {
   // Named isolation groups, referenced per-port by Port.isolationGroup.
   63: optional map<IsolationGroupName, IsolationGroup> isolationGroups;
   64: optional list<VxLanTunnel> vxlanTunnels;
+  66: list<Policer> policers;
 }

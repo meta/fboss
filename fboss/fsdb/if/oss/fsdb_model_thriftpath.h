@@ -4896,6 +4896,7 @@ class ChildThriftPath<::facebook::fboss::cfg::SwitchConfig, ::facebook::fboss::f
     STRUCT_CHILD_GETTERS(cbfcConfigs, 62);
     STRUCT_CHILD_GETTERS(isolationGroups, 63);
     STRUCT_CHILD_GETTERS(vxlanTunnels, 64);
+    STRUCT_CHILD_GETTERS(policers, 66);
 };
 
 
@@ -5469,6 +5470,7 @@ class ChildThriftPath<::facebook::fboss::cfg::Policer, ::facebook::fboss::fsdb::
     STRUCT_CHILD_GETTERS(meterType, 1);
     STRUCT_CHILD_GETTERS(committedInformationRate, 2);
     STRUCT_CHILD_GETTERS(committedBurstSize, 3);
+    STRUCT_CHILD_GETTERS(label, 4);
 };
 
 
@@ -8101,6 +8103,7 @@ class ChildThriftPath<::facebook::fboss::state::SwitchState, ::facebook::fboss::
     STRUCT_CHILD_GETTERS(vxlanTunnelMaps, 131);
     STRUCT_CHILD_GETTERS(vrfMaps, 132);
     STRUCT_CHILD_GETTERS(interfaceVrfMaps, 133);
+    STRUCT_CHILD_GETTERS(policerMaps, 134);
     STRUCT_CHILD_GETTERS(remoteSystemPortMaps, 600);
     STRUCT_CHILD_GETTERS(remoteInterfaceMaps, 601);
     STRUCT_CHILD_GETTERS(fabricLinkMonitoringSystemPortMaps, 602);

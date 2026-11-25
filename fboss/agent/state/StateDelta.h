@@ -34,6 +34,7 @@
 #include "fboss/agent/state/MirrorOnDropReportMap.h"
 #include "fboss/agent/state/MySidMap.h"
 #include "fboss/agent/state/NodeMapDelta.h"
+#include "fboss/agent/state/PolicerMap.h"
 #include "fboss/agent/state/PortMap.h"
 #include "fboss/agent/state/QosPolicyMap.h"
 #include "fboss/agent/state/Srv6TunnelMap.h"
@@ -92,6 +93,7 @@ class StateDelta {
   MultiSwitchMapDelta<MultiSwitchAclTableGroupMap> getAclTableGroupsDelta()
       const;
   MultiSwitchMapDelta<MultiSwitchQosPolicyMap> getQosPoliciesDelta() const;
+  MultiSwitchMapDelta<MultiSwitchPolicerMap> getPolicersDelta() const;
   MultiSwitchMapDelta<MultiSwitchAggregatePortMap> getAggregatePortsDelta()
       const;
   MultiSwitchMapDelta<MultiSwitchSflowCollectorMap> getSflowCollectorsDelta()

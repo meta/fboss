@@ -45,6 +45,7 @@
 #include "fboss/agent/state/MirrorOnDropReportMap.h"
 #include "fboss/agent/state/MySidMap.h"
 #include "fboss/agent/state/NodeBase.h"
+#include "fboss/agent/state/PolicerMap.h"
 #include "fboss/agent/state/PortFlowletConfig.h"
 #include "fboss/agent/state/PortFlowletConfigMap.h"
 #include "fboss/agent/state/PortMap.h"
@@ -114,6 +115,10 @@ RESOLVE_STRUCT_MEMBER(
     SwitchState,
     switch_state_tags::qosPolicyMaps,
     MultiSwitchQosPolicyMap);
+RESOLVE_STRUCT_MEMBER(
+    SwitchState,
+    switch_state_tags::policerMaps,
+    MultiSwitchPolicerMap);
 RESOLVE_STRUCT_MEMBER(
     SwitchState,
     switch_state_tags::ipTunnelMaps,
@@ -349,6 +354,7 @@ class SwitchState : public ThriftStructNode<SwitchState, state::SwitchState> {
       const;
 
   const std::shared_ptr<MultiSwitchQosPolicyMap>& getQosPolicies() const;
+  const std::shared_ptr<MultiSwitchPolicerMap>& getPolicers() const;
 
   const std::shared_ptr<MultiControlPlane>& getControlPlane() const;
 
@@ -491,6 +497,7 @@ class SwitchState : public ThriftStructNode<SwitchState, state::SwitchState> {
       const std::shared_ptr<MultiSwitchSflowCollectorMap>& collectors);
   void resetQosPolicies(
       const std::shared_ptr<MultiSwitchQosPolicyMap>& qosPolicyMap);
+  void resetPolicers(const std::shared_ptr<MultiSwitchPolicerMap>& policers);
   void resetControlPlane(std::shared_ptr<MultiControlPlane> cpu);
   void resetLoadBalancers(
       std::shared_ptr<MultiSwitchLoadBalancerMap> loadBalancers);

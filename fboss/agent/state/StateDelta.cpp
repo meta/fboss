@@ -177,6 +177,12 @@ MultiSwitchMapDelta<MultiSwitchQosPolicyMap> StateDelta::getQosPoliciesDelta()
       old_->getQosPolicies().get(), new_->getQosPolicies().get());
 }
 
+MultiSwitchMapDelta<MultiSwitchPolicerMap> StateDelta::getPolicersDelta()
+    const {
+  return MultiSwitchMapDelta<MultiSwitchPolicerMap>(
+      old_->getPolicers().get(), new_->getPolicers().get());
+}
+
 MultiSwitchMapDelta<MultiSwitchAggregatePortMap>
 StateDelta::getAggregatePortsDelta() const {
   return MultiSwitchMapDelta<MultiSwitchAggregatePortMap>(

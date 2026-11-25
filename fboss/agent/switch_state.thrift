@@ -1020,6 +1020,7 @@ struct SwitchState {
   132: map<SwitchIdList, map<i32, VrfFields>> vrfMaps;
   // Interface to VRF bindings. An interface without an entry is in VRF 0.
   133: map<SwitchIdList, map<i32, InterfaceVrfFields>> interfaceVrfMaps;
+  134: map<SwitchIdList, map<string, switch_config.Policer>> policerMaps;
   // Remote object maps
   600: map<SwitchIdList, map<i64, SystemPortFields>> remoteSystemPortMaps;
   601: map<SwitchIdList, map<i32, InterfaceFields>> remoteInterfaceMaps;

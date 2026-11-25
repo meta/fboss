@@ -20,6 +20,7 @@ class AclEntry;
 class SystemPort;
 class Port;
 class BufferPoolConfig;
+class Policer;
 class PortFlowletConfig;
 class QosPolicy;
 class SflowCollector;
@@ -47,6 +48,7 @@ class FibInfo;
 class BufferPoolCfg;
 class PortFlowletCfg;
 class LlrConfig;
+class Policer;
 class QosPolicy;
 template <typename T>
 class Route;
@@ -153,6 +155,12 @@ class SwitchIdScopeResolver {
   }
   const HwSwitchMatcher& scope(
       const std::shared_ptr<BufferPoolCfg>& /*b*/) const {
+    return l3SwitchMatcher();
+  }
+  const HwSwitchMatcher& scope(const cfg::Policer& /*p*/) const {
+    return l3SwitchMatcher();
+  }
+  const HwSwitchMatcher& scope(const std::shared_ptr<Policer>& /*p*/) const {
     return l3SwitchMatcher();
   }
   const HwSwitchMatcher& scope(const cfg::QosPolicy& /*q*/) const {

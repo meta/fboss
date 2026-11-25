@@ -262,6 +262,11 @@ void SwitchState::resetQosPolicies(
   ref<switch_state_tags::qosPolicyMaps>() = qosPolicies;
 }
 
+void SwitchState::resetPolicers(
+    const std::shared_ptr<MultiSwitchPolicerMap>& policers) {
+  ref<switch_state_tags::policerMaps>() = policers;
+}
+
 void SwitchState::resetControlPlane(
     std::shared_ptr<MultiControlPlane> controlPlane) {
   ref<switch_state_tags::controlPlaneMap>() = controlPlane;
@@ -367,6 +372,10 @@ SwitchState::getMirrorOnDropReports() const {
 const std::shared_ptr<MultiSwitchQosPolicyMap>& SwitchState::getQosPolicies()
     const {
   return safe_cref<switch_state_tags::qosPolicyMaps>();
+}
+
+const std::shared_ptr<MultiSwitchPolicerMap>& SwitchState::getPolicers() const {
+  return safe_cref<switch_state_tags::policerMaps>();
 }
 
 const std::shared_ptr<MultiSwitchFibInfoMap>& SwitchState::getFibsInfoMap()
@@ -1261,6 +1270,8 @@ template MultiSwitchBufferPoolCfgMap* SwitchState::modify<
     switch_state_tags::bufferPoolCfgMaps>(std::shared_ptr<SwitchState>*);
 template MultiSwitchQosPolicyMap* SwitchState::modify<
     switch_state_tags::qosPolicyMaps>(std::shared_ptr<SwitchState>*);
+template MultiSwitchPolicerMap* SwitchState::modify<
+    switch_state_tags::policerMaps>(std::shared_ptr<SwitchState>*);
 template MultiSwitchAggregatePortMap* SwitchState::modify<
     switch_state_tags::aggregatePortMaps>(std::shared_ptr<SwitchState>*);
 template MultiSwitchVlanMap* SwitchState::modify<switch_state_tags::vlanMaps>(
