@@ -16,6 +16,7 @@
 #include "fboss/agent/NeighborResourceAccountant.h"
 #include "fboss/agent/RouteCounterResourceAccountant.h"
 #include "fboss/agent/RouteResourceAccountant.h"
+#include "fboss/agent/Srv6NextHopResourceAccountant.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/VrfResourceAccountant.h"
 #include "fboss/agent/state/Route.h"
@@ -86,17 +87,6 @@ class ResourceAccountant {
       bool add,
       const std::shared_ptr<SwitchState>& state);
 
-  size_t countSrv6NextHops(const RouteNextHopSet& nhSet) const;
-  bool checkSrv6UcmpDistinctWeights(const RouteNextHopSet& nhSet) const;
-
-  template <typename AddrT>
-  bool checkAndUpdateSrv6NextHopResource(
-      const std::shared_ptr<Route<AddrT>>& route,
-      bool add,
-      const std::shared_ptr<SwitchState>& state);
-
-  bool checkSrv6NextHopResource(bool intermediateState) const;
-
   // Per-nhSet ECMP refmap entry
   struct EcmpGroupRefEntry {
     uint32_t refCountVirtual{0};
@@ -119,13 +109,13 @@ class ResourceAccountant {
   NeighborResourceAccountant neighborResourceAccountant_;
   RouteCounterResourceAccountant routeCounterResourceAccountant_;
   RouteResourceAccountant routeResourceAccountant_;
+  Srv6NextHopResourceAccountant srv6NextHopResourceAccountant_;
 
   bool nativeWeightedEcmp_{true};
   // Yuba (G200) and G202x program protection backup next hops as ordinary
   // group members. Other asics keep them in hw reserved space, so they are not
   // charged as members.
   bool countBackupNextHopMembers_{false};
-  std::optional<uint32_t> maxSrv6UcmpDistinctWeights_;
   bool checkRouteUpdate_;
   uint32_t ecmpMemberUsage_{0};
   // Split horizon gives every dynamic ARS group a secondary plain ECMP group.
@@ -133,16 +123,6 @@ class ResourceAccountant {
   // entry in ecmpGroupRefMap_ and is derived from arsEcmpGroupRefMap_ instead.
   bool arsSplitHorizon_{false};
   uint32_t virtualArsGroupCount_{0};
-  // SRv6 next hop tracking: keyed by NextHopSetID for efficient lookup.
-  // Stores {refCount, srv6Count} per unique NextHopSet.
-  struct Srv6NextHopSetInfo {
-    int32_t refCount{0};
-    size_t srv6Count{0};
-    bool isEcmp{false};
-  };
-  std::unordered_map<int64_t, Srv6NextHopSetInfo> srv6NextHopSetRefMap_;
-  uint32_t srv6EcmpNextHopUsage_{0};
-  uint32_t srv6SingleNextHopUsage_{0};
   std::optional<int32_t> minWidthForArsVirtualGroup_;
   std::optional<int32_t> maxArsVirtualGroups_;
   std::optional<int32_t> maxArsVirtualGroupWidth_;
@@ -174,9 +154,6 @@ class ResourceAccountant {
   FRIEND_TEST(ResourceAccountantTest, computeWeightedEcmpMemberCount);
   FRIEND_TEST(ResourceAccountantTest, routeWithAdjustedWeightZero);
   FRIEND_TEST(ResourceAccountantTest, resolvedAndUnresolvedRoutes);
-  FRIEND_TEST(ResourceAccountantTest, checkAndUpdateSrv6NextHopResource);
-  FRIEND_TEST(ResourceAccountantTest, srv6NextHopResourceExceeded);
-  FRIEND_TEST(ResourceAccountantTest, srv6UcmpDistinctWeights);
   FRIEND_TEST(MacTableManagerTest, MacLearnedBulkCb);
   FRIEND_TEST(StaticMacConfigTest, ApplyConfigAccountsStaticMacsOnce);
   FRIEND_TEST(StaticMacConfigTest, IsValidStateUpdateDryRun);
