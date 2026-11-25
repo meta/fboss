@@ -766,14 +766,28 @@ class ProdInvariantRtswTest : public ProdInvariantTest {
     // DLB groups can be either spray or flowlet
     // Verify that the default route uses dynamic load balancing (DLB)
     RoutePrefixV6 defaultPrefix{folly::IPAddressV6("::"), 0};
-    auto switchingMode = getAgentEnsemble()->getFwdSwitchingMode(defaultPrefix);
-    XLOG(DBG2) << "Default route switching mode: "
-               << apache::thrift::util::enumNameSafe(switchingMode);
+    const auto pollHwAgent = [&](const auto& rpc) -> bool {
+      try {
+        return rpc();
+      } catch (const apache::thrift::transport::TTransportException& ex) {
+        if (ex.getType() !=
+            apache::thrift::transport::TTransportException::NOT_OPEN) {
+          throw;
+        }
+        XLOG(DBG2) << "HW agent thrift not ready: " << ex.what();
+        return false;
+      }
+    };
     WITH_RETRIES({
       // DLB modes are FLOWLET_QUALITY and PER_PACKET_QUALITY
-      EXPECT_TRUE(
-          switchingMode == cfg::SwitchingMode::FLOWLET_QUALITY ||
-          switchingMode == cfg::SwitchingMode::PER_PACKET_QUALITY);
+      EXPECT_EVENTUALLY_TRUE(pollHwAgent([&]() {
+        auto switchingMode =
+            getAgentEnsemble()->getFwdSwitchingMode(defaultPrefix);
+        XLOG(DBG2) << "Default route switching mode: "
+                   << apache::thrift::util::enumNameSafe(switchingMode);
+        return switchingMode == cfg::SwitchingMode::FLOWLET_QUALITY ||
+            switchingMode == cfg::SwitchingMode::PER_PACKET_QUALITY;
+      }));
     });
     XLOG(DBG2) << "Verify DLB groups Done";
   }
