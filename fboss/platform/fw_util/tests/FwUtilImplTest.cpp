@@ -157,6 +157,52 @@ TEST_F(FwUtilImplTest, DoVersionAuditVersionMismatch) {
       "Firmware version mismatch found");
 }
 
+TEST_F(FwUtilImplTest, DoVersionAuditNoDesiredVersion) {
+  std::string noDesiredConfig = tempDir_.string() + "/no_desired.json";
+  std::ofstream configFile(noDesiredConfig);
+  configFile << R"({
+  "fwConfigs": {
+    "DeviceA": { "version": { "versionType": "Not Applicable" }, "priority": 1 },
+    "DeviceB": { "version": { "versionType": "Not Applicable" }, "priority": 2 }
+  }
+})";
+  configFile.close();
+
+  EXPECT_EXIT(
+      {
+        FwUtilImpl fwUtil(
+            binaryFilePath_.string(), noDesiredConfig, false, false);
+        fwUtil.doVersionAudit();
+      },
+      ::testing::ExitedWithCode(2),
+      "No firmware target has a desired version");
+}
+
+TEST_F(FwUtilImplTest, DoVersionAuditVersionReadFailure) {
+  // This version file does not exist.
+  std::string unreadableConfig = tempDir_.string() + "/unreadable.json";
+  std::ofstream configFile(unreadableConfig);
+  configFile << R"({
+  "fwConfigs": {
+    "DeviceA": {
+      "version": { "versionType": "sysfs", "path": "/run/devmap/none/fw_ver" },
+      "priority": 1,
+      "desiredVersion": "1.0.0"
+    }
+  }
+})";
+  configFile.close();
+
+  EXPECT_EXIT(
+      {
+        FwUtilImpl fwUtil(
+            binaryFilePath_.string(), unreadableConfig, false, false);
+        fwUtil.doVersionAudit();
+      },
+      ::testing::ExitedWithCode(1),
+      "Firmware version mismatch found");
+}
+
 // ============================================================================
 // doFirmwareAction() Tests
 // ============================================================================

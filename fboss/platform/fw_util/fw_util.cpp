@@ -78,7 +78,9 @@ int main(int argc, char* argv[]) {
       "  fw_util --fw_action=verify --fw_target_name=FPGA --fw_binary_file=/path/to/firmware.bin\n"
       "  fw_util --fw_action=version --fw_target_name=CPLD\n"
       "  fw_util --fw_action=list\n"
-      "  fw_util --fw_action=audit\n");
+      "  fw_util --fw_action=audit\n"
+      "  Audit exit codes: 0 match, 1 mismatch or read failure,\n"
+      "  2 no target with a desired version.\n");
 
   CLI11_PARSE(app, argc, argv);
 
