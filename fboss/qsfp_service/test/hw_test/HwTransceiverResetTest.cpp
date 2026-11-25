@@ -126,7 +126,8 @@ TEST_F(HwTransceiverResetTest, resetTranscieverAndDetectPresence) {
               *tcvrState.settings()->powerControl() ==
               PowerControlState::POWER_SET_BY_HW);
         }
-      } else {
+      } else if (transmitterTech == TransmitterTechnology::OPTICAL) {
+        // Only optical modules get a power override (customizationSupported).
         EXPECT_TRUE(
             *tcvrState.settings()->powerControl() ==
                 PowerControlState::POWER_OVERRIDE ||

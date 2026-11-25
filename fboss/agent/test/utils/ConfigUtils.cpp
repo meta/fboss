@@ -678,6 +678,10 @@ cfg::SwitchConfig multiplePortsPerIntfConfig(
       port2vlan[port] = VlanID(0);
     }
   }
+  // A last VLAN with fewer than portsPerIntf ports still has members.
+  if (idx % portsPerIntf != 0) {
+    vlans.emplace_back(vlan);
+  }
   auto config = genPortVlanCfg(
       platformMapping,
       asic,
