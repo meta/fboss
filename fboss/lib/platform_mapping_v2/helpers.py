@@ -217,7 +217,9 @@ def is_multi_core_transceiver(core_type: CoreType) -> bool:
 
 def get_terminal_chip_name(chip: Chip) -> str:
     base = f"{ChipType(chip.chip_type).name}-{CoreType(chip.core_type).name}-slot{chip.slot_id}/chip{chip.chip_id}"
-    if is_multi_core_transceiver(chip.core_type):
+    if is_multi_core_transceiver(chip.core_type) or (
+        is_backplane(chip.chip_type) and chip.core_id != 0
+    ):
         return f"{base}/core{chip.core_id}"
     return base
 

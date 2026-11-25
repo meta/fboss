@@ -116,6 +116,11 @@ class StaticMapping:
             else:
                 num_banks = 1
             for bank in range(num_banks):
+                bank_lanes = set(
+                    range(bank * LANES_PER_BANK, (bank + 1) * LANES_PER_BANK)
+                )
+                if not (bank_lanes & lanes_by_chip[chip_id]):
+                    continue
                 port_map[virtual_id] = (chip_id, bank * LANES_PER_BANK)
                 virtual_id += 1
         self._port_virtual_tcvr_map = port_map

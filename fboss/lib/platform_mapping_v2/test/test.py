@@ -10,7 +10,10 @@ from typing import Dict, List, Optional
 from fboss.lib.platform_mapping_v2.gen import (
     generate_platform_mappings_from_vendor_data,
 )
-from fboss.lib.platform_mapping_v2.helpers import get_connection_pairs_for_profile
+from fboss.lib.platform_mapping_v2.helpers import (
+    get_connection_pairs_for_profile,
+    get_terminal_chip_name,
+)
 from fboss.lib.platform_mapping_v2.platform_mapping_v2 import (
     PlatformMappingParser,
     PlatformMappingV2,
@@ -1100,6 +1103,65 @@ class MidPathTerminalChipTest(unittest.TestCase):
 
     def test_backplane_end_allowed_without_asic(self) -> None:
         self.assertEqual(1, len(self._pairs(has_switch_asic=False)))
+
+
+class CpoBankAndBackplaneCoreTest(unittest.TestCase):
+    def _end(
+        self, chip_type: ChipType, chip_id: int, core_type: CoreType, lane: int
+    ) -> pm_types.ConnectionEnd:
+        return pm_types.ConnectionEnd(
+            chip=pm_types.Chip(
+                slot_id=1,
+                chip_id=chip_id,
+                chip_type=chip_type,
+                core_id=0,
+                core_type=core_type,
+            ),
+            lane=pm_types.Lane(
+                logical_id=lane,
+                tx_physical_lane=lane,
+                rx_physical_lane=lane,
+                tx_polarity_swap=False,
+                rx_polarity_swap=False,
+            ),
+        )
+
+    def test_empty_cpo_banks_get_no_port_virtual_id(self) -> None:
+        populated = [(1, 0), (1, 2), (2, 0)]  # (cpo chip, bank); chip 1 bank 1 empty
+        connections = [
+            pm_types.ConnectionPair(
+                a=self._end(ChipType.BACKPLANE, 100 + i, CoreType.EXAMAX, lane),
+                z=self._end(
+                    ChipType.TRANSCEIVER,
+                    chip_id,
+                    CoreType.BANKED_CMIS_INTEGRATED,
+                    bank * 8 + lane,
+                ),
+            )
+            for i, (chip_id, bank) in enumerate(populated)
+            for lane in range(8)
+        ]
+        self.assertEqual(
+            {1: (1, 0), 2: (1, 16), 3: (2, 0)},
+            StaticMapping(connections).get_port_virtual_transceiver_map(),
+        )
+
+    def test_backplane_core_suffix(self) -> None:
+        def backplane(core_id: int) -> pm_types.Chip:
+            return pm_types.Chip(
+                slot_id=1,
+                chip_id=1,
+                chip_type=ChipType.BACKPLANE,
+                core_id=core_id,
+                core_type=CoreType.EXAMAX,
+            )
+
+        self.assertEqual(
+            "BACKPLANE-EXAMAX-slot1/chip1", get_terminal_chip_name(backplane(0))
+        )
+        self.assertEqual(
+            "BACKPLANE-EXAMAX-slot1/chip1/core1", get_terminal_chip_name(backplane(1))
+        )
 
 
 class StaticMappingPerChipTest(unittest.TestCase):
