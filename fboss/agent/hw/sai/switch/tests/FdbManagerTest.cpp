@@ -204,6 +204,52 @@ TEST_F(FdbManagerTest, flushDynamicEntriesOnPort) {
   EXPECT_TRUE(isInHw(kOtherPortDynamic));
 }
 
+TEST_F(FdbManagerTest, removePortFlushesHwLearnedEntries) {
+  const folly::MacAddress kDynamic{"02:00:00:00:00:01"};
+  const folly::MacAddress kOtherPortStatic{"02:00:00:00:00:02"};
+  const folly::MacAddress kOtherPortDynamic{"02:00:00:00:00:03"};
+  auto portId = PortID(intf0.remoteHosts[0].port.id);
+  auto otherPortId = PortID(testInterfaces[2].remoteHosts[0].port.id);
+  createHwOnlyFdbEntry(kDynamic, portId, SAI_FDB_ENTRY_TYPE_DYNAMIC);
+  createHwOnlyFdbEntry(
+      kOtherPortStatic, otherPortId, SAI_FDB_ENTRY_TYPE_STATIC);
+  createHwOnlyFdbEntry(
+      kOtherPortDynamic, otherPortId, SAI_FDB_ENTRY_TYPE_DYNAMIC);
+
+  auto port = programmedState->getPorts()->getNode(portId);
+  const auto oldLearningMode = saiApiTable->bridgeApi().getAttribute(
+      saiManagerTable->portManager()
+          .getPortHandle(portId)
+          ->bridgePort->adapterKey(),
+      SaiBridgePortTraits::Attributes::FdbLearningMode{});
+  saiManagerTable->portManager().removePort(port);
+
+  ASSERT_FALSE(isInHw(kDynamic));
+  EXPECT_TRUE(isInHw(kOtherPortStatic));
+  EXPECT_TRUE(isInHw(kOtherPortDynamic));
+
+  saiManagerTable->portManager().addPort(port);
+  saiManagerTable->portManager().addBridgePort(port);
+  const auto bridgePortId = saiManagerTable->portManager()
+                                .getPortHandle(portId)
+                                ->bridgePort->adapterKey();
+  EXPECT_EQ(
+      saiApiTable->bridgeApi().getAttribute(
+          bridgePortId, SaiBridgePortTraits::Attributes::FdbLearningMode{}),
+      oldLearningMode);
+  createHwOnlyFdbEntry(kDynamic, portId, SAI_FDB_ENTRY_TYPE_STATIC);
+  auto switchId = saiManagerTable->switchManager().getSwitchSaiId();
+  SaiFdbTraits::FdbEntry entry{switchId, 0, kDynamic};
+  EXPECT_EQ(
+      saiApiTable->fdbApi().getAttribute(
+          entry, SaiFdbTraits::Attributes::BridgePortId{}),
+      bridgePortId);
+  EXPECT_EQ(
+      saiApiTable->fdbApi().getAttribute(
+          entry, SaiFdbTraits::Attributes::Type{}),
+      SAI_FDB_ENTRY_TYPE_STATIC);
+}
+
 TEST_F(FdbManagerTest, macLimitErrorDisableFlushesDynamicEntries) {
   const folly::MacAddress kDynamic{"02:00:00:00:00:01"};
   const folly::MacAddress kStatic{"02:00:00:00:00:02"};

@@ -23,6 +23,7 @@
 #include "fboss/agent/hw/sai/switch/SaiAclTableManager.h"
 #include "fboss/agent/hw/sai/switch/SaiBridgeManager.h"
 #include "fboss/agent/hw/sai/switch/SaiDebugCounterManager.h"
+#include "fboss/agent/hw/sai/switch/SaiFdbManager.h"
 #include "fboss/agent/hw/sai/switch/SaiMacsecManager.h"
 #include "fboss/agent/hw/sai/switch/SaiManagerTable.h"
 #include "fboss/agent/hw/sai/switch/SaiPortUtils.h"
@@ -1972,6 +1973,14 @@ void SaiPortManager::removePort(const std::shared_ptr<Port>& swPort) {
     throw FbossError("Attempted to remove non-existent port: ", swId);
   }
 
+  if (itr->second->bridgePort &&
+      platform_->getAsic()->isSupported(HwAsic::Feature::PORT_MAC_FLUSH)) {
+    itr->second->bridgePort->setOptionalAttribute(
+        SaiBridgePortTraits::Attributes::FdbLearningMode{
+            SAI_BRIDGE_PORT_FDB_LEARNING_MODE_DISABLE});
+    managerTable_->fdbManager().flushDynamicEntries(swId);
+  }
+
   removeMirror(swPort);
   removeSamplePacket(swPort);
   removePfcBuffers(swPort);
@@ -1993,8 +2002,6 @@ void SaiPortManager::removePort(const std::shared_ptr<Port>& swPort) {
   if (portAsicPrbsStatsItr != portAsicPrbsStats_.end()) {
     portAsicPrbsStats_.erase(swId);
   }
-  // TODO: do FDB entries associated with this port need to be removed
-  // now?
   XLOG(DBG2) << "removed port " << swPort->getID() << " with vlan "
              << swPort->getIngressVlan();
 }
