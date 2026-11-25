@@ -58,10 +58,20 @@ inline void ucmpScaleBenchmark(int ecmpWidth) {
       ensemble->getSw()->getState(),
       ensemble->getSw()->needL2EntryForNeighbor());
 
-  // Each route has unique next hop groups.
-  const auto kMaxRoutes = 120;
   const auto kMaxEcmpMembers =
       utility::getMaxUcmpMembers(ensemble->getL3Asics());
+  // Each route has unique next hop groups.
+  // EBRO has no native UCMP: SAI adds each next hop weight-many times, so a
+  // group costs its normalized weight sum (up to ecmpWidth) member entries
+  // instead of its next hop count. Cap the routes so all groups fit.
+  constexpr int kDefaultMaxRoutes = 120;
+  const bool ucmpReplicatesWeights =
+      ensemble->getL3Asics().front()->getAsicType() ==
+      cfg::AsicType::ASIC_TYPE_EBRO;
+  const int kMaxRoutes = ucmpReplicatesWeights
+      ? std::min(
+            kDefaultMaxRoutes, static_cast<int>(kMaxEcmpMembers) / ecmpWidth)
+      : kDefaultMaxRoutes;
 
   boost::container::flat_set<PortDescriptor> portDescs;
   std::vector<std::vector<NextHopWeight>> swWeights;
