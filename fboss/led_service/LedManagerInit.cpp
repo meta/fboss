@@ -87,7 +87,7 @@ std::unique_ptr<LedManager> createLedManager() {
     return std::make_unique<M4061nhpLedManager>();
   } else if (mode == PlatformType::PLATFORM_M4062NHP) {
     return std::make_unique<M4062nhpLedManager>();
-  } else if (mode == PlatformType::PLATFORM_M4061CLSC) {
+  } else if (mode == PlatformType::PLATFORM_M4061CLSCL) {
     return std::make_unique<M4061clscLedManager>();
   } else if (mode == PlatformType::PLATFORM_ICETEA800BC) {
     return std::make_unique<Icetea800bcLedManager>();

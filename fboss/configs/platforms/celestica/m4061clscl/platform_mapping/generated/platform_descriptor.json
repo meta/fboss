@@ -1,10 +1,10 @@
 {
   "platformType": 57,
   "productNamePrefixes": [
-    "M4061CLSC"
+    "M4061CLSCL"
   ],
   "modeNames": [
-    "m4061clsc"
+    "m4061clscl"
   ],
   "asicType": 18,
   "numSwitchAsics": 1

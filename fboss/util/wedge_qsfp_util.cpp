@@ -4854,7 +4854,8 @@ std::pair<std::unique_ptr<TransceiverI2CApi>, int> getTransceiverAPI() {
               .get();
       auto ioBus = std::make_unique<BspIOBus>(systemContainer);
       return std::make_pair(std::move(ioBus), 0);
-    } else if (FLAGS_platform == "m4061clsc") {
+    } else if (
+        FLAGS_platform == "m4061clsc" || FLAGS_platform == "m4061clscl") {
       auto systemContainer =
           BspGenericSystemContainer<M4061clscBspPlatformMapping>::getInstance()
               .get();
@@ -4993,7 +4994,7 @@ std::pair<std::unique_ptr<TransceiverI2CApi>, int> getTransceiverAPI() {
             .get();
     auto ioBus = std::make_unique<BspIOBus>(systemContainer);
     return std::make_pair(std::move(ioBus), 0);
-  } else if (mode == PlatformType::PLATFORM_M4061CLSC) {
+  } else if (mode == PlatformType::PLATFORM_M4061CLSCL) {
     auto systemContainer =
         BspGenericSystemContainer<M4061clscBspPlatformMapping>::getInstance()
             .get();
@@ -5113,8 +5114,9 @@ getTransceiverPlatformAPI(TransceiverI2CApi* i2cBus) {
       mode = PlatformType::PLATFORM_TAHAN800BC;
     } else if (FLAGS_platform == "icecube800banw") {
       mode = PlatformType::PLATFORM_ICECUBE800BANW;
-    } else if (FLAGS_platform == "m4061clsc") {
-      mode = PlatformType::PLATFORM_M4061CLSC;
+    } else if (
+        FLAGS_platform == "m4061clsc" || FLAGS_platform == "m4061clscl") {
+      mode = PlatformType::PLATFORM_M4061CLSCL;
     } else if (FLAGS_platform == "icecube800bc") {
       mode = PlatformType::PLATFORM_ICECUBE800BC;
     } else if (FLAGS_platform == "m4061nhp") {
@@ -5188,7 +5190,7 @@ getTransceiverPlatformAPI(TransceiverI2CApi* i2cBus) {
             .get();
     return std::make_pair(
         std::make_unique<BspTransceiverApi>(systemContainer), 0);
-  } else if (mode == PlatformType::PLATFORM_M4061CLSC) {
+  } else if (mode == PlatformType::PLATFORM_M4061CLSCL) {
     auto systemContainer =
         BspGenericSystemContainer<M4061clscBspPlatformMapping>::getInstance()
             .get();
