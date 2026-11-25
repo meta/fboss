@@ -190,6 +190,11 @@ class PlatformMappingV2:
         self.pm_parser = PlatformMappingParser(
             directory_map, platform, multi_npu, version
         )
+        self._profile_chip_type = (
+            DataPlanePhyChipType.IPHY
+            if self.pm_parser.get_static_mapping().get_num_switch_asics()
+            else DataPlanePhyChipType.BACKPLANE
+        )
         self._name2entry: Dict[str, PlatformPortEntry] = {}
         self.platform_mapping: PlatformMapping = self._generate_platform_mapping()
 
@@ -551,10 +556,9 @@ class PlatformMappingV2:
         all_profiles = self.pm_parser.get_port_profile_mapping().get_all_profiles()
 
         for profile in all_profiles:
-            # Get NPU speed setting (always required)
-            npu_speed_setting = self.pm_parser.get_profile_settings().get_speed_setting(
+            speed_setting = self.pm_parser.get_profile_settings().get_speed_setting(
                 profile,
-                DataPlanePhyChipType.IPHY,
+                self._profile_chip_type,
             )
 
             # Get XPHY line speed setting
@@ -587,7 +591,7 @@ class PlatformMappingV2:
 
             entry = get_platform_config_entry(
                 profile=profile,
-                npu_speed_setting=npu_speed_setting,
+                speed_setting=speed_setting,
                 xphy_line_speed_setting=xphy_line_speed_setting,
                 xphy_system_speed_setting=xphy_system_speed_setting,
             )
@@ -616,13 +620,15 @@ class PlatformMappingV2:
             for profile in port_detail.supported_profiles:
                 speed_setting = self.pm_parser.get_profile_settings().get_speed_setting(
                     profile=profile,
-                    phy_chip_type=DataPlanePhyChipType.IPHY,
+                    phy_chip_type=self._profile_chip_type,
                 )
                 profile_connections = get_connection_pairs_for_profile(
                     static_mapping=self.pm_parser.get_static_mapping(),
                     port=port_detail,
                     num_lanes=speed_setting.num_lanes,
                     profile=profile,
+                    has_switch_asic=self._profile_chip_type
+                    == DataPlanePhyChipType.IPHY,
                 )
                 all_connection_pairs = all_connection_pairs + profile_connections
 
@@ -711,7 +717,11 @@ class PlatformMappingV2:
 
             for port_config in port_entry.supportedProfiles.values():
                 if port_entry.mapping.portType != PortType.HYPER_PORT:
-                    all_iphy_pins_needed = port_config.pins.iphy
+                    all_pins_needed = (
+                        port_config.pins.iphy
+                        if self._profile_chip_type == DataPlanePhyChipType.IPHY
+                        else port_config.pins.transceiver or []
+                    )
                     for other_port_id, other_port_entry in ports.items():
                         if (
                             port_id == other_port_id
@@ -722,12 +732,16 @@ class PlatformMappingV2:
                             other_profile,
                             other_port_config,
                         ) in other_port_entry.supportedProfiles.items():
+                            other_port_pins = (
+                                other_port_config.pins.iphy
+                                if self._profile_chip_type == DataPlanePhyChipType.IPHY
+                                else other_port_config.pins.transceiver or []
+                            )
                             other_port_pin_ids = [
-                                pin_config.id
-                                for pin_config in other_port_config.pins.iphy
+                                pin_config.id for pin_config in other_port_pins
                             ]
                             needed_pin_ids = [
-                                pin_config.id for pin_config in all_iphy_pins_needed
+                                pin_config.id for pin_config in all_pins_needed
                             ]
 
                             if needed_pin_ids and all(

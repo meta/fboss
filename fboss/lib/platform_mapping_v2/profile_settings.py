@@ -9,7 +9,7 @@ from fboss.lib.platform_mapping_v2.helpers import (
     transmitter_tech_from_profile,
 )
 from neteng.fboss.phy.phy.thrift_types import DataPlanePhyChipType, Side
-from neteng.fboss.platform_mapping_config.thrift_types import SpeedSetting
+from neteng.fboss.platform_mapping_config.thrift_types import ChipType, SpeedSetting
 from neteng.fboss.switch_config.thrift_types import PortProfileID
 
 
@@ -36,6 +36,11 @@ class ProfileSettings:
         """
         if phy_chip_type == DataPlanePhyChipType.IPHY:
             return is_npu(setting.a_chip_settings.chip_type)
+        if phy_chip_type == DataPlanePhyChipType.BACKPLANE:
+            return setting.a_chip_settings.chip_type == ChipType.BACKPLANE and (
+                setting.z_chip_settings.chip_type
+                in (ChipType.TRANSCEIVER, ChipType.XPHY)
+            )
         if phy_chip_type == DataPlanePhyChipType.XPHY:
             if side == Side.LINE:
                 # XPHY line side: XPHY is A-end (XPHY→BACKPLANE row)

@@ -94,6 +94,8 @@ OSS_MULTI_NPU_SUPPORTED_PLATFORMS: dict[bool, list[str]] = {
         "blackwolf800banw",
         "icecube800banw",
         "example_integrated_optics",
+        "example_backplane_cpo",
+        "example_backplane_retimer_cpo",
     ],
     True: [
         "meru800bfa",

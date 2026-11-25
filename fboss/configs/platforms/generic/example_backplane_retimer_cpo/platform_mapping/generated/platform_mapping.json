@@ -1,0 +1,5758 @@
+{
+  "ports": {
+    "1": {
+        "mapping": {
+          "id": 1,
+          "name": "eth1/1/1",
+          "controllingPort": 1,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 0
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 8
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 0
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 0
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 1
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 9
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 1
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 1
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 2
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 10
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 2
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 2
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 3
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 11
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 3
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 3
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 4
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 12
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 4
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 4
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 5
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 13
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 5
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 5
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 6
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 14
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 6
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 6
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 7
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 15
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 7
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 7
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "23": {
+              "subsumedPorts": [
+                2,
+                3,
+                4
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 9
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 11
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 3
+                    }
+                  }
+                ]
+              }
+          },
+          "25": {
+              "subsumedPorts": [
+                2,
+                3,
+                4
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 9
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 11
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 3
+                    }
+                  }
+                ]
+              }
+          },
+          "39": {
+              "subsumedPorts": [
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 8
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 9
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 10
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 11
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 12
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 13
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 14
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 15
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 0
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 1
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 2
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 3
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 4
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 5
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 6
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 7
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 3
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 8
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 0
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 0
+                    }
+                  }
+                ]
+              }
+          },
+          "52": {
+              "subsumedPorts": [
+                2,
+                3,
+                4
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 9
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 11
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 3
+                    }
+                  }
+                ]
+              }
+          },
+          "61": {
+              "subsumedPorts": [
+                2
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 8
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 9
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 0
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 1
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 1
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "2": {
+        "mapping": {
+          "id": 2,
+          "name": "eth1/1/2",
+          "controllingPort": 1,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 1
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 9
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 1
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 1
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 9
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 1
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 1
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 1
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "3": {
+        "mapping": {
+          "id": 3,
+          "name": "eth1/1/3",
+          "controllingPort": 1,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 2
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 10
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 2
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 2
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 3
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 11
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 3
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 3
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 10
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 2
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 2
+                    }
+                  }
+                ]
+              }
+          },
+          "61": {
+              "subsumedPorts": [
+                4
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 10
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 11
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 2
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 3
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 3
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "4": {
+        "mapping": {
+          "id": 4,
+          "name": "eth1/1/4",
+          "controllingPort": 1,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 3
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 11
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 3
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 3
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 11
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 3
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 3
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "5": {
+        "mapping": {
+          "id": 5,
+          "name": "eth1/1/5",
+          "controllingPort": 1,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 4
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 12
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 4
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 4
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 5
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 13
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 5
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 5
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 6
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 14
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 6
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 6
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 7
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 15
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 7
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 7
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "23": {
+              "subsumedPorts": [
+                6,
+                7,
+                8
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 13
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "25": {
+              "subsumedPorts": [
+                6,
+                7,
+                8
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 13
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 12
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 4
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 4
+                    }
+                  }
+                ]
+              }
+          },
+          "52": {
+              "subsumedPorts": [
+                6,
+                7,
+                8
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 13
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 7
+                    }
+                  }
+                ]
+              }
+          },
+          "61": {
+              "subsumedPorts": [
+                6
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 12
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 13
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 4
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 5
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 5
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "6": {
+        "mapping": {
+          "id": 6,
+          "name": "eth1/1/6",
+          "controllingPort": 5,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 5
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 13
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 5
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 5
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 13
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 5
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 5
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 5
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "7": {
+        "mapping": {
+          "id": 7,
+          "name": "eth1/1/7",
+          "controllingPort": 5,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 6
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 14
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 6
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 6
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 7
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 15
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 7
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 7
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 14
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 6
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 6
+                    }
+                  }
+                ]
+              }
+          },
+          "61": {
+              "subsumedPorts": [
+                8
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 14
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 15
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 6
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 7
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 7
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "8": {
+        "mapping": {
+          "id": 8,
+          "name": "eth1/1/8",
+          "controllingPort": 5,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip101",
+                "lane": 7
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                    "lane": 15
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                        "lane": 7
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 7
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+                      "lane": 15
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+                      "lane": 7
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 7
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "9": {
+        "mapping": {
+          "id": 9,
+          "name": "eth1/2/1",
+          "controllingPort": 9,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 0
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 8
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 0
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 8
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 1
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 9
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 1
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 9
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 2
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 10
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 2
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 10
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 3
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 11
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 3
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 11
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 4
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 12
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 4
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 12
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 5
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 13
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 5
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 13
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 6
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 14
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 6
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 7
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 15
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 7
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 15
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "23": {
+              "subsumedPorts": [
+                10,
+                11,
+                12
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 9
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 11
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 9
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 11
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 9
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 11
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 9
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 11
+                    }
+                  }
+                ]
+              }
+          },
+          "25": {
+              "subsumedPorts": [
+                10,
+                11,
+                12
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 9
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 11
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 9
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 11
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 1
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 2
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 3
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 9
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 11
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 9
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 11
+                    }
+                  }
+                ]
+              }
+          },
+          "39": {
+              "subsumedPorts": [
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 9
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 11
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 13
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 8
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 9
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 10
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 11
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 12
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 13
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 14
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 15
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 0
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 1
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 2
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 3
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 4
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 5
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 6
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 7
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 9
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 11
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 13
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 9
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 11
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 13
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 15
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 8
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 8
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 0
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 8
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 8
+                    }
+                  }
+                ]
+              }
+          },
+          "61": {
+              "subsumedPorts": [
+                10
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 9
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 8
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 9
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 0
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 1
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 9
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 8
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 9
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "10": {
+        "mapping": {
+          "id": 10,
+          "name": "eth1/2/2",
+          "controllingPort": 9,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 1
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 9
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 1
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 9
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 9
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 9
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 1
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 9
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 9
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "11": {
+        "mapping": {
+          "id": 11,
+          "name": "eth1/2/3",
+          "controllingPort": 9,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 2
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 10
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 2
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 10
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 3
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 11
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 3
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 11
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 10
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 10
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 2
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 10
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 10
+                    }
+                  }
+                ]
+              }
+          },
+          "61": {
+              "subsumedPorts": [
+                12
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 11
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 10
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 11
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 2
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 3
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 11
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 10
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 11
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "12": {
+        "mapping": {
+          "id": 12,
+          "name": "eth1/2/4",
+          "controllingPort": 9,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 3
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 11
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 3
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 11
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 11
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 11
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 3
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 11
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 11
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "13": {
+        "mapping": {
+          "id": 13,
+          "name": "eth1/2/5",
+          "controllingPort": 9,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 4
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 12
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 4
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 12
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 5
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 13
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 5
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 13
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 6
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 14
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 6
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 7
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 15
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 7
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 15
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "23": {
+              "subsumedPorts": [
+                14,
+                15,
+                16
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 13
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 13
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 13
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 13
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 15
+                    }
+                  }
+                ]
+              }
+          },
+          "25": {
+              "subsumedPorts": [
+                14,
+                15,
+                16
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 13
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 13
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 4
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 5
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 6
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 7
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 13
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 13
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 15
+                    }
+                  }
+                ]
+              }
+          },
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 12
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 12
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 4
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 12
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 12
+                    }
+                  }
+                ]
+              }
+          },
+          "61": {
+              "subsumedPorts": [
+                14
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 13
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 12
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 13
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 4
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 5
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 13
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 12
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 13
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "14": {
+        "mapping": {
+          "id": 14,
+          "name": "eth1/2/6",
+          "controllingPort": 13,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 5
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 13
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 5
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 13
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 13
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 13
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 5
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 13
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 13
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "15": {
+        "mapping": {
+          "id": 15,
+          "name": "eth1/2/7",
+          "controllingPort": 13,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 6
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 14
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 6
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 14
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 7
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 15
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 7
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 15
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 14
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 14
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 6
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 14
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 14
+                    }
+                  }
+                ]
+              }
+          },
+          "61": {
+              "subsumedPorts": [
+                16
+              ],
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 14
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 15
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 6
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 7
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 14
+                    }
+                  },
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 15
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    },
+    "16": {
+        "mapping": {
+          "id": 16,
+          "name": "eth1/2/8",
+          "controllingPort": 13,
+          "pins": [
+            {
+              "a": {
+                "chip": "BACKPLANE-EXAMAX-slot1/chip102",
+                "lane": 7
+              },
+              "z": {
+                "junction": {
+                  "system": {
+                    "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                    "lane": 15
+                  },
+                  "line": [
+                    {
+                      "a": {
+                        "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                        "lane": 7
+                      },
+                      "z": {
+                        "end": {
+                          "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                          "lane": 15
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          "portType": 0,
+          "scope": 0
+        },
+        "supportedProfiles": {
+          "47": {
+              "pins": {
+                "iphy": [
+                  
+                ],
+                "transceiver": [
+                  {
+                    "id": {
+                      "chip": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "xphySys": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+                      "lane": 15
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 120,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "xphyLine": [
+                  {
+                    "id": {
+                      "chip": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+                      "lane": 7
+                    },
+                    "tx": {
+                      "pre": -20,
+                      "pre2": 0,
+                      "main": 110,
+                      "post": 0,
+                      "post2": 0,
+                      "post3": 0,
+                      "pre3": 0
+                    }
+                  }
+                ],
+                "opticalEngine": [
+                  {
+                    "id": {
+                      "chip": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+                      "lane": 15
+                    }
+                  }
+                ],
+                "laserSource": [
+                  {
+                    "id": {
+                      "chip": "LASER_SOURCE-ELSFP-slot1/chip1",
+                      "lane": 15
+                    }
+                  }
+                ]
+              }
+          }
+        }
+    }
+  },
+  "chips": [
+    {
+      "name": "XPHY-AGERA3_LINE-slot1/chip1/core0",
+      "type": 2,
+      "physicalID": 0
+    },
+    {
+      "name": "XPHY-AGERA3_SYSTEM-slot1/chip1/core0",
+      "type": 2,
+      "physicalID": 0
+    },
+    {
+      "name": "XPHY-AGERA3_LINE-slot1/chip2/core0",
+      "type": 2,
+      "physicalID": 1
+    },
+    {
+      "name": "XPHY-AGERA3_SYSTEM-slot1/chip2/core0",
+      "type": 2,
+      "physicalID": 1
+    },
+    {
+      "name": "TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+      "type": 3,
+      "physicalID": 0,
+      "coreId": 0
+    },
+    {
+      "name": "BACKPLANE-EXAMAX-slot1/chip101",
+      "type": 4,
+      "physicalID": 100
+    },
+    {
+      "name": "BACKPLANE-EXAMAX-slot1/chip102",
+      "type": 4,
+      "physicalID": 101
+    },
+    {
+      "name": "OPTICAL_ENGINE-INTEGRATED_OE-slot1/chip1/core0",
+      "type": 5,
+      "physicalID": 0
+    },
+    {
+      "name": "LASER_SOURCE-ELSFP-slot1/chip1",
+      "type": 6,
+      "physicalID": 0
+    }
+  ],
+  "platformSupportedProfiles": [
+    {
+      "factor": {
+        "profileID": 39
+      },
+      "profile": {
+        "speed": 800000,
+        "iphy": {
+          "numLanes": 0,
+          "modulation": 0,
+          "fec": 0,
+          "medium": 3
+        },
+        "xphyLine": {
+          "numLanes": 8,
+          "modulation": 2,
+          "fec": 11,
+          "medium": 3,
+          "interfaceType": 4
+        },
+        "xphySystem": {
+          "numLanes": 8,
+          "modulation": 2,
+          "fec": 1,
+          "medium": 3,
+          "interfaceType": 4
+        }
+      }
+    },
+    {
+      "factor": {
+        "profileID": 47
+      },
+      "profile": {
+        "speed": 100000,
+        "iphy": {
+          "numLanes": 0,
+          "modulation": 0,
+          "fec": 0,
+          "medium": 3
+        },
+        "xphyLine": {
+          "numLanes": 1,
+          "modulation": 2,
+          "fec": 544,
+          "medium": 3,
+          "interfaceType": 3
+        },
+        "xphySystem": {
+          "numLanes": 1,
+          "modulation": 2,
+          "fec": 1,
+          "medium": 3,
+          "interfaceType": 3
+        }
+      }
+    },
+    {
+      "factor": {
+        "profileID": 52
+      },
+      "profile": {
+        "speed": 800000,
+        "iphy": {
+          "numLanes": 0,
+          "modulation": 0,
+          "fec": 0,
+          "medium": 3
+        },
+        "xphyLine": {
+          "numLanes": 4,
+          "modulation": 2,
+          "fec": 11,
+          "medium": 3,
+          "interfaceType": 3
+        },
+        "xphySystem": {
+          "numLanes": 4,
+          "modulation": 2,
+          "fec": 1,
+          "medium": 3,
+          "interfaceType": 3
+        }
+      }
+    },
+    {
+      "factor": {
+        "profileID": 23
+      },
+      "profile": {
+        "speed": 100000,
+        "iphy": {
+          "numLanes": 0,
+          "modulation": 0,
+          "fec": 0,
+          "medium": 3
+        },
+        "xphyLine": {
+          "numLanes": 4,
+          "modulation": 1,
+          "fec": 528,
+          "medium": 3,
+          "interfaceType": 21
+        },
+        "xphySystem": {
+          "numLanes": 4,
+          "modulation": 1,
+          "fec": 1,
+          "medium": 3,
+          "interfaceType": 21
+        }
+      }
+    },
+    {
+      "factor": {
+        "profileID": 25
+      },
+      "profile": {
+        "speed": 200000,
+        "iphy": {
+          "numLanes": 0,
+          "modulation": 0,
+          "fec": 0,
+          "medium": 3
+        },
+        "xphyLine": {
+          "numLanes": 4,
+          "modulation": 2,
+          "fec": 11,
+          "medium": 3,
+          "interfaceType": 3
+        },
+        "xphySystem": {
+          "numLanes": 4,
+          "modulation": 2,
+          "fec": 1,
+          "medium": 3,
+          "interfaceType": 3
+        }
+      }
+    },
+    {
+      "factor": {
+        "profileID": 61
+      },
+      "profile": {
+        "speed": 200000,
+        "iphy": {
+          "numLanes": 0,
+          "modulation": 0,
+          "fec": 0,
+          "medium": 3
+        },
+        "xphyLine": {
+          "numLanes": 2,
+          "modulation": 2,
+          "fec": 11,
+          "medium": 3,
+          "interfaceType": 3
+        },
+        "xphySystem": {
+          "numLanes": 2,
+          "modulation": 2,
+          "fec": 1,
+          "medium": 3,
+          "interfaceType": 3
+        }
+      }
+    }
+  ]
+}

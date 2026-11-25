@@ -10,6 +10,7 @@ from typing import Dict, List, Optional
 from fboss.lib.platform_mapping_v2.gen import (
     generate_platform_mappings_from_vendor_data,
 )
+from fboss.lib.platform_mapping_v2.helpers import get_connection_pairs_for_profile
 from fboss.lib.platform_mapping_v2.platform_mapping_v2 import (
     PlatformMappingParser,
     PlatformMappingV2,
@@ -32,6 +33,7 @@ from neteng.fboss.phy.phy.thrift_types import (
     PinConfig,
     PinConnection,
     PinID,
+    PinJunction,
     PortPinConfig,
     PortProfileConfig,
     ProfileSideConfig,
@@ -797,6 +799,307 @@ class TestPlatformMappingGeneration(unittest.TestCase):
         )
 
         self.assertNotIn("variantAttributes", descriptor)
+
+
+class BackplaneCpoPlatformMappingTest(unittest.TestCase):
+    def _get_inputs(self) -> PlatformMappingInputs:
+        input_dir = (
+            "fboss/configs/platforms/generic/example_backplane_cpo/platform_mapping"
+        )
+        return {
+            "example_backplane_cpo": PlatformMappingInput(
+                "example_backplane_cpo",
+                input_dir,
+                "generic",
+                read_vendor_data(input_dir),
+            )
+        }
+
+    def test_no_asic_chips_or_profile_settings(self) -> None:
+        generator = PlatformMappingV2(self._get_inputs(), "example_backplane_cpo")
+        self.assertEqual(0, generator.get_num_switch_asics())
+        self.assertEqual(
+            {
+                DataPlanePhyChipType.BACKPLANE,
+                DataPlanePhyChipType.TRANSCEIVER,
+                DataPlanePhyChipType.OPTICAL_ENGINE,
+                DataPlanePhyChipType.LASER_SOURCE,
+            },
+            {chip.type for chip in generator.get_chips()},
+        )
+        profiles = generator.get_platform_profiles()
+        self.assertEqual(
+            {23: 100000, 25: 200000, 39: 800000, 47: 100000, 52: 800000, 61: 200000},
+            {
+                int(entry.factor.profileID): int(entry.profile.speed)
+                for entry in profiles
+            },
+        )
+        for entry in profiles:
+            self.assertEqual(
+                ProfileSideConfig(medium=TransmitterTechnology.BACKPLANE),
+                entry.profile.iphy,
+            )
+            self.assertIsNone(entry.profile.xphyLine)
+            self.assertIsNone(entry.profile.xphySystem)
+
+    def test_backplane_to_cpo_connections(self) -> None:
+        ports = PlatformMappingV2(
+            self._get_inputs(), "example_backplane_cpo"
+        ).get_platform_port_map()
+        for port_id, backplane_id, cpo_lane_offset in [(1, 101, 0), (9, 102, 8)]:
+            expected = [
+                PinConnection(
+                    a=PinID(
+                        chip=f"BACKPLANE-EXAMAX-slot1/chip{backplane_id}", lane=lane
+                    ),
+                    z=Pin(
+                        end=PinID(
+                            chip="TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                            lane=cpo_lane_offset + lane,
+                        )
+                    ),
+                )
+                for lane in range(8)
+            ]
+            self.assertEqual(expected, ports[port_id].mapping.pins)
+
+    def test_global_cpo_lanes_and_integrated_components(self) -> None:
+        ports = PlatformMappingV2(
+            self._get_inputs(), "example_backplane_cpo"
+        ).get_platform_port_map()
+        self.assertEqual(16, len(ports))
+        for port_id, port in ports.items():
+            pins = port.supportedProfiles[
+                PortProfileID.PROFILE_100G_1_PAM4_RS544_OPTICAL
+            ].pins
+            expected = [
+                PinConfig(
+                    id=PinID(
+                        chip="TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                        lane=port_id - 1,
+                    )
+                )
+            ]
+            self.assertEqual([], list(pins.iphy))
+            self.assertEqual(expected, pins.transceiver)
+            self.assertEqual(1, len(pins.opticalEngine or []))
+            self.assertEqual(1, len(pins.laserSource or []))
+
+    def test_breakouts_use_cpo_lane_overlap(self) -> None:
+        ports = PlatformMappingV2(
+            self._get_inputs(), "example_backplane_cpo"
+        ).get_platform_port_map()
+        self.assertEqual(
+            list(range(2, 9)),
+            ports[1]
+            .supportedProfiles[PortProfileID.PROFILE_800G_8_PAM4_RS544X2N_OPTICAL]
+            .subsumedPorts,
+        )
+        self.assertEqual(
+            [2, 3, 4],
+            ports[1]
+            .supportedProfiles[PortProfileID.PROFILE_100G_4_NRZ_RS528_OPTICAL]
+            .subsumedPorts,
+        )
+        self.assertEqual(1, ports[2].mapping.controllingPort)
+        self.assertEqual(9, ports[9].mapping.controllingPort)
+
+    def test_backplane_id_does_not_alias_transceiver(self) -> None:
+        inputs = self._get_inputs()
+        data = inputs["example_backplane_cpo"].data
+        name = "example_backplane_cpo_static_mapping.csv"
+        data[name] = data[name].replace("1,101,BACKPLANE", "1,1,BACKPLANE")
+        port = PlatformMappingV2(
+            inputs, "example_backplane_cpo"
+        ).get_platform_port_map()[1]
+        self.assertEqual("BACKPLANE-EXAMAX-slot1/chip1", port.mapping.pins[0].a.chip)
+        pins = port.supportedProfiles[
+            PortProfileID.PROFILE_100G_1_PAM4_RS544_OPTICAL
+        ].pins
+        self.assertEqual(1, len(pins.transceiver or []))
+        self.assertEqual(1, len(pins.opticalEngine or []))
+        self.assertEqual(1, len(pins.laserSource or []))
+
+    def test_rejects_fake_npu_profile_rows(self) -> None:
+        inputs = self._get_inputs()
+        data = inputs["example_backplane_cpo"].data
+        name = "example_backplane_cpo_profile_settings.csv"
+        data[name] = data[name].replace(",BACKPLANE,TRANSCEIVER,", ",NPU,TRANSCEIVER,")
+        with self.assertRaisesRegex(Exception, "Can't find speed setting"):
+            PlatformMappingV2(inputs, "example_backplane_cpo")
+
+
+class BackplaneRetimerCpoPlatformMappingTest(unittest.TestCase):
+    PLATFORM = "example_backplane_retimer_cpo"
+
+    def _generator(self) -> PlatformMappingV2:
+        input_dir = f"fboss/configs/platforms/generic/{self.PLATFORM}/platform_mapping"
+        inputs = {
+            self.PLATFORM: PlatformMappingInput(
+                self.PLATFORM, input_dir, "generic", read_vendor_data(input_dir)
+            )
+        }
+        return PlatformMappingV2(inputs, self.PLATFORM)
+
+    def test_backplane_to_retimer_to_cpo_junctions(self) -> None:
+        ports = self._generator().get_platform_port_map()
+        self.assertEqual(16, len(ports))
+        for port_id, backplane_id, xphy_id, cpo_lane_offset in [
+            (1, 101, 1, 0),
+            (9, 102, 2, 8),
+        ]:
+            expected = [
+                PinConnection(
+                    a=PinID(
+                        chip=f"BACKPLANE-EXAMAX-slot1/chip{backplane_id}", lane=lane
+                    ),
+                    z=Pin(
+                        junction=PinJunction(
+                            system=PinID(
+                                chip=f"XPHY-AGERA3_SYSTEM-slot1/chip{xphy_id}/core0",
+                                lane=lane + 8,
+                            ),
+                            line=[
+                                PinConnection(
+                                    a=PinID(
+                                        chip=f"XPHY-AGERA3_LINE-slot1/chip{xphy_id}/core0",
+                                        lane=lane,
+                                    ),
+                                    z=Pin(
+                                        end=PinID(
+                                            chip="TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                                            lane=cpo_lane_offset + lane,
+                                        )
+                                    ),
+                                )
+                            ],
+                        )
+                    ),
+                )
+                for lane in range(8)
+            ]
+            self.assertEqual(expected, ports[port_id].mapping.pins)
+
+    def test_profile_pins_carry_retimer_si(self) -> None:
+        ports = self._generator().get_platform_port_map()
+        pins = (
+            ports[1]
+            .supportedProfiles[PortProfileID.PROFILE_100G_1_PAM4_RS544_OPTICAL]
+            .pins
+        )
+        self.assertEqual([], list(pins.iphy))
+        self.assertEqual(
+            [
+                PinConfig(
+                    id=PinID(
+                        chip="TRANSCEIVER-BANKED_CMIS_INTEGRATED-slot1/chip1/core0",
+                        lane=0,
+                    )
+                )
+            ],
+            pins.transceiver,
+        )
+        self.assertEqual(
+            [
+                PinConfig(
+                    id=PinID(chip="XPHY-AGERA3_SYSTEM-slot1/chip1/core0", lane=8),
+                    tx=TxSettings(
+                        pre=-20, pre2=0, main=120, post=0, post2=0, post3=0, pre3=0
+                    ),
+                )
+            ],
+            pins.xphySys,
+        )
+        self.assertEqual(
+            [
+                PinConfig(
+                    id=PinID(chip="XPHY-AGERA3_LINE-slot1/chip1/core0", lane=0),
+                    tx=TxSettings(
+                        pre=-20, pre2=0, main=110, post=0, post2=0, post3=0, pre3=0
+                    ),
+                )
+            ],
+            pins.xphyLine,
+        )
+        self.assertEqual(1, len(pins.opticalEngine or []))
+        self.assertEqual(1, len(pins.laserSource or []))
+
+    def test_platform_profiles_have_retimer_sides_only(self) -> None:
+        profiles = {
+            int(entry.factor.profileID): entry.profile
+            for entry in self._generator().get_platform_profiles()
+        }
+        self.assertEqual(
+            {23, 25, 39, 47, 52, 61},
+            set(profiles),
+        )
+        profile = profiles[int(PortProfileID.PROFILE_800G_8_PAM4_RS544X2N_OPTICAL)]
+        self.assertEqual(
+            ProfileSideConfig(medium=TransmitterTechnology.BACKPLANE), profile.iphy
+        )
+        xphy_system = profile.xphySystem
+        xphy_line = profile.xphyLine
+        assert xphy_system is not None and xphy_line is not None
+        self.assertEqual(8, xphy_system.numLanes)
+        self.assertEqual(FecMode.NONE, xphy_system.fec)
+        self.assertEqual(8, xphy_line.numLanes)
+        self.assertEqual(FecMode.RS544_2N, xphy_line.fec)
+
+    def test_breakouts_match_backplane_cpo(self) -> None:
+        ports = self._generator().get_platform_port_map()
+        self.assertEqual(
+            list(range(2, 9)),
+            ports[1]
+            .supportedProfiles[PortProfileID.PROFILE_800G_8_PAM4_RS544X2N_OPTICAL]
+            .subsumedPorts,
+        )
+
+
+class MidPathTerminalChipTest(unittest.TestCase):
+    """A backplane between the NPU and a transceiver is rejected on ASIC platforms."""
+
+    def _end(
+        self, chip_type: ChipType, chip_id: int, core_type: CoreType
+    ) -> pm_types.ConnectionEnd:
+        return pm_types.ConnectionEnd(
+            chip=pm_types.Chip(
+                slot_id=1,
+                chip_id=chip_id,
+                chip_type=chip_type,
+                core_id=0,
+                core_type=core_type,
+            ),
+            lane=pm_types.Lane(logical_id=0),
+        )
+
+    def _pairs(self, has_switch_asic: bool) -> List[pm_types.ConnectionPair]:
+        backplane = self._end(ChipType.BACKPLANE, 5, CoreType.EXAMAX)
+        static_mapping = StaticMapping(
+            [
+                pm_types.ConnectionPair(
+                    a=self._end(ChipType.NPU, 1, CoreType.TH6_NIF), z=backplane
+                ),
+                pm_types.ConnectionPair(
+                    a=backplane,
+                    z=self._end(ChipType.TRANSCEIVER, 1, CoreType.OSFP),
+                ),
+            ]
+        )
+        return get_connection_pairs_for_profile(
+            static_mapping=static_mapping,
+            port=pm_types.Port(port_name="eth1/1/1"),
+            num_lanes=1,
+            profile=PortProfileID.PROFILE_100G_1_PAM4_RS544_OPTICAL,
+            has_switch_asic=has_switch_asic,
+        )
+
+    def test_backplane_before_npu_raises(self) -> None:
+        with self.assertRaisesRegex(ValueError, "eth1/1/1 lane 0 reaches .* NPU"):
+            self._pairs(has_switch_asic=True)
+
+    def test_backplane_end_allowed_without_asic(self) -> None:
+        self.assertEqual(1, len(self._pairs(has_switch_asic=False)))
 
 
 class StaticMappingPerChipTest(unittest.TestCase):

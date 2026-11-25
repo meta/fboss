@@ -329,30 +329,30 @@ def _create_xphy_profile_side_config(
 # modulation, fec mode and interface type
 def get_platform_config_entry(
     profile: PortProfileID,
-    npu_speed_setting: SpeedSetting,
+    speed_setting: SpeedSetting,
     xphy_line_speed_setting: Optional[SpeedSetting] = None,
     xphy_system_speed_setting: Optional[SpeedSetting] = None,
 ) -> Optional[PlatformPortProfileConfigEntry]:
     factor = PlatformPortConfigFactor(profileID=profile)
     profile_config = PortProfileConfig()
 
-    profile_config_speed = npu_speed_setting.speed
+    profile_config_speed = speed_setting.speed
 
     # Configure NPU/IPHY side
-    if is_npu(npu_speed_setting.a_chip_settings.chip_type) or is_npu(
-        npu_speed_setting.z_chip_settings.chip_type
+    if is_npu(speed_setting.a_chip_settings.chip_type) or is_npu(
+        speed_setting.z_chip_settings.chip_type
     ):
-        if is_npu(npu_speed_setting.a_chip_settings.chip_type):
-            npu_interface_type = npu_speed_setting.a_chip_settings.chip_interface_type
+        if is_npu(speed_setting.a_chip_settings.chip_type):
+            npu_interface_type = speed_setting.a_chip_settings.chip_interface_type
         else:
-            npu_interface_type = npu_speed_setting.z_chip_settings.chip_interface_type
+            npu_interface_type = speed_setting.z_chip_settings.chip_interface_type
 
         npu_profile_side_config = ProfileSideConfig(
-            numLanes=npu_speed_setting.num_lanes,
-            modulation=npu_speed_setting.modulation,
-            fec=npu_speed_setting.a_chip_settings.chip_fec,
+            numLanes=speed_setting.num_lanes,
+            modulation=speed_setting.modulation,
+            fec=speed_setting.a_chip_settings.chip_fec,
             interfaceType=npu_interface_type,
-            medium=npu_speed_setting.media_type,
+            medium=speed_setting.media_type,
         )
 
         xphy_line = None
@@ -378,6 +378,33 @@ def get_platform_config_entry(
         )
 
         return PlatformPortProfileConfigEntry(factor=factor, profile=profile_config)
+    if is_backplane(speed_setting.a_chip_settings.chip_type) and (
+        is_transceiver(speed_setting.z_chip_settings.chip_type)
+        or is_xphy(speed_setting.z_chip_settings.chip_type)
+    ):
+        return PlatformPortProfileConfigEntry(
+            factor=factor,
+            profile=PortProfileConfig(
+                speed=profile_config_speed,
+                # No IPHY on these boards; medium is the host-side medium qsfp
+                # matches against the module.
+                iphy=ProfileSideConfig(medium=speed_setting.media_type),
+                xphyLine=(
+                    _create_xphy_profile_side_config(
+                        xphy_line_speed_setting, use_a_chip_settings=True
+                    )
+                    if xphy_line_speed_setting is not None
+                    else None
+                ),
+                xphySystem=(
+                    _create_xphy_profile_side_config(
+                        xphy_system_speed_setting, use_a_chip_settings=False
+                    )
+                    if xphy_system_speed_setting is not None
+                    else None
+                ),
+            ),
+        )
     return None
 
 
@@ -499,7 +526,7 @@ def get_start_connection_end(
         return static_mapping.find_connection_end(
             slot_id=int(match[2]),
             chip_id=chip_id,
-            chip_types={ChipType.TRANSCEIVER, ChipType.BACKPLANE},
+            chip_types={ChipType.TRANSCEIVER},
             core_id=0,
             logical_lane_id=lane_offset + int(match[4]) - 1,  # Lanes are 0 indexed
         )
@@ -520,7 +547,11 @@ def get_start_connection_end(
 
 # Given a port and its speed, find all the connection end points required
 def get_connection_pairs_for_profile(
-    static_mapping: StaticMapping, port: Port, num_lanes: int, profile: PortProfileID
+    static_mapping: StaticMapping,
+    port: Port,
+    num_lanes: int,
+    profile: PortProfileID,
+    has_switch_asic: bool,
 ) -> List[ConnectionPair]:
     connections = []
     if num_lanes == 0:
@@ -537,8 +568,11 @@ def get_connection_pairs_for_profile(
             core_id=start_connection_end.chip.core_id,
             logical_lane_id=start_connection_end.lane.logical_id + lane,
         )
-        # Iterate until we reach NPU
+        visited = []
         while True:
+            if current_connection_end in visited:
+                raise ValueError(f"Cycle in topology for port {port.port_name}")
+            visited.append(current_connection_end)
             next_connection_end = static_mapping.get_other_connection_end(
                 one_connection_end=current_connection_end
             )
@@ -584,11 +618,22 @@ def get_connection_pairs_for_profile(
             if (
                 not current_connection_end
                 or not current_connection_end.chip
-                or not current_connection_end.chip.chip_type
                 or is_npu(current_connection_end.chip.chip_type)
+                or is_terminal_chip(current_connection_end.chip.chip_type)
             ):
-                # Iterate until we reach NPU
                 break
+        # On a platform with a switch ASIC, every lane must reach the NPU. Stopping
+        # at another backplane or transceiver means it sits mid-path, which is not
+        # a supported topology.
+        if (
+            has_switch_asic
+            and current_connection_end
+            and is_terminal_chip(current_connection_end.chip.chip_type)
+        ):
+            raise ValueError(
+                f"Port {port.port_name} lane {lane} reaches "
+                f"{get_pin_config(current_connection_end).id} before an NPU"
+            )
     return connections
 
 
@@ -828,14 +873,23 @@ def get_pin_data_from_connections(
     port_custom_tx_collection_list = []
     port_custom_rx_collection_list = []
 
+    has_transceiver = any(
+        connection and is_transceiver(connection.chip.chip_type)
+        for pair in connections
+        for connection in [pair.a, pair.z]
+    )
     for connection_pair in connections:
         for connection in [connection_pair.a, connection_pair.z]:
             if not connection:
                 continue
 
             if is_terminal_chip(connection.chip.chip_type):
+                if has_transceiver and is_backplane(connection.chip.chip_type):
+                    continue
                 port_pin_config_tcvr.append(get_pin_config(connection_end=connection))
-                if integrated_tcvr_mapping is not None:
+                if integrated_tcvr_mapping is not None and is_transceiver(
+                    connection.chip.chip_type
+                ):
                     itc = integrated_tcvr_mapping.get_connection(
                         connection.chip.chip_id,
                         connection.chip.core_id,
@@ -971,12 +1025,25 @@ def get_mapping_pins(connection_pairs: List[ConnectionPair]) -> List[PinConnecti
     pin_connections = []
 
     for connection in connection_pairs:
-        if not (connection.a and is_npu(connection.a.chip.chip_type)):
+        if not connection.a:
+            continue
+        if not (
+            is_npu(connection.a.chip.chip_type)
+            or (
+                is_backplane(connection.a.chip.chip_type)
+                and connection.z
+                and (
+                    is_transceiver(connection.z.chip.chip_type)
+                    or (
+                        is_xphy(connection.z.chip.chip_type)
+                        and _is_xphy_system_core_type(connection.z.chip.core_type)
+                    )
+                )
+            )
+        ):
             continue
 
-        # Set NPU side (A side)
-        npu_pin_name = get_npu_chip_name(connection.a.chip)
-        a_pin = PinID(chip=npu_pin_name, lane=connection.a.lane.logical_id)
+        a_pin = get_pin_config(connection.a).id
 
         z_pin = None
         if connection.z and connection.z.chip:

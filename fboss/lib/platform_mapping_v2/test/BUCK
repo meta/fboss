@@ -13,6 +13,7 @@ python_unittest(
         "//fboss/agent:switch_config-python-types",
         "//fboss/lib/phy:phy-python-types",
         "//fboss/lib/platform_mapping_v2:gen-library",
+        "//fboss/lib/platform_mapping_v2:helpers",
         "//fboss/lib/platform_mapping_v2:platform_mapping_config-python-types",
         "//fboss/lib/platform_mapping_v2:platform_mapping_v2",
         "//fboss/lib/platform_mapping_v2:read_files_utils",
