@@ -1016,6 +1016,22 @@ cpp_library(
 )
 
 cpp_library(
+    name = "l2_resource_accountant",
+    srcs = [
+        "L2ResourceAccountant.cpp",
+    ],
+    headers = [
+        "L2ResourceAccountant.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly/logging:logging",
+        ":agent_features",
+        "//fboss/agent/state:nodebase",
+        "//fboss/agent/state:state",
+    ],
+)
+
+cpp_library(
     name = "pbr_acl_manager",
     srcs = [
         "PbrAclManager.cpp",
@@ -2737,6 +2753,7 @@ cpp_library(
         ":agent_features",
         ":fboss-types",
         ":hw_asic_table",
+        ":l2_resource_accountant",
         ":mysid_resource_accountant",
         ":stats",
         ":switchid_scope_resolver",

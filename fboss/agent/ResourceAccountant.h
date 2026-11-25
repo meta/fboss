@@ -11,6 +11,7 @@
 
 #include "fboss/agent/AclResourceAccountant.h"
 #include "fboss/agent/HwAsicTable.h"
+#include "fboss/agent/L2ResourceAccountant.h"
 #include "fboss/agent/MySidResourceAccountant.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/VrfResourceAccountant.h"
@@ -104,8 +105,6 @@ class ResourceAccountant {
 
   bool checkNeighborResource();
 
-  bool l2StateChangedImpl(const StateDelta& delta);
-
   template <typename TableT>
   void neighborStateChangedImpl(const StateDelta& delta);
 
@@ -150,6 +149,7 @@ class ResourceAccountant {
   AclResourceAccountant aclResourceAccountant_;
   VrfResourceAccountant vrfResourceAccountant_;
   MySidResourceAccountant mySidResourceAccountant_;
+  L2ResourceAccountant l2ResourceAccountant_;
 
   bool nativeWeightedEcmp_{true};
   // Yuba (G200) and G202x program protection backup next hops as ordinary
@@ -158,7 +158,6 @@ class ResourceAccountant {
   bool countBackupNextHopMembers_{false};
   std::optional<uint32_t> maxSrv6UcmpDistinctWeights_;
   bool checkRouteUpdate_;
-  uint32_t l2Entries_{0};
   uint32_t ecmpMemberUsage_{0};
   // Split horizon gives every dynamic ARS group a secondary plain ECMP group.
   // It shares the next hop set of its DLB group, so it cannot be a separate

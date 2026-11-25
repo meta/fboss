@@ -302,6 +302,15 @@ target_link_libraries(mysid_resource_accountant
   ${GTEST}
 )
 
+add_library(l2_resource_accountant
+  fboss/agent/L2ResourceAccountant.cpp
+)
+
+target_link_libraries(l2_resource_accountant
+  agent_features
+  state
+)
+
 add_library(pbr_acl_manager
   fboss/agent/PbrAclManager.cpp
 )
@@ -996,6 +1005,7 @@ add_library(validate_state_update
 
 target_link_libraries(validate_state_update
   acl_resource_accountant
+  l2_resource_accountant
   mysid_resource_accountant
   vrf_resource_accountant
   state

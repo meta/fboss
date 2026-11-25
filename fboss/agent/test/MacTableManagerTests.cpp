@@ -290,20 +290,23 @@ TEST_F(MacTableManagerTest, MacLearnedBulkCb) {
   triggerMacBulkLearnedCb(
       std::vector<folly::MacAddress>(macs.begin(), macs.begin() + batchSize));
   // expect 10 mac entries in switchState and resourceAccountant
-  verifyMacEntryCount(getSw()->getResourceAccountant()->l2Entries_);
+  verifyMacEntryCount(
+      getSw()->getResourceAccountant()->l2ResourceAccountant_.getUsage());
 
   // age 10 mac entries
   triggerMacBulkAgedCb(
       std::vector<folly::MacAddress>(macs.begin(), macs.begin() + batchSize));
   deleted = batchSize;
   // expect 0 mac entries in switchState and resourceAccountant
-  verifyMacEntryCount(getSw()->getResourceAccountant()->l2Entries_);
+  verifyMacEntryCount(
+      getSw()->getResourceAccountant()->l2ResourceAccountant_.getUsage());
 
   // learn 90 mac entries
   triggerMacBulkLearnedCb(
       std::vector<folly::MacAddress>(macs.begin() + batchSize, macs.end()));
   // expect 90 mac entries in switchState and resourceAccountant
-  verifyMacEntryCount(getSw()->getResourceAccountant()->l2Entries_);
+  verifyMacEntryCount(
+      getSw()->getResourceAccountant()->l2ResourceAccountant_.getUsage());
 
   // age 20 mac entries
   batchSize = 20;
@@ -312,7 +315,8 @@ TEST_F(MacTableManagerTest, MacLearnedBulkCb) {
           macs.begin() + deleted, macs.begin() + deleted + batchSize));
   deleted += batchSize;
   // expect 70 mac entries in switchState and resourceAccountant
-  verifyMacEntryCount(getSw()->getResourceAccountant()->l2Entries_);
+  verifyMacEntryCount(
+      getSw()->getResourceAccountant()->l2ResourceAccountant_.getUsage());
 }
 
 TEST_F(MacTableManagerTest, MacLimitErrorDisablesPort) {
@@ -768,7 +772,9 @@ TEST_F(StaticMacConfigTest, InvalidVlanOrPortStaticMac) {
 
 TEST_F(StaticMacConfigTest, ApplyConfigAccountsStaticMacsOnce) {
   gflags::FlagSaver flagSaver;
-  auto l2Entries = [&] { return getSw()->getResourceAccountant()->l2Entries_; };
+  auto l2Entries = [&] {
+    return getSw()->getResourceAccountant()->l2ResourceAccountant_.getUsage();
+  };
   getSw()->applyConfig("base config", cfg_);
   const auto base = l2Entries();
   FLAGS_max_l2_entries = base + 4;
@@ -800,7 +806,9 @@ TEST_F(StaticMacConfigTest, ApplyConfigAccountsStaticMacsOnce) {
 
 TEST_F(StaticMacConfigTest, IsValidStateUpdateDryRun) {
   gflags::FlagSaver flagSaver;
-  auto l2Entries = [&] { return getSw()->getResourceAccountant()->l2Entries_; };
+  auto l2Entries = [&] {
+    return getSw()->getResourceAccountant()->l2ResourceAccountant_.getUsage();
+  };
   getSw()->applyConfig("base config", cfg_);
   const auto base = l2Entries();
   FLAGS_max_l2_entries = base + 2;

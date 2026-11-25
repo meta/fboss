@@ -687,37 +687,6 @@ ResourceAccountant::checkAndUpdateEcmpResource<folly::IPAddressV4>(
     bool add,
     const std::shared_ptr<SwitchState>& state);
 
-// calculate new update for l2 entries from the delta
-// check l2Entries_ in the switchState
-// return true if the l2Entries_ are within the limit
-bool ResourceAccountant::l2StateChangedImpl(const StateDelta& delta) {
-  auto processDelta = [&](const auto& deltaMac) {
-    DeltaFunctions::forEachChanged(
-        deltaMac,
-        [&](const auto& /*oldMac*/, const auto& /*newMac*/) {
-          return LoopAction::CONTINUE;
-        },
-        [&](const auto& /*newMac*/) {
-          l2Entries_++;
-          return LoopAction::CONTINUE;
-        },
-        [&](const auto& /*deletedMac*/) {
-          l2Entries_--;
-          return LoopAction::CONTINUE;
-        });
-  };
-
-  for (auto& deltaVlan : delta.getVlansDelta()) {
-    processDelta(deltaVlan.getMacDelta());
-  }
-  if (l2Entries_ > FLAGS_max_l2_entries) {
-    XLOG(ERR) << "Total l2 entries in new switchState: " << l2Entries_
-              << " exceeds the limit: " << FLAGS_max_l2_entries;
-    return false;
-  }
-  return true;
-}
-
 size_t ResourceAccountant::countSrv6NextHops(
     const RouteNextHopSet& nhSet) const {
   size_t count = 0;
@@ -1083,7 +1052,7 @@ void ResourceAccountant::stateChanged(const StateDelta& delta) {
   routeAndEcmpStateChangedImpl(delta);
 
   if (FLAGS_enable_hw_update_protection) {
-    l2StateChangedImpl(delta);
+    l2ResourceAccountant_.stateChanged(delta);
     neighborStateChangedImpl<NdpTable>(delta);
     neighborStateChangedImpl<ArpTable>(delta);
   }
@@ -1101,7 +1070,7 @@ bool ResourceAccountant::isValidUpdate(const StateDelta& delta) {
   bool isValidUpdate = isValidRouteUpdate(delta);
 
   if (FLAGS_enable_hw_update_protection) {
-    isValidUpdate &= l2StateChangedImpl(delta);
+    isValidUpdate &= l2ResourceAccountant_.isValidUpdate(delta);
     neighborStateChangedImpl<NdpTable>(delta);
     neighborStateChangedImpl<ArpTable>(delta);
     isValidUpdate &= checkNeighborResource();
