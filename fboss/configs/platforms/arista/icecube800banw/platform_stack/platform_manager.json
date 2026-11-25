@@ -664,7 +664,7 @@
   "chassisEepromDevicePath": "/[CHASSIS_EEPROM]",
   "numXcvrs": 65,
   "bspKmodsRpmName": "arista_bsp_kmods",
-  "bspKmodsRpmVersion": "0.7.32-1",
+  "bspKmodsRpmVersion": "2026.11.1-1",
   "nonBspKmodsToLoad": [
     "spidev",
     "ledtrig_timer"
