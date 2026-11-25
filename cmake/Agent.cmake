@@ -356,6 +356,18 @@ target_link_libraries(srv6_nexthop_resource_accountant
   ${GTEST}
 )
 
+add_library(ecmp_resource_accountant
+  fboss/agent/EcmpResourceAccountant.cpp
+)
+
+target_link_libraries(ecmp_resource_accountant
+  agent_features
+  fib_helpers
+  hw_asic_table
+  state
+  ${GTEST}
+)
+
 add_library(pbr_acl_manager
   fboss/agent/PbrAclManager.cpp
 )
@@ -1050,6 +1062,7 @@ add_library(validate_state_update
 
 target_link_libraries(validate_state_update
   acl_resource_accountant
+  ecmp_resource_accountant
   srv6_nexthop_resource_accountant
   route_resource_accountant
   route_counter_resource_accountant
