@@ -114,7 +114,8 @@ bool waitForAnyVoQOutBytesIncrement(
     TestEnsembleIf* ensemble,
     const std::map<SystemPortID, HwSysPortStats>& originalPortStats,
     const std::vector<SystemPortID>& portIds,
-    const HwSysPortStatsFunc& getHwPortStats) {
+    const HwSysPortStatsFunc& getHwPortStats,
+    const int msBetweenRetry) {
   if (!featureSupported(ensemble, HwAsic::Feature::VOQ)) {
     throw FbossError("VOQs are unsupported on platform");
   }
@@ -130,7 +131,11 @@ bool waitForAnyVoQOutBytesIncrement(
     return false;
   };
   return waitSysPortStatsCondition(
-      conditionFn, portIds, 20, std::chrono::milliseconds(20), getHwPortStats);
+      conditionFn,
+      portIds,
+      20,
+      std::chrono::milliseconds(msBetweenRetry),
+      getHwPortStats);
 }
 } // namespace
 
@@ -186,7 +191,11 @@ bool ensureSendPacketSwitched(
              msBetweenRetry) &&
       (!waitForVoqs ||
        waitForAnyVoQOutBytesIncrement(
-           ensemble, originalSysPortStats, sysPortIds, getHwSysPortStats));
+           ensemble,
+           originalSysPortStats,
+           sysPortIds,
+           getHwSysPortStats,
+           msBetweenRetry));
 }
 
 bool ensureSendPacketSwitched(
