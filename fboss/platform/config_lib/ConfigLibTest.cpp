@@ -101,6 +101,7 @@ TEST(ConfigLibTest, Basic) {
   EXPECT_NO_THROW(ConfigLib().getBspTestConfig(kM4061nhp));
   EXPECT_NO_THROW(ConfigLib().getBspTestConfig(kM4062nhp));
   EXPECT_NO_THROW(ConfigLib().getBspTestConfig(kM4340nhp));
+  EXPECT_NO_THROW(ConfigLib().getBspTestConfig(kM4061clscl));
   EXPECT_THROW(
       ConfigLib().getBspTestConfig(kNonExistentPlatform), std::out_of_range);
 
