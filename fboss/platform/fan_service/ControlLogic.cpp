@@ -28,6 +28,8 @@ auto constexpr kFanWriteValue = "{}.{}.pwm_write.value";
 auto constexpr kFanAbsent = "{}.absent";
 auto constexpr kFanReadRpmFailure = "{}.rpm_read.failure";
 auto constexpr kFanReadRpmValue = "{}.rpm_read.value";
+auto constexpr kFanRpmThresholdViolation = "{}.rpm_read.threshold_violation";
+auto constexpr kFanFailed = "{}.fan_failed";
 auto constexpr kSensorReadFailure = "{}.sensor_read.failure";
 auto constexpr kSensorReadValue = "{}.sensor_read.value";
 auto constexpr kOpticsReadMaxValue = "{}.optics_read.max.value";
@@ -38,6 +40,7 @@ auto constexpr kLedWriteFailure = "{}.led_write.failure";
 auto constexpr kHasFanRpmReadFailure = "has.fan_rpm_read_failure";
 auto constexpr kHasFanPwmWriteFailure = "has.fan_pwm_write_failure";
 auto constexpr kHasFanAbsent = "has.fan_absent";
+auto constexpr kHasFanFailed = "has.fan_failed";
 auto constexpr kFanFailThresholdInSec = 300;
 auto constexpr kSensorFailThresholdInSec = 300;
 
@@ -667,6 +670,12 @@ void ControlLogic::updateControl(std::shared_ptr<SensorData> pS) {
               *fan.rpmMax());
         }
       }
+      bool rpmThresholdViolation = !fanAccessFailed &&
+          ((fan.rpmMin() && fanRpm < *fan.rpmMin()) ||
+           (fan.rpmMax() && fanRpm > *fan.rpmMax()));
+      fb303::fbData->setCounter(
+          fmt::format(kFanRpmThresholdViolation, *fan.fanName()),
+          rpmThresholdViolation);
       if (fanFailed) {
         numFanFailed++;
       }
@@ -779,12 +788,18 @@ void ControlLogic::updateControl(std::shared_ptr<SensorData> pS) {
     }
 
     // STEP 6: Program fan LEDs
+    bool hasAnyFanFailed{false};
     for (const auto& fan : *config_.fans()) {
-      programLed(fan, *fanStatuses[*fan.fanName()].fanFailed());
+      bool fanFailed = *fanStatuses[*fan.fanName()].fanFailed();
+      programLed(fan, fanFailed);
+      fb303::fbData->setCounter(
+          fmt::format(kFanFailed, *fan.fanName()), fanFailed);
+      hasAnyFanFailed = hasAnyFanFailed || fanFailed;
     }
     fb303::fbData->setCounter(kHasFanRpmReadFailure, hasAnyRpmFailure ? 1 : 0);
     fb303::fbData->setCounter(kHasFanPwmWriteFailure, hasAnyPwmFailure ? 1 : 0);
     fb303::fbData->setCounter(kHasFanAbsent, hasAnyFanAbsent ? 1 : 0);
+    fb303::fbData->setCounter(kHasFanFailed, hasAnyFanFailed ? 1 : 0);
   });
 }
 

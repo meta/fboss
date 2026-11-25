@@ -198,10 +198,17 @@ TEST_F(ControlLogicTests, UpdateControlSuccess) {
     EXPECT_EQ(
         fb303::fbData->getCounter(fmt::format("{}.rpm_read.failure", fanName)),
         0);
+    EXPECT_EQ(
+        fb303::fbData->getCounter(
+            fmt::format("{}.rpm_read.threshold_violation", fanName)),
+        0);
+    EXPECT_EQ(
+        fb303::fbData->getCounter(fmt::format("{}.fan_failed", fanName)), 0);
   }
   EXPECT_EQ(fb303::fbData->getCounter("has.fan_rpm_read_failure"), 0);
   EXPECT_EQ(fb303::fbData->getCounter("has.fan_pwm_write_failure"), 0);
   EXPECT_EQ(fb303::fbData->getCounter("has.fan_absent"), 0);
+  EXPECT_EQ(fb303::fbData->getCounter("has.fan_failed"), 0);
   const auto& sensorCaches = controlLogic_->getSensorCaches();
   for (const auto& [sensorName, sensorCache] : sensorCaches) {
     EXPECT_EQ(sensorCache.sensorFailed, false);
@@ -240,9 +247,16 @@ TEST_F(ControlLogicTests, UpdateControlFailureDueToMissingFans) {
     EXPECT_EQ(
         fb303::fbData->getCounter(fmt::format("{}.rpm_read.failure", fanName)),
         1);
+    EXPECT_EQ(
+        fb303::fbData->getCounter(
+            fmt::format("{}.rpm_read.threshold_violation", fanName)),
+        0);
+    EXPECT_EQ(
+        fb303::fbData->getCounter(fmt::format("{}.fan_failed", fanName)), 1);
   }
   EXPECT_EQ(fb303::fbData->getCounter("has.fan_rpm_read_failure"), 1);
   EXPECT_EQ(fb303::fbData->getCounter("has.fan_pwm_write_failure"), 0);
+  EXPECT_EQ(fb303::fbData->getCounter("has.fan_failed"), 1);
   EXPECT_EQ(fb303::fbData->getCounter("has.fan_absent"), 1);
 }
 
@@ -276,9 +290,16 @@ TEST_F(ControlLogicTests, UpdateControlFailureDueToFanInaccessible) {
     EXPECT_EQ(
         fb303::fbData->getCounter(fmt::format("{}.rpm_read.failure", fanName)),
         1);
+    EXPECT_EQ(
+        fb303::fbData->getCounter(
+            fmt::format("{}.rpm_read.threshold_violation", fanName)),
+        0);
+    EXPECT_EQ(
+        fb303::fbData->getCounter(fmt::format("{}.fan_failed", fanName)), 1);
   }
   EXPECT_EQ(fb303::fbData->getCounter("has.fan_rpm_read_failure"), 1);
   EXPECT_EQ(fb303::fbData->getCounter("has.fan_pwm_write_failure"), 0);
+  EXPECT_EQ(fb303::fbData->getCounter("has.fan_failed"), 1);
   EXPECT_EQ(fb303::fbData->getCounter("has.fan_absent"), 0);
 }
 
@@ -320,8 +341,94 @@ TEST_F(
     EXPECT_EQ(
         fb303::fbData->getCounter(fmt::format("{}.rpm_read.failure", fanName)),
         1);
+    EXPECT_EQ(
+        fb303::fbData->getCounter(
+            fmt::format("{}.rpm_read.threshold_violation", fanName)),
+        0);
+    EXPECT_EQ(
+        fb303::fbData->getCounter(fmt::format("{}.fan_failed", fanName)), 0);
   }
+  EXPECT_EQ(fb303::fbData->getCounter("has.fan_failed"), 0);
 }
+
+TEST_F(ControlLogicTests, UpdateControlFailureDueToRpmBelowMin) {
+  for (auto& fan : *fanServiceConfig_.fans()) {
+    fan.rpmMin() = static_cast<int>(kDefaultRpm) + 1;
+  }
+  controlLogic_ = std::make_shared<ControlLogic>(fanServiceConfig_, mockBsp_);
+  EXPECT_CALL(*mockBsp_, checkIfInitialSensorDataRead()).WillOnce(Return(true));
+  for (const auto& fan : *fanServiceConfig_.fans()) {
+    EXPECT_CALL(*mockBsp_, setFanPwmSysfs(*fan.pwmSysfsPath(), _))
+        .Times(2)
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockBsp_, turnOnLedSysfs(*fan.failLedSysfsPath()))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*mockBsp_, readSysfs(*fan.rpmSysfsPath()))
+        .WillOnce(Return(kDefaultRpm));
+    EXPECT_CALL(*mockBsp_, readSysfs(*fan.presenceSysfsPath()))
+        .WillOnce(Return(1 /* fan exists */));
+  }
+
+  controlLogic_->setTransitionValue();
+
+  controlLogic_->updateControl(sensorData_);
+  const auto fanStatuses = controlLogic_->getFanStatuses();
+  EXPECT_EQ(fanStatuses.size(), fanServiceConfig_.fans()->size());
+  for (const auto& [fanName, fanStatus] : fanStatuses) {
+    EXPECT_EQ(*fanStatus.fanFailed(), true);
+    EXPECT_EQ(*fanStatus.rpm(), kDefaultRpm);
+    EXPECT_EQ(fb303::fbData->getCounter(fmt::format("{}.absent", fanName)), 0);
+    EXPECT_EQ(
+        fb303::fbData->getCounter(fmt::format("{}.rpm_read.failure", fanName)),
+        0);
+    EXPECT_EQ(
+        fb303::fbData->getCounter(
+            fmt::format("{}.rpm_read.threshold_violation", fanName)),
+        1);
+    EXPECT_EQ(
+        fb303::fbData->getCounter(fmt::format("{}.fan_failed", fanName)), 1);
+  }
+  EXPECT_EQ(fb303::fbData->getCounter("has.fan_rpm_read_failure"), 0);
+  EXPECT_EQ(fb303::fbData->getCounter("has.fan_pwm_write_failure"), 0);
+  EXPECT_EQ(fb303::fbData->getCounter("has.fan_absent"), 0);
+  EXPECT_EQ(fb303::fbData->getCounter("has.fan_failed"), 1);
+}
+
+TEST_F(ControlLogicTests, UpdateControlFailureDueToPwmWriteFailure) {
+  EXPECT_CALL(*mockBsp_, checkIfInitialSensorDataRead()).WillOnce(Return(true));
+  for (const auto& fan : *fanServiceConfig_.fans()) {
+    EXPECT_CALL(*mockBsp_, setFanPwmSysfs(*fan.pwmSysfsPath(), _))
+        .Times(2)
+        .WillRepeatedly(Return(false));
+    EXPECT_CALL(*mockBsp_, turnOnLedSysfs(*fan.failLedSysfsPath()))
+        .WillRepeatedly(Return(true));
+    EXPECT_CALL(*mockBsp_, readSysfs(*fan.rpmSysfsPath()))
+        .WillOnce(Return(kDefaultRpm));
+    EXPECT_CALL(*mockBsp_, readSysfs(*fan.presenceSysfsPath()))
+        .WillOnce(Return(1 /* fan exists */));
+  }
+
+  controlLogic_->setTransitionValue();
+
+  controlLogic_->updateControl(sensorData_);
+  const auto fanStatuses = controlLogic_->getFanStatuses();
+  EXPECT_EQ(fanStatuses.size(), fanServiceConfig_.fans()->size());
+  for (const auto& [fanName, fanStatus] : fanStatuses) {
+    EXPECT_EQ(*fanStatus.fanFailed(), true);
+    EXPECT_EQ(
+        fb303::fbData->getCounter(fmt::format("{}.rpm_read.failure", fanName)),
+        0);
+    EXPECT_EQ(
+        fb303::fbData->getCounter(
+            fmt::format("{}.rpm_read.threshold_violation", fanName)),
+        0);
+    EXPECT_EQ(
+        fb303::fbData->getCounter(fmt::format("{}.fan_failed", fanName)), 1);
+  }
+  EXPECT_EQ(fb303::fbData->getCounter("has.fan_pwm_write_failure"), 1);
+  EXPECT_EQ(fb303::fbData->getCounter("has.fan_failed"), 1);
+}
+
 TEST_F(ControlLogicTests, UpdateControlSensorReadFailure) {
   EXPECT_CALL(*mockBsp_, checkIfInitialSensorDataRead()).WillOnce(Return(true));
   for (const auto& fan : *fanServiceConfig_.fans()) {
