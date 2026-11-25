@@ -13,6 +13,7 @@
 #include "fboss/agent/HwAsicTable.h"
 #include "fboss/agent/L2ResourceAccountant.h"
 #include "fboss/agent/MySidResourceAccountant.h"
+#include "fboss/agent/NeighborResourceAccountant.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/VrfResourceAccountant.h"
 #include "fboss/agent/state/Route.h"
@@ -103,33 +104,6 @@ class ResourceAccountant {
 
   bool checkSrv6NextHopResource(bool intermediateState) const;
 
-  bool checkNeighborResource();
-
-  template <typename TableT>
-  void neighborStateChangedImpl(const StateDelta& delta);
-
-  template <typename TableT>
-  bool checkNeighborResource(
-      SwitchID switchId,
-      uint32_t count,
-      bool intermediateState);
-  template <typename TableT>
-  bool shouldCheckNeighborUpdate(SwitchID switchId);
-  template <typename TableT>
-  std::optional<uint32_t> getMaxAsicNeighborTableSize(
-      SwitchID switchId,
-      uint8_t resourcePercentage);
-  std::optional<uint32_t> getMaxAsicUnifiedNeighborTableSize(
-      const SwitchID& switchId,
-      uint8_t resourcePercentage);
-  template <typename TableT>
-  uint32_t getMaxConfiguredNeighborTableSize();
-  SwitchID getSwitchIdFromNeighborEntry(
-      std::shared_ptr<SwitchState> state,
-      const auto& nbrEntry);
-  template <typename TableT>
-  std::unordered_map<SwitchID, uint32_t>& getNeighborEntriesMap();
-
   // Per-nhSet ECMP refmap entry
   struct EcmpGroupRefEntry {
     uint32_t refCountVirtual{0};
@@ -145,11 +119,11 @@ class ResourceAccountant {
       virtualArsSuperGroupMemberRefMap_;
 
   const HwAsicTable* asicTable_;
-  const SwitchIdScopeResolver* scopeResolver_;
   AclResourceAccountant aclResourceAccountant_;
   VrfResourceAccountant vrfResourceAccountant_;
   MySidResourceAccountant mySidResourceAccountant_;
   L2ResourceAccountant l2ResourceAccountant_;
+  NeighborResourceAccountant neighborResourceAccountant_;
 
   bool nativeWeightedEcmp_{true};
   // Yuba (G200) and G202x program protection backup next hops as ordinary
@@ -178,8 +152,6 @@ class ResourceAccountant {
   std::optional<int32_t> minWidthForArsVirtualGroup_;
   std::optional<int32_t> maxArsVirtualGroups_;
   std::optional<int32_t> maxArsVirtualGroupWidth_;
-  std::unordered_map<SwitchID, uint32_t> ndpEntriesMap_;
-  std::unordered_map<SwitchID, uint32_t> arpEntriesMap_;
   std::unordered_map<RouteCounterID, uint32_t> routeCounterRefMap_;
 
   FRIEND_TEST(ResourceAccountantTest, getMemberCountForEcmpGroup);
@@ -207,8 +179,6 @@ class ResourceAccountant {
       ResourceAccountantTest,
       virtualArsGroupOverrideDropPromotesClassification);
   FRIEND_TEST(ResourceAccountantTest, computeWeightedEcmpMemberCount);
-  FRIEND_TEST(ResourceAccountantTest, checkNeighborResource);
-  FRIEND_TEST(ResourceAccountantTest, removeInterfaceWithNeighbors);
   FRIEND_TEST(ResourceAccountantTest, routeWithAdjustedWeightZero);
   FRIEND_TEST(ResourceAccountantTest, resolvedAndUnresolvedRoutes);
   FRIEND_TEST(ResourceAccountantTest, checkAndUpdateSrv6NextHopResource);
