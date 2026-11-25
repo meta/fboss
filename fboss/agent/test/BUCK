@@ -103,6 +103,7 @@ cpp_unittest(
         "TxPacketTest.cpp",
         "UDPTest.cpp",
         "UtilsTest.cpp",
+        "VrfResourceAccountantTest.cpp",
         "WarmbootRemoteRouteReconcileTest.cpp",
     ],
     args = [
@@ -196,6 +197,7 @@ cpp_unittest(
         "//fboss/agent:utils",
         "//fboss/agent:validate_state_update",
         "//fboss/agent:voq_utils",
+        "//fboss/agent:vrf_resource_accountant",
         "//fboss/agent/hw/mock:mock",
         "//fboss/agent/hw/mock:pkt",
         "//fboss/agent/hw/switch_asics:switch_asics",

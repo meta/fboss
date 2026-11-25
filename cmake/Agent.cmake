@@ -281,6 +281,16 @@ target_link_libraries(acl_resource_accountant
   state
 )
 
+add_library(vrf_resource_accountant
+  fboss/agent/VrfResourceAccountant.cpp
+)
+
+target_link_libraries(vrf_resource_accountant
+  hw_asic_table
+  state
+  ${GTEST}
+)
+
 add_library(pbr_acl_manager
   fboss/agent/PbrAclManager.cpp
 )
@@ -975,6 +985,7 @@ add_library(validate_state_update
 
 target_link_libraries(validate_state_update
   acl_resource_accountant
+  vrf_resource_accountant
   state
   fboss_error
   switchid_scope_resolver

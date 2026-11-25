@@ -14,7 +14,6 @@
 #include "fboss/agent/state/DeltaFunctions.h"
 #include "fboss/agent/state/FlowletSwitchingConfig.h"
 #include "fboss/agent/state/SwitchState.h"
-#include "fboss/agent/state/VrfMap.h"
 
 namespace {
 constexpr auto kHundredPercentage = 100;
@@ -53,7 +52,8 @@ ResourceAccountant::ResourceAccountant(
     const SwitchIdScopeResolver* scopeResolver)
     : asicTable_(asicTable),
       scopeResolver_(scopeResolver),
-      aclResourceAccountant_(asicTable) {
+      aclResourceAccountant_(asicTable),
+      vrfResourceAccountant_(asicTable) {
   CHECK_EQ(
       asicTable->isFeatureSupportedOnAnyAsic(
           HwAsic::Feature::WEIGHTED_NEXTHOPGROUP_MEMBER),
@@ -746,28 +746,6 @@ bool ResourceAccountant::checkMySidResource(bool intermediateState) {
   return true;
 }
 
-void ResourceAccountant::vrfStateChangedImpl(const StateDelta& delta) {
-  DeltaFunctions::forEachChanged(
-      delta.getVrfsDelta(),
-      [&](const auto& /*oldVrf*/, const auto& /*newVrf*/) {},
-      [&](const auto& /*newVrf*/) { vrfUsage_++; },
-      [&](const auto& /*deletedVrf*/) { vrfUsage_--; });
-}
-
-bool ResourceAccountant::checkVrfResource() const {
-  // +1 for the default VRF
-  const auto numVrfs = vrfUsage_ + 1;
-  for (const auto& [_, hwAsic] : asicTable_->getHwAsics()) {
-    const auto maxVrfs = hwAsic->getMaxVrfs();
-    if (maxVrfs.has_value() && numVrfs > maxVrfs.value()) {
-      XLOG(ERR) << "VRF resource limit exceeded. VRFs: " << numVrfs
-                << " ASIC limit: " << maxVrfs.value();
-      return false;
-    }
-  }
-  return true;
-}
-
 size_t ResourceAccountant::countSrv6NextHops(
     const RouteNextHopSet& nhSet) const {
   size_t count = 0;
@@ -1142,7 +1120,7 @@ void ResourceAccountant::stateChanged(const StateDelta& delta) {
     mySidStateChangedImpl(delta);
   }
 
-  vrfStateChangedImpl(delta);
+  vrfResourceAccountant_.stateChanged(delta);
 }
 
 // check if the resource is available for the update as per fboss limits
@@ -1162,8 +1140,7 @@ bool ResourceAccountant::isValidUpdate(const StateDelta& delta) {
     isValidUpdate &= checkMySidResource(false /* intermediateState */);
   }
 
-  vrfStateChangedImpl(delta);
-  isValidUpdate &= checkVrfResource();
+  isValidUpdate &= vrfResourceAccountant_.isValidUpdate(delta);
   if (FLAGS_enable_pbr_acl_resource_protection) {
     isValidUpdate &= aclResourceAccountant_.isValidUpdate(delta);
   }
