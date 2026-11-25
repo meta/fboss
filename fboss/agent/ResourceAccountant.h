@@ -15,6 +15,7 @@
 #include "fboss/agent/MySidResourceAccountant.h"
 #include "fboss/agent/NeighborResourceAccountant.h"
 #include "fboss/agent/RouteCounterResourceAccountant.h"
+#include "fboss/agent/RouteResourceAccountant.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/VrfResourceAccountant.h"
 #include "fboss/agent/state/Route.h"
@@ -85,8 +86,6 @@ class ResourceAccountant {
       bool add,
       const std::shared_ptr<SwitchState>& state);
 
-  bool checkAndUpdateRouteResource(bool add);
-
   size_t countSrv6NextHops(const RouteNextHopSet& nhSet) const;
   bool checkSrv6UcmpDistinctWeights(const RouteNextHopSet& nhSet) const;
 
@@ -119,6 +118,7 @@ class ResourceAccountant {
   L2ResourceAccountant l2ResourceAccountant_;
   NeighborResourceAccountant neighborResourceAccountant_;
   RouteCounterResourceAccountant routeCounterResourceAccountant_;
+  RouteResourceAccountant routeResourceAccountant_;
 
   bool nativeWeightedEcmp_{true};
   // Yuba (G200) and G202x program protection backup next hops as ordinary
@@ -133,7 +133,6 @@ class ResourceAccountant {
   // entry in ecmpGroupRefMap_ and is derived from arsEcmpGroupRefMap_ instead.
   bool arsSplitHorizon_{false};
   uint32_t virtualArsGroupCount_{0};
-  uint32_t routeUsage_{0};
   // SRv6 next hop tracking: keyed by NextHopSetID for efficient lookup.
   // Stores {refCount, srv6Count} per unique NextHopSet.
   struct Srv6NextHopSetInfo {

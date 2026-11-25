@@ -969,7 +969,8 @@ TEST_F(ResourceAccountantTest, resolvedAndUnresolvedRoutes) {
   auto initialEcmpMemberUsage = this->resourceAccountant_->ecmpMemberUsage_;
   auto initialEcmpGroupCount =
       this->resourceAccountant_->ecmpGroupRefMap_.size();
-  auto initialRouteUsage = this->resourceAccountant_->routeUsage_;
+  auto initialRouteUsage =
+      this->resourceAccountant_->routeResourceAccountant_.getUsage();
 
   // Helper to build SwitchState with V6 routes
   auto makeSwitchStateWithV6Routes =
@@ -1037,7 +1038,9 @@ TEST_F(ResourceAccountantTest, resolvedAndUnresolvedRoutes) {
   EXPECT_TRUE(this->resourceAccountant_->routeAndEcmpStateChangedImpl(delta1));
 
   // Only 2 resolved routes should be counted
-  EXPECT_EQ(this->resourceAccountant_->routeUsage_, initialRouteUsage + 2);
+  EXPECT_EQ(
+      this->resourceAccountant_->routeResourceAccountant_.getUsage(),
+      initialRouteUsage + 2);
   EXPECT_EQ(
       this->resourceAccountant_->ecmpGroupRefMap_.size(),
       initialEcmpGroupCount + 1);
@@ -1053,7 +1056,9 @@ TEST_F(ResourceAccountantTest, resolvedAndUnresolvedRoutes) {
   EXPECT_TRUE(this->resourceAccountant_->routeAndEcmpStateChangedImpl(delta2));
 
   // Should go back to initial state
-  EXPECT_EQ(this->resourceAccountant_->routeUsage_, initialRouteUsage);
+  EXPECT_EQ(
+      this->resourceAccountant_->routeResourceAccountant_.getUsage(),
+      initialRouteUsage);
   EXPECT_EQ(
       this->resourceAccountant_->ecmpGroupRefMap_.size(),
       initialEcmpGroupCount);
@@ -1068,7 +1073,8 @@ TEST_F(ResourceAccountantTest, resolvedAndUnresolvedRoutes) {
   StateDelta delta3a(oldState3a, newState3a);
   EXPECT_TRUE(this->resourceAccountant_->routeAndEcmpStateChangedImpl(delta3a));
 
-  auto usageBeforeUnresolve = this->resourceAccountant_->routeUsage_;
+  auto usageBeforeUnresolve =
+      this->resourceAccountant_->routeResourceAccountant_.getUsage();
   auto ecmpUsageBeforeUnresolve = this->resourceAccountant_->ecmpMemberUsage_;
 
   // Change to unresolved (same prefixes, but unresolved)
@@ -1084,13 +1090,16 @@ TEST_F(ResourceAccountantTest, resolvedAndUnresolvedRoutes) {
   EXPECT_TRUE(this->resourceAccountant_->routeAndEcmpStateChangedImpl(delta3b));
 
   // Usage should decrease when routes become unresolved
-  EXPECT_EQ(this->resourceAccountant_->routeUsage_, usageBeforeUnresolve - 2);
+  EXPECT_EQ(
+      this->resourceAccountant_->routeResourceAccountant_.getUsage(),
+      usageBeforeUnresolve - 2);
   EXPECT_EQ(
       this->resourceAccountant_->ecmpMemberUsage_,
       ecmpUsageBeforeUnresolve - 2);
 
   // Test 4: Change unresolved routes to resolved
-  auto usageBeforeResolve = this->resourceAccountant_->routeUsage_;
+  auto usageBeforeResolve =
+      this->resourceAccountant_->routeResourceAccountant_.getUsage();
   auto ecmpUsageBeforeResolve = this->resourceAccountant_->ecmpMemberUsage_;
 
   auto oldState4 = newState3b;
@@ -1100,7 +1109,9 @@ TEST_F(ResourceAccountantTest, resolvedAndUnresolvedRoutes) {
   EXPECT_TRUE(this->resourceAccountant_->routeAndEcmpStateChangedImpl(delta4));
 
   // Usage should increase when routes become resolved
-  EXPECT_EQ(this->resourceAccountant_->routeUsage_, usageBeforeResolve + 2);
+  EXPECT_EQ(
+      this->resourceAccountant_->routeResourceAccountant_.getUsage(),
+      usageBeforeResolve + 2);
   EXPECT_EQ(
       this->resourceAccountant_->ecmpMemberUsage_, ecmpUsageBeforeResolve + 2);
 }

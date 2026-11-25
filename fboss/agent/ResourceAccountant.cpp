@@ -55,7 +55,8 @@ ResourceAccountant::ResourceAccountant(
       vrfResourceAccountant_(asicTable),
       mySidResourceAccountant_(asicTable),
       neighborResourceAccountant_(asicTable, scopeResolver),
-      routeCounterResourceAccountant_(asicTable) {
+      routeCounterResourceAccountant_(asicTable),
+      routeResourceAccountant_(asicTable) {
   CHECK_EQ(
       asicTable->isFeatureSupportedOnAnyAsic(
           HwAsic::Feature::WEIGHTED_NEXTHOPGROUP_MEMBER),
@@ -491,26 +492,6 @@ bool ResourceAccountant::shouldCheckRouteUpdate() const {
   return false;
 }
 
-bool ResourceAccountant::checkAndUpdateRouteResource(bool add) {
-  // Staring with the simpliest computation - treat all routes the same.
-  // We will graually evolve this to be more accurate (e.g. v4 /32, v4 </32,
-  // v6/64 etc.).
-  if (add) {
-    routeUsage_++;
-    for (const auto& [_, hwAsic] : asicTable_->getHwAsics()) {
-      const auto routeLimit = hwAsic->getMaxRoutes();
-      if (routeLimit.has_value() && routeUsage_ > routeLimit.value()) {
-        XLOG(DBG2) << "Route limit exceeded. Route demand from this update: "
-                   << routeUsage_ << " ASIC Limit: " << routeLimit.value();
-        return false;
-      }
-    }
-    return true;
-  }
-  routeUsage_--;
-  return true;
-}
-
 bool ResourceAccountant::routeAndEcmpStateChangedImpl(const StateDelta& delta) {
   if (!checkRouteUpdate_ || !FLAGS_enable_route_resource_protection) {
     return true;
@@ -528,7 +509,9 @@ bool ResourceAccountant::routeAndEcmpStateChangedImpl(const StateDelta& delta) {
         if (oldRoute->isResolved() && !newRoute->isResolved()) {
           validRouteUpdate &=
               checkAndUpdateEcmpResource(oldRoute, false /* add */, oldState);
-          validRouteUpdate &= checkAndUpdateRouteResource(false /* add */);
+          validRouteUpdate &=
+              routeResourceAccountant_.checkAndUpdateRouteResource(
+                  false /* add */);
           validRouteUpdate &= routeCounterResourceAccountant_
                                   .checkAndUpdateRouteCounterResource(
                                       oldRoute, false /* add */);
@@ -537,7 +520,9 @@ bool ResourceAccountant::routeAndEcmpStateChangedImpl(const StateDelta& delta) {
         if (!oldRoute->isResolved() && newRoute->isResolved()) {
           validRouteUpdate &=
               checkAndUpdateEcmpResource(newRoute, true /* add */, newState);
-          validRouteUpdate &= checkAndUpdateRouteResource(true /* add */);
+          validRouteUpdate &=
+              routeResourceAccountant_.checkAndUpdateRouteResource(
+                  true /* add */);
           validRouteUpdate &=
               routeCounterResourceAccountant_
                   .checkAndUpdateRouteCounterResource(newRoute, true /* add */);
@@ -560,7 +545,9 @@ bool ResourceAccountant::routeAndEcmpStateChangedImpl(const StateDelta& delta) {
         if (newRoute->isResolved()) {
           validRouteUpdate &=
               checkAndUpdateEcmpResource(newRoute, true /* add */, newState);
-          validRouteUpdate &= checkAndUpdateRouteResource(true /* add */);
+          validRouteUpdate &=
+              routeResourceAccountant_.checkAndUpdateRouteResource(
+                  true /* add */);
           validRouteUpdate &=
               routeCounterResourceAccountant_
                   .checkAndUpdateRouteCounterResource(newRoute, true /* add */);
@@ -570,7 +557,9 @@ bool ResourceAccountant::routeAndEcmpStateChangedImpl(const StateDelta& delta) {
         if (delRoute->isResolved()) {
           validRouteUpdate &=
               checkAndUpdateEcmpResource(delRoute, false /* add */, oldState);
-          validRouteUpdate &= checkAndUpdateRouteResource(false /* add */);
+          validRouteUpdate &=
+              routeResourceAccountant_.checkAndUpdateRouteResource(
+                  false /* add */);
           validRouteUpdate &= routeCounterResourceAccountant_
                                   .checkAndUpdateRouteCounterResource(
                                       delRoute, false /* add */);
@@ -615,8 +604,9 @@ bool ResourceAccountant::isValidRouteUpdate(const StateDelta& delta) {
   if (!validRouteUpdate) {
     XLOG(WARNING)
         << "Invalid route update - exceeding route or ECMP resource limits. New state consumes "
-        << routeUsage_ << " routes, " << ecmpMemberUsage_
-        << " ECMP members and " << getEcmpGroupUsage() << " ECMP groups.";
+        << routeResourceAccountant_.getUsage() << " routes, "
+        << ecmpMemberUsage_ << " ECMP members and " << getEcmpGroupUsage()
+        << " ECMP groups.";
     for (const auto& [switchId, hwAsic] : asicTable_->getHwAsics()) {
       const auto ecmpGroupLimit = hwAsic->getMaxEcmpGroups();
       const auto ecmpMemberLimit = hwAsic->getMaxEcmpMembers();

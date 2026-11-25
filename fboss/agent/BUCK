@@ -1080,6 +1080,23 @@ cpp_library(
 )
 
 cpp_library(
+    # @autodeps-skip HwAsicTable.h is compiled by both a dedicated target
+    # (:hw_asic_table) and :core; autodeps2 resolves the include to :core,
+    # which cycles back through :core. Keep the acyclic dedicated target.
+    name = "route_resource_accountant",
+    srcs = [
+        "RouteResourceAccountant.cpp",
+    ],
+    headers = [
+        "RouteResourceAccountant.h",
+    ],
+    deps = [
+        "fbsource//xplat/folly/logging:logging",
+        ":hw_asic_table",
+    ],
+)
+
+cpp_library(
     name = "pbr_acl_manager",
     srcs = [
         "PbrAclManager.cpp",
@@ -2805,6 +2822,7 @@ cpp_library(
         ":mysid_resource_accountant",
         ":neighbor_resource_accountant",
         ":route_counter_resource_accountant",
+        ":route_resource_accountant",
         ":stats",
         ":switchid_scope_resolver",
         ":vrf_resource_accountant",

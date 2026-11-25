@@ -336,6 +336,14 @@ target_link_libraries(route_counter_resource_accountant
   ${GTEST}
 )
 
+add_library(route_resource_accountant
+  fboss/agent/RouteResourceAccountant.cpp
+)
+
+target_link_libraries(route_resource_accountant
+  hw_asic_table
+)
+
 add_library(pbr_acl_manager
   fboss/agent/PbrAclManager.cpp
 )
@@ -1030,6 +1038,7 @@ add_library(validate_state_update
 
 target_link_libraries(validate_state_update
   acl_resource_accountant
+  route_resource_accountant
   route_counter_resource_accountant
   neighbor_resource_accountant
   l2_resource_accountant
