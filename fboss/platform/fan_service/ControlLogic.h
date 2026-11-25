@@ -77,7 +77,11 @@ class ControlLogic {
   programFan(const Zone& zone, const Fan& fan, float fanPwm);
   float calculateZonePwm(const Zone& zone, bool boostMode);
   void updateTargetPwm(const Sensor& sensorItem, int numFanFailed);
-  void programLed(const Fan& fan, bool fanFailed);
+  // Returns false only if the LED sysfs write failed.
+  bool programLed(
+      const Fan& fan,
+      bool fanFailed,
+      const std::vector<std::string>& ledFanNames);
   bool isFanPresentInDevice(const Fan& fan);
   float calculateFanPwm(uint16_t slope, float currentFanPwm, float zonePwm);
   void updatePwmState(const Zone& zone, float fanPwm);
