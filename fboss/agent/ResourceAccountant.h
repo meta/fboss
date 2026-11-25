@@ -14,6 +14,7 @@
 #include "fboss/agent/L2ResourceAccountant.h"
 #include "fboss/agent/MySidResourceAccountant.h"
 #include "fboss/agent/NeighborResourceAccountant.h"
+#include "fboss/agent/RouteCounterResourceAccountant.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/VrfResourceAccountant.h"
 #include "fboss/agent/state/Route.h"
@@ -86,13 +87,6 @@ class ResourceAccountant {
 
   bool checkAndUpdateRouteResource(bool add);
 
-  template <typename AddrT>
-  bool checkAndUpdateRouteCounterResource(
-      const std::shared_ptr<Route<AddrT>>& route,
-      bool add);
-
-  bool checkRouteCounterResource(bool intermediateState) const;
-
   size_t countSrv6NextHops(const RouteNextHopSet& nhSet) const;
   bool checkSrv6UcmpDistinctWeights(const RouteNextHopSet& nhSet) const;
 
@@ -124,6 +118,7 @@ class ResourceAccountant {
   MySidResourceAccountant mySidResourceAccountant_;
   L2ResourceAccountant l2ResourceAccountant_;
   NeighborResourceAccountant neighborResourceAccountant_;
+  RouteCounterResourceAccountant routeCounterResourceAccountant_;
 
   bool nativeWeightedEcmp_{true};
   // Yuba (G200) and G202x program protection backup next hops as ordinary
@@ -152,7 +147,6 @@ class ResourceAccountant {
   std::optional<int32_t> minWidthForArsVirtualGroup_;
   std::optional<int32_t> maxArsVirtualGroups_;
   std::optional<int32_t> maxArsVirtualGroupWidth_;
-  std::unordered_map<RouteCounterID, uint32_t> routeCounterRefMap_;
 
   FRIEND_TEST(ResourceAccountantTest, getMemberCountForEcmpGroup);
   FRIEND_TEST(ResourceAccountantTest, checkArsResource);
@@ -184,8 +178,6 @@ class ResourceAccountant {
   FRIEND_TEST(ResourceAccountantTest, checkAndUpdateSrv6NextHopResource);
   FRIEND_TEST(ResourceAccountantTest, srv6NextHopResourceExceeded);
   FRIEND_TEST(ResourceAccountantTest, srv6UcmpDistinctWeights);
-  FRIEND_TEST(ResourceAccountantTest, checkAndUpdateRouteCounterResource);
-  FRIEND_TEST(ResourceAccountantTest, routeCounterResourceExceeded);
   FRIEND_TEST(MacTableManagerTest, MacLearnedBulkCb);
   FRIEND_TEST(StaticMacConfigTest, ApplyConfigAccountsStaticMacsOnce);
   FRIEND_TEST(StaticMacConfigTest, IsValidStateUpdateDryRun);
