@@ -34,6 +34,17 @@ using namespace facebook::fboss;
 
 class SwitchManagerTest : public ManagerTestBase {};
 
+TEST_F(SwitchManagerTest, CsigTrapRulesDisabledForNonBroadcom) {
+  ASSERT_NE(
+      saiPlatform->getAsic()->getAsicVendor(),
+      HwAsic::AsicVendor::ASIC_VENDOR_BCM);
+  ASSERT_TRUE(saiPlatform->getAsic()->isSupported(HwAsic::Feature::CSIG));
+  auto* saiSwitch = static_cast<SaiSwitch*>(saiPlatform->getHwSwitch());
+  EXPECT_FALSE(saiApiTable->switchApi().getAttribute(
+      saiSwitch->getSaiSwitchId(),
+      SaiSwitchTraits::Attributes::UseTrapGroupForCsigRules{}));
+}
+
 TEST_F(SwitchManagerTest, serDeser) {
   auto saiSwitch = static_cast<SaiSwitch*>(saiPlatform->getHwSwitch());
   auto adapterKeys = saiSwitch->toFollyDynamic();

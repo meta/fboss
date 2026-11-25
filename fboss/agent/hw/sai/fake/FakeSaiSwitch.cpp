@@ -393,7 +393,12 @@ sai_status_t create_switch_fn(
   auto fs = FakeSai::getInstance();
   *switch_id = fs->switchManager.create();
   for (int i = 0; i < attr_count; ++i) {
-    set_switch_attribute_fn(*switch_id, &attr_list[i]);
+    if (attr_list[i].id == SAI_SWITCH_ATTR_EXT_USE_TRAP_GROUP_FOR_CSIG_RULES) {
+      fs->switchManager.get(*switch_id).useTrapGroupForCsigRules =
+          attr_list[i].value.booldata;
+    } else {
+      set_switch_attribute_fn(*switch_id, &attr_list[i]);
+    }
   }
   fs->switchManager.get(*switch_id)
       .setDefaultVlanId(fs->vlanManager.create(kDefaultVlanId));
@@ -662,6 +667,9 @@ sai_status_t get_switch_attribute_fn(
         break;
       }
 #endif
+      case SAI_SWITCH_ATTR_EXT_USE_TRAP_GROUP_FOR_CSIG_RULES:
+        attr[i].value.booldata = sw.useTrapGroupForCsigRules;
+        break;
       case SAI_SWITCH_ATTR_TAM_OBJECT_ID: {
         const auto& tamObjects = sw.getTamObjectId();
         const auto count = static_cast<uint32_t>(tamObjects.size());

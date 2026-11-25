@@ -571,6 +571,11 @@ std::optional<sai_attr_id_t> SaiEnhancedRemoteMirrorTraits::Attributes::
   return std::nullopt;
 }
 
+std::optional<sai_attr_id_t> SaiSwitchTraits::Attributes::
+    AttributeUseTrapGroupForCsigRulesWrapper::operator()() {
+  return SAI_SWITCH_ATTR_EXT_USE_TRAP_GROUP_FOR_CSIG_RULES;
+}
+
 std::optional<sai_attr_id_t>
 SaiSwitchTraits::Attributes::AttributeNoAclsForTrapsWrapper::operator()() {
   return std::nullopt;

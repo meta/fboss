@@ -30,6 +30,19 @@ class SwitchApiTest : public ::testing::Test {
   SwitchSaiId switchId;
 };
 
+TEST_F(SwitchApiTest, CsigTrapRulesCreateOnly) {
+  using A = SaiSwitchTraits::Attributes;
+  SaiSwitchTraits::CreateAttributes attributes;
+  std::get<A::InitSwitch>(attributes) = true;
+  std::get<std::optional<A::UseTrapGroupForCsigRules>>(attributes) = true;
+  auto id = switchApi->create<SaiSwitchTraits>(attributes, 0);
+  EXPECT_TRUE(switchApi->getAttribute(id, A::UseTrapGroupForCsigRules{}));
+  EXPECT_THROW(
+      switchApi->setAttribute(id, A::UseTrapGroupForCsigRules{false}),
+      SaiApiError);
+  switchApi->remove(id);
+}
+
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
 TEST_F(SwitchApiTest, CsigBandwidthTimers) {
   EXPECT_EQ(

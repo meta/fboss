@@ -127,6 +127,7 @@ typedef enum _sai_switch_extensions_attr_t {
   SAI_SWITCH_ATTR_ACL_DROP_SNOOP_DISABLED,
   SAI_SWITCH_ATTR_EXT_DROP_REASON_LIST,
   SAI_SWITCH_ATTR_EXT_STATIC_FDB_REPLACE_DYNAMIC,
+  SAI_SWITCH_ATTR_EXT_USE_TRAP_GROUP_FOR_CSIG_RULES,
 } sai_switch_extensions_attr_t;
 
 typedef enum _sai_tam_event_extensions_attr_t {

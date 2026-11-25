@@ -421,6 +421,7 @@ SaiSwitchTraits::CreateAttributes SaiPhyRetimer::getSwitchAttributes(
 #endif
       std::nullopt, // VXLAN default port
       std::nullopt, // VXLAN default router MAC
+      std::nullopt, // Use trap group for CSIG rules
   };
 }
 

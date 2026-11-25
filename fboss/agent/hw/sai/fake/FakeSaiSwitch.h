@@ -399,6 +399,7 @@ class FakeSwitch {
 
   sai_status_t setLed(const sai_attribute_t* attr);
   sai_status_t getLed(sai_attribute_t* attr) const;
+  bool useTrapGroupForCsigRules{false};
 
 #if SAI_API_VERSION >= SAI_VERSION(1, 18, 1)
   sai_uint8_t maxCsigTimers{2};

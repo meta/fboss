@@ -908,6 +908,16 @@ SaiSwitchTraits::CreateAttributes SaiPlatform::getSwitchAttributes(
   }
 #endif
 
+  std::optional<SaiSwitchTraits::Attributes::UseTrapGroupForCsigRules>
+      useTrapGroupForCsigRules;
+#if defined(BRCM_SAI_SDK_GTE_16_0)
+  if (!mandatoryOnly &&
+      getAsic()->getAsicVendor() == HwAsic::AsicVendor::ASIC_VENDOR_BCM &&
+      getAsic()->isSupported(HwAsic::Feature::CSIG)) {
+    useTrapGroupForCsigRules = true;
+  }
+#endif
+
   std::optional<SaiSwitchTraits::Attributes::SdkDumpRateLimitWindow>
       sdkDumpRateLimitWindow{std::nullopt};
 #if defined(SAI_SDK_DUMP_RATE_LIMIT_SUPPORTED)
@@ -1029,6 +1039,7 @@ SaiSwitchTraits::CreateAttributes SaiPlatform::getSwitchAttributes(
 #endif
       std::nullopt, // VxlanDefaultPort
       std::nullopt, // VxlanDefaultRouterMac
+      useTrapGroupForCsigRules,
   };
 }
 

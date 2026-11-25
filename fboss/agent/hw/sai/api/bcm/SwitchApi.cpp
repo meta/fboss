@@ -512,6 +512,15 @@ std::optional<sai_attr_id_t> SaiSwitchTraits::Attributes::
   return std::nullopt;
 }
 
+std::optional<sai_attr_id_t> SaiSwitchTraits::Attributes::
+    AttributeUseTrapGroupForCsigRulesWrapper::operator()() {
+#if defined(BRCM_SAI_SDK_GTE_16_0)
+  return SAI_SWITCH_ATTR_EXT_USE_TRAP_GROUP_FOR_CSIG_RULES;
+#else
+  return std::nullopt;
+#endif
+}
+
 std::optional<sai_attr_id_t>
 SaiSwitchTraits::Attributes::AttributeNoAclsForTrapsWrapper::operator()() {
 #if defined(BRCM_SAI_SDK_GTE_11_0)

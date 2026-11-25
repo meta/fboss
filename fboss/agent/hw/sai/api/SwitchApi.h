@@ -668,6 +668,13 @@ struct SaiSwitchTraits {
         bool,
         AttributeNoAclsForTrapsWrapper,
         SaiBoolDefaultFalse>;
+    struct AttributeUseTrapGroupForCsigRulesWrapper {
+      std::optional<sai_attr_id_t> operator()();
+    };
+    using UseTrapGroupForCsigRules = SaiExtensionAttribute<
+        bool,
+        AttributeUseTrapGroupForCsigRulesWrapper,
+        SaiBoolDefaultFalse>;
     struct AttributeMaxSystemPortId {
       std::optional<sai_attr_id_t> operator()();
     };
@@ -1096,7 +1103,8 @@ struct SaiSwitchTraits {
 #endif
       ,
       std::optional<Attributes::VxlanDefaultPort>,
-      std::optional<Attributes::VxlanDefaultRouterMac>>;
+      std::optional<Attributes::VxlanDefaultRouterMac>,
+      std::optional<Attributes::UseTrapGroupForCsigRules>>;
 
   // Avoid using SAI_SWITCH_STAT_PACKET_INTEGRITY_DROP as that counts
   // both DramPacketError and EgressRcvPacketError. As we now have a
@@ -1265,6 +1273,7 @@ SAI_ATTRIBUTE_NAME(Switch, FabricLinkLayerFlowControlThreshold)
 SAI_ATTRIBUTE_NAME(Switch, SramFreePercentXoffTh)
 SAI_ATTRIBUTE_NAME(Switch, SramFreePercentXonTh)
 SAI_ATTRIBUTE_NAME(Switch, NoAclsForTraps)
+SAI_ATTRIBUTE_NAME(Switch, UseTrapGroupForCsigRules)
 SAI_ATTRIBUTE_NAME(Switch, MaxSystemPortId)
 SAI_ATTRIBUTE_NAME(Switch, MaxLocalSystemPortId)
 SAI_ATTRIBUTE_NAME(Switch, MaxSystemPorts)

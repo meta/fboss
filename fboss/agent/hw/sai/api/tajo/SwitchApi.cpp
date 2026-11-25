@@ -106,6 +106,11 @@ std::optional<sai_attr_id_t> SaiSwitchTraits::Attributes::
   return std::nullopt;
 }
 
+std::optional<sai_attr_id_t> SaiSwitchTraits::Attributes::
+    AttributeUseTrapGroupForCsigRulesWrapper::operator()() {
+  return std::nullopt;
+}
+
 std::optional<sai_attr_id_t>
 SaiSwitchTraits::Attributes::AttributeNoAclsForTrapsWrapper::operator()() {
   return std::nullopt;
