@@ -1,6 +1,4 @@
-#!/usr/bin/env python3
-
-# pyre-strict
+#!/usr/bin/env fbpython
 
 import json
 import os

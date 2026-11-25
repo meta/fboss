@@ -1,4 +1,3 @@
-# pyre-strict
 import sys
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
@@ -55,7 +54,7 @@ from neteng.fboss.platform_config.platform_config.thrift_types import (
     PortAssignment,
 )
 from neteng.fboss.platform_mapping_config.thrift_types import ChipType, CoreType
-from neteng.fboss.switch_config.thrift_types import PortProfileID, PortType
+from neteng.fboss.switch_config.thrift_types import PortProfileID, PortSpeed, PortType
 
 
 class PlatformMappingParser:
@@ -627,10 +626,10 @@ class PlatformMappingV2:
                 )
                 all_connection_pairs = all_connection_pairs + profile_connections
 
-                lane_speed = (
+                lane_speed = PortSpeed(
                     0
                     if speed_setting.num_lanes == 0
-                    else speed_setting.speed / speed_setting.num_lanes
+                    else speed_setting.speed // speed_setting.num_lanes
                 )
                 [
                     pins,
@@ -639,7 +638,6 @@ class PlatformMappingV2:
                     connections=profile_connections,
                     si_settings=self.pm_parser.get_si_settings(),
                     profile=profile,
-                    # pyre-fixme[6]: Expected `PortSpeed` for 4th param, but got `float`.
                     lane_speed=lane_speed,
                     port_id=port_detail.global_port_id,
                     integrated_tcvr_mapping=self.pm_parser.get_integrated_transceiver_mapping(),

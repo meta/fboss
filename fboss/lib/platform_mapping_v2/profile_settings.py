@@ -1,4 +1,3 @@
-# pyre-strict
 from typing import List, Optional
 
 from fboss.lib.platform_mapping_v2.helpers import (
