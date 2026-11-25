@@ -1,26 +1,23 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
-#include <folly/Synchronized.h>
 #include <folly/io/Cursor.h>
-#include <folly/logging/xlog.h>
 #include <gtest/gtest.h>
 
 #include <vector>
 
-#include "fboss/agent/PacketObserver.h"
-#include "fboss/agent/RxPacket.h"
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/TxPacket.h"
+#include "fboss/agent/packet/EthFrame.h"
 #include "fboss/agent/packet/EthHdr.h"
 #include "fboss/agent/packet/Ethertype.h"
 #include "fboss/agent/packet/IPProto.h"
 #include "fboss/agent/packet/IPv6Hdr.h"
-#include "fboss/agent/packet/PktUtil.h"
 #include "fboss/agent/packet/UDPHeader.h"
 #include "fboss/agent/test/AgentHwTest.h"
 #include "fboss/agent/test/EcmpSetupHelper.h"
 #include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
+#include "fboss/agent/test/utils/PacketSnooper.h"
 #include "fboss/agent/test/utils/TrapPacketUtils.h"
 #include "fboss/lib/CommonUtils.h"
 
@@ -28,7 +25,6 @@ namespace facebook::fboss {
 
 namespace {
 
-constexpr uint16_t kCsigTpid = 0x9900;
 constexpr uint8_t kAbwcSignalType = 1;
 // Probe tag: ABWC bucket 7 with the valid bit (0x10) set, link locator 0x5.
 constexpr uint8_t kProbeSignal = 0x17;
@@ -39,120 +35,19 @@ constexpr uint8_t kEgressLinkLocator = 0x42;
 constexpr uint8_t kIdleUpdateSignal = 0x10;
 constexpr uint8_t kProbeHopLimit = 64;
 constexpr size_t kProbePayloadSize = 50;
-constexpr size_t kCsigTagSize = 4;
-// A probe loops on the MAC-loopback egress port until its hop limit expires,
-// so expect at most one copy per hop.
-constexpr size_t kMaxFramesToCollect = kProbeHopLimit;
 
 const folly::IPAddressV6 kProbeSrcIp{"1::10"};
 
-struct CsigTag {
-  uint8_t signalType{0};
-  uint8_t signal{0};
-  uint8_t linkLocator{0};
-};
-
-// A copy of the probe looped back on the egress port.
-struct ProbeCopy {
-  std::optional<CsigTag> csigTag;
-  folly::IPAddressV6 dstIp;
-  uint8_t hopLimit{0};
-  std::string hexDump;
-};
-
-// Tag layout: signalType(3) | reserved(1) | signal(5) | linkLocator(7),
-// followed by the ethertype of the encapsulated packet.
-uint16_t encodeCsigTag(uint8_t signalType, uint8_t signal, uint8_t locator) {
-  return static_cast<uint16_t>(
-      ((signalType & 0x7) << 13) | ((signal & 0x1f) << 7) | (locator & 0x7f));
+// A copy of the probe the ASIC routed to dstIp (hop limit decremented). The
+// egress tag action applies only to routed packets, so bridged copies don't
+// count.
+bool isRoutedProbeCopy(
+    const utility::EthFrame& frame,
+    const folly::IPAddressV6& dstIp) {
+  const auto& v6 = frame.v6PayLoad();
+  return v6.has_value() && v6->header().dstAddr == dstIp &&
+      v6->header().hopLimit < kProbeHopLimit;
 }
-
-CsigTag decodeCsigTag(uint16_t tag) {
-  return CsigTag{
-      .signalType = static_cast<uint8_t>((tag >> 13) & 0x7),
-      .signal = static_cast<uint8_t>((tag >> 7) & 0x1f),
-      .linkLocator = static_cast<uint8_t>(tag & 0x7f),
-  };
-}
-
-// Parses an IPv6 frame with an optional CSIG tag. Frames punted to the CPU
-// carry an 802.1Q tag ahead of the CSIG tag.
-std::optional<ProbeCopy> parseProbeCopy(const folly::IOBuf* buf) {
-  folly::io::Cursor cursor(buf);
-  // EthHdr::SIZE includes room for one 802.1Q tag.
-  if (cursor.totalLength() < EthHdr::SIZE + kCsigTagSize + IPv6Hdr::SIZE) {
-    return std::nullopt;
-  }
-  cursor.skip(2 * folly::MacAddress::SIZE);
-  auto etherType = cursor.readBE<uint16_t>();
-  if (etherType == static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_VLAN)) {
-    cursor.skip(2);
-    etherType = cursor.readBE<uint16_t>();
-  }
-  ProbeCopy copy;
-  if (etherType == kCsigTpid) {
-    copy.csigTag = decodeCsigTag(cursor.readBE<uint16_t>());
-    etherType = cursor.readBE<uint16_t>();
-  }
-  if (etherType != static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_IPV6)) {
-    return std::nullopt;
-  }
-  const IPv6Hdr ipHdr(cursor);
-  copy.dstIp = ipHdr.dstAddr;
-  copy.hopLimit = ipHdr.hopLimit;
-  copy.hexDump = PktUtil::hexDump(buf);
-  return copy;
-}
-
-// Collects IPv6 frames punted from one port. PacketSnooper can't be used: it
-// parses every frame with EthFrame, which throws on the CSIG ethertype.
-class ProbeCopyCollector : public PacketObserverIf {
- public:
-  ProbeCopyCollector(SwSwitch* sw, PortID port) : sw_(sw), port_(port) {
-    sw_->getPacketObservers()->registerPacketObserver(this, kName);
-  }
-
-  ~ProbeCopyCollector() override {
-    sw_->getPacketObservers()->unregisterPacketObserver(this, kName);
-  }
-
-  void packetReceived(const RxPacket* pkt) noexcept override {
-    if (pkt->getSrcPort() != port_) {
-      return;
-    }
-    std::optional<ProbeCopy> copy;
-    try {
-      copy = parseProbeCopy(pkt->buf());
-    } catch (const std::exception& ex) {
-      XLOG(DBG2) << "Ignoring unparsable frame: " << ex.what();
-    }
-    if (!copy.has_value()) {
-      return;
-    }
-    auto copies = copies_.wlock();
-    if (copies->size() < kMaxFramesToCollect) {
-      copies->push_back(std::move(*copy));
-    }
-  }
-
-  // Copies the ASIC routed to dstIp (hop limit decremented). The egress tag
-  // action applies only to routed packets, so bridged copies are ignored.
-  std::vector<ProbeCopy> routedCopiesTo(const folly::IPAddressV6& dstIp) {
-    std::vector<ProbeCopy> matching;
-    for (const auto& copy : *copies_.rlock()) {
-      if (copy.dstIp == dstIp && copy.hopLimit < kProbeHopLimit) {
-        matching.push_back(copy);
-      }
-    }
-    return matching;
-  }
-
- private:
-  static constexpr auto kName = "ProbeCopyCollector";
-  SwSwitch* sw_;
-  PortID port_;
-  folly::Synchronized<std::vector<ProbeCopy>> copies_;
-};
 
 } // namespace
 
@@ -212,44 +107,47 @@ class AgentCsigTest : public AgentHwTest {
         "resolve CSIG probe neighbor");
   }
 
-  std::unique_ptr<TxPacket> makeCsigProbe(const folly::IPAddressV6& dstIp) {
-    std::vector<uint8_t> payload(kProbePayloadSize, 0);
-    IPv6Hdr ipHdr(kProbeSrcIp, dstIp);
-    ipHdr.nextHeader = static_cast<uint8_t>(IP_PROTO::IP_PROTO_UDP);
-    ipHdr.payloadLength = UDPHeader::size() + payload.size();
-    ipHdr.hopLimit = kProbeHopLimit;
-    UDPHeader udpHdr(8000, 8001, UDPHeader::size() + payload.size());
-
-    auto pkt = getSw()->allocatePacket(
-        EthHdr::UNTAGGED_PKT_SIZE + kCsigTagSize + IPv6Hdr::SIZE +
-        UDPHeader::size() + payload.size());
-    folly::io::RWPrivateCursor cursor(pkt->buf());
+  utility::EthFrame makeCsigProbe(const folly::IPAddressV6& dstIp) {
     const auto intfMac = getMacForFirstInterfaceWithPorts(getProgrammedState());
-    TxPacket::writeEthHeader(&cursor, intfMac, intfMac, kCsigTpid);
-    cursor.writeBE<uint16_t>(
-        encodeCsigTag(kAbwcSignalType, kProbeSignal, kProbeLinkLocator));
-    cursor.writeBE<uint16_t>(static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_IPV6));
-    ipHdr.serialize(&cursor);
-    cursor.writeBE<uint16_t>(udpHdr.srcPort);
-    cursor.writeBE<uint16_t>(udpHdr.dstPort);
-    cursor.writeBE<uint16_t>(udpHdr.length);
-    folly::io::RWPrivateCursor csumCursor(cursor);
-    cursor.skip(2);
-    folly::io::Cursor payloadStart(cursor);
-    cursor.push(payload.data(), payload.size());
-    csumCursor.writeBE<uint16_t>(udpHdr.computeChecksum(ipHdr, payloadStart));
-    return pkt;
+    EthHdr ethHdr(
+        intfMac, intfMac, {}, static_cast<uint16_t>(ETHERTYPE::ETHERTYPE_IPV6));
+    ethHdr.setCsigTag(
+        CsigTag(kAbwcSignalType, kProbeSignal, kProbeLinkLocator));
+    IPv6Hdr ipHdr(kProbeSrcIp, dstIp);
+    ipHdr.setProtocol(static_cast<uint8_t>(IP_PROTO::IP_PROTO_UDP));
+    ipHdr.hopLimit = kProbeHopLimit;
+    UDPHeader udpHdr;
+    udpHdr.srcPort = 8000;
+    udpHdr.dstPort = 8001;
+    return utility::EthFrame(
+        ethHdr,
+        utility::IPPacket<folly::IPAddressV6>(
+            ipHdr,
+            utility::UDPDatagram(
+                udpHdr, std::vector<uint8_t>(kProbePayloadSize, 0))));
   }
 
   // Sends a probe and returns the routed copies that loop back on the egress
   // port.
-  std::vector<ProbeCopy> sendProbeAndCollectRoutedCopies() {
+  std::vector<utility::EthFrame> sendProbeAndCollectRoutedCopies() {
     const auto dstIp = probeDstIp();
-    ProbeCopyCollector collector(getSw(), egressPort());
-    std::vector<ProbeCopy> copies;
+    const auto probe = makeCsigProbe(dstIp);
+    utility::SwSwitchPacketSnooper snooper(
+        getSw(), "csigProbeSnooper", egressPort());
+    // A probe loops on the MAC-loopback egress port until its hop limit
+    // expires, so most captured frames go unclaimed.
+    snooper.ignoreUnclaimedRxPkts();
+    std::vector<utility::EthFrame> copies;
     WITH_RETRIES({
-      sendPacketSwitchedAsync(makeCsigProbe(dstIp));
-      copies = collector.routedCopiesTo(dstIp);
+      sendPacketSwitchedAsync(probe.getTxPacket(
+          [sw = getSw()](uint32_t size) { return sw->allocatePacket(size); }));
+      while (auto buf = snooper.waitForPacket(1 /* timeout_s */)) {
+        folly::io::Cursor cursor(buf->get());
+        utility::EthFrame frame(cursor);
+        if (isRoutedProbeCopy(frame, dstIp)) {
+          copies.push_back(std::move(frame));
+        }
+      }
       EXPECT_EVENTUALLY_FALSE(copies.empty());
     });
     EXPECT_FALSE(copies.empty()) << "No routed copy of the probe to " << dstIp
@@ -259,16 +157,17 @@ class AgentCsigTest : public AgentHwTest {
 
   void verifyEgressCsigTag(uint8_t expectedSignal, uint8_t expectedLocator) {
     for (const auto& copy : sendProbeAndCollectRoutedCopies()) {
-      ASSERT_TRUE(copy.csigTag.has_value()) << copy.hexDump;
-      EXPECT_EQ(copy.csigTag->signalType, kAbwcSignalType) << copy.hexDump;
-      EXPECT_EQ(copy.csigTag->signal, expectedSignal) << copy.hexDump;
-      EXPECT_EQ(copy.csigTag->linkLocator, expectedLocator) << copy.hexDump;
+      const auto csigTag = copy.header().getCsigTag();
+      ASSERT_TRUE(csigTag.has_value()) << copy;
+      EXPECT_EQ(csigTag->signalType(), kAbwcSignalType) << copy;
+      EXPECT_EQ(csigTag->signal(), expectedSignal) << copy;
+      EXPECT_EQ(csigTag->linkLocator(), expectedLocator) << copy;
     }
   }
 
   void verifyEgressCsigTagStripped() {
     for (const auto& copy : sendProbeAndCollectRoutedCopies()) {
-      EXPECT_FALSE(copy.csigTag.has_value()) << copy.hexDump;
+      EXPECT_FALSE(copy.header().getCsigTag().has_value()) << copy;
     }
   }
 };
