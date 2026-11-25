@@ -886,7 +886,6 @@ thrift_add_library(
   LANGUAGE cpp2
   OPTIONS
     json
-    visitation
     reflection
   DEPENDS
     mka_structs_cpp2

@@ -211,7 +211,6 @@ thrift_generate(
   LANGUAGE cpp2
   OPTIONS
     json
-    visitation
   INCLUDE_DIRECTORIES
     ${PROJECT_SOURCE_DIR}
     ${THRIFT_INCLUDE_DIR}
