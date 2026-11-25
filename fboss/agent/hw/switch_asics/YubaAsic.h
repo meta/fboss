@@ -233,7 +233,6 @@ class YubaAsic : public TajoAsic {
   bool isSupportedFabric(Feature feature) const;
   bool isSupportedNonFabric(Feature feature) const;
   static constexpr auto kSrv6MinSdkRequired = "26.2.4210";
-  // CSIG is delivered in 26.5.5210.4.
   static constexpr auto kCsigMinSdkRequired = "26.5.4210";
   static constexpr auto kDropReasonListMinSdkRequired = "26.5.4210";
   std::optional<uint64_t> currentSdkVersion_{std::nullopt};

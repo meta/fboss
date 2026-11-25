@@ -513,7 +513,7 @@ void srv6RouteCounterStatsCollectionBenchmark(int numRoutes) {
   // 100 matches the VOQ-switch count in HwStatsCollectionBenchmark.
   constexpr int kStatsCollectionIterations = 100;
 
-  // Extended-label route counters require FLAGS_srv6 on a 26.2.4210/26.5.5210
+  // Extended-label route counters require FLAGS_srv6 on a 26.2.4210 or newer
   // build.
   FLAGS_srv6 = true;
   FLAGS_enable_stats_update_thread = false;
