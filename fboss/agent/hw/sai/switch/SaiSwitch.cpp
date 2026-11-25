@@ -4447,8 +4447,7 @@ void SaiSwitch::packetRxCallbackPort(
   // packet, so honor a cached nonzero VLAN mapping when one exists.
   const auto vlanItr =
       concurrentIndices_->vlanIds.find(PortDescriptorSaiId(portSaiId));
-  const bool hasP200Vlan =
-      asicType_ == cfg::AsicType::ASIC_TYPE_P200 &&
+  const bool hasP200Vlan = asicType_ == cfg::AsicType::ASIC_TYPE_P200 &&
       vlanItr != concurrentIndices_->vlanIds.cend() &&
       vlanItr->second != VlanID(0);
   if (!processVlanUntaggedPackets() || hasP200Vlan) {
@@ -4552,8 +4551,7 @@ void SaiSwitch::packetRxCallbackLag(
   // processVlanUntaggedPackets() is true for the ASIC.
   const auto vlanItr =
       concurrentIndices_->vlanIds.find(PortDescriptorSaiId(lagSaiId));
-  const bool hasP200Vlan =
-      asicType_ == cfg::AsicType::ASIC_TYPE_P200 &&
+  const bool hasP200Vlan = asicType_ == cfg::AsicType::ASIC_TYPE_P200 &&
       vlanItr != concurrentIndices_->vlanIds.cend() &&
       vlanItr->second != VlanID(0);
   if (!processVlanUntaggedPackets() || hasP200Vlan) {
