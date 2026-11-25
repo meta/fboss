@@ -11,6 +11,7 @@
 
 #include "fboss/agent/AclResourceAccountant.h"
 #include "fboss/agent/HwAsicTable.h"
+#include "fboss/agent/MySidResourceAccountant.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/VrfResourceAccountant.h"
 #include "fboss/agent/state/Route.h"
@@ -90,9 +91,6 @@ class ResourceAccountant {
 
   bool checkRouteCounterResource(bool intermediateState) const;
 
-  void mySidStateChangedImpl(const StateDelta& delta);
-  bool checkMySidResource(bool intermediateState);
-
   size_t countSrv6NextHops(const RouteNextHopSet& nhSet) const;
   bool checkSrv6UcmpDistinctWeights(const RouteNextHopSet& nhSet) const;
 
@@ -151,6 +149,7 @@ class ResourceAccountant {
   const SwitchIdScopeResolver* scopeResolver_;
   AclResourceAccountant aclResourceAccountant_;
   VrfResourceAccountant vrfResourceAccountant_;
+  MySidResourceAccountant mySidResourceAccountant_;
 
   bool nativeWeightedEcmp_{true};
   // Yuba (G200) and G202x program protection backup next hops as ordinary
@@ -167,7 +166,6 @@ class ResourceAccountant {
   bool arsSplitHorizon_{false};
   uint32_t virtualArsGroupCount_{0};
   uint32_t routeUsage_{0};
-  uint32_t mySidUsage_{0};
   // SRv6 next hop tracking: keyed by NextHopSetID for efficient lookup.
   // Stores {refCount, srv6Count} per unique NextHopSet.
   struct Srv6NextHopSetInfo {
@@ -214,9 +212,6 @@ class ResourceAccountant {
   FRIEND_TEST(ResourceAccountantTest, removeInterfaceWithNeighbors);
   FRIEND_TEST(ResourceAccountantTest, routeWithAdjustedWeightZero);
   FRIEND_TEST(ResourceAccountantTest, resolvedAndUnresolvedRoutes);
-  FRIEND_TEST(ResourceAccountantTest, checkMySidResource);
-  FRIEND_TEST(ResourceAccountantTest, mySidStateChanged);
-  FRIEND_TEST(ResourceAccountantTest, mySidResourceExceeded);
   FRIEND_TEST(ResourceAccountantTest, checkAndUpdateSrv6NextHopResource);
   FRIEND_TEST(ResourceAccountantTest, srv6NextHopResourceExceeded);
   FRIEND_TEST(ResourceAccountantTest, srv6UcmpDistinctWeights);

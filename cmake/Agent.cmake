@@ -291,6 +291,17 @@ target_link_libraries(vrf_resource_accountant
   ${GTEST}
 )
 
+add_library(mysid_resource_accountant
+  fboss/agent/MySidResourceAccountant.cpp
+)
+
+target_link_libraries(mysid_resource_accountant
+  agent_features
+  hw_asic_table
+  state
+  ${GTEST}
+)
+
 add_library(pbr_acl_manager
   fboss/agent/PbrAclManager.cpp
 )
@@ -985,6 +996,7 @@ add_library(validate_state_update
 
 target_link_libraries(validate_state_update
   acl_resource_accountant
+  mysid_resource_accountant
   vrf_resource_accountant
   state
   fboss_error
