@@ -41,8 +41,8 @@ cpp_library(
     ],
     exported_deps = [
         "fbsource//xplat/folly:cpp_attributes",
-        ":platform_descriptor_thrift-cpp2-types",
-        "//fboss/agent:platform_config-cpp2-types",
+        ":platform_descriptor_thrift-cpp2-serialization",
+        "//fboss/agent:platform_config-cpp2-serialization",
     ],
     external_deps = [
         ("boost", None, "boost_algorithm"),

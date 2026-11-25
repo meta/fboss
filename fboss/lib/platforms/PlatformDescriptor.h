@@ -9,6 +9,7 @@
  */
 #pragma once
 
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -49,6 +50,11 @@ class PlatformDescriptorRegistry {
 
   static PlatformDescriptor loadPlatformDescriptorFromFile(
       const std::string& path);
+  // Returns sorted descriptor directories below path. An optional systemVendor
+  // filters by vendor; a directory with no descriptors returns an empty vector.
+  static std::vector<std::filesystem::path> findPlatformDescriptorDirectories(
+      const std::string& path,
+      std::string_view systemVendor = "");
   // Recursively loads platform_descriptor.json files and records each sibling
   // platform_mapping.json for lazy mapping load. systemVendor optionally
   // narrows the scan to one vendor subtree.

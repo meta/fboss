@@ -136,36 +136,6 @@ bool matchesSystemVendor(
       normalize(component->string()) == normalizedVendor;
 }
 
-std::vector<fs::path> getPlatformDirs(
-    const fs::path& descriptorDir,
-    const std::string& path,
-    std::string_view systemVendor) {
-  std::vector<fs::path> platformDirs;
-  auto normalizedVendor = normalize(systemVendor);
-
-  for (const auto& entry : fs::recursive_directory_iterator(descriptorDir)) {
-    if (entry.is_regular_file() &&
-        entry.path().filename() == kPlatformDescriptorFileName) {
-      auto platformDir = entry.path().parent_path();
-      if (matchesSystemVendor(descriptorDir, platformDir, normalizedVendor)) {
-        platformDirs.push_back(std::move(platformDir));
-      }
-    }
-  }
-  std::sort(platformDirs.begin(), platformDirs.end());
-
-  if (platformDirs.empty()) {
-    if (!normalizedVendor.empty()) {
-      return platformDirs;
-    }
-    throw FbossError(
-        "Platform descriptor directory ",
-        path,
-        " does not contain any platform descriptors");
-  }
-  return platformDirs;
-}
-
 fs::path getRequiredPlatformFile(
     const fs::path& platformDir,
     std::string_view fileName) {
@@ -178,6 +148,31 @@ fs::path getRequiredPlatformFile(
 }
 
 } // namespace
+
+std::vector<fs::path>
+PlatformDescriptorRegistry::findPlatformDescriptorDirectories(
+    const std::string& path,
+    std::string_view systemVendor) {
+  const fs::path descriptorDir(path);
+  if (!fs::is_directory(descriptorDir)) {
+    throw FbossError(
+        "Platform descriptor config path ", path, " is not a directory");
+  }
+
+  std::vector<fs::path> platformDirs;
+  const auto normalizedVendor = normalize(systemVendor);
+  for (const auto& entry : fs::recursive_directory_iterator(descriptorDir)) {
+    if (entry.is_regular_file() &&
+        entry.path().filename() == kPlatformDescriptorFileName) {
+      auto platformDir = entry.path().parent_path();
+      if (matchesSystemVendor(descriptorDir, platformDir, normalizedVendor)) {
+        platformDirs.push_back(std::move(platformDir));
+      }
+    }
+  }
+  std::sort(platformDirs.begin(), platformDirs.end());
+  return platformDirs;
+}
 
 PlatformDescriptorRegistry::PlatformDescriptorRegistry(
     std::vector<PlatformDescriptorEntry> descriptorEntries)
@@ -410,13 +405,13 @@ std::vector<PlatformDescriptorRegistry::PlatformDescriptorEntry>
 PlatformDescriptorRegistry::loadPlatformDescriptorEntriesFromDirectory(
     const std::string& path,
     std::string_view systemVendor) {
-  const fs::path descriptorDir(path);
-  if (!fs::is_directory(descriptorDir)) {
+  auto platformDirs = findPlatformDescriptorDirectories(path, systemVendor);
+  if (platformDirs.empty() && normalize(systemVendor).empty()) {
     throw FbossError(
-        "Platform descriptor config path ", path, " is not a directory");
+        "Platform descriptor directory ",
+        path,
+        " does not contain any platform descriptors");
   }
-
-  auto platformDirs = getPlatformDirs(descriptorDir, path, systemVendor);
   std::vector<PlatformDescriptorEntry> descriptorEntries;
   descriptorEntries.reserve(platformDirs.size());
   for (const auto& platformDir : platformDirs) {

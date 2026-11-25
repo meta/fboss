@@ -11,6 +11,7 @@
 #include "fboss/cli/fboss2/commands/config/gen/agent/AgentConfigGenUtils.h"
 
 #include <algorithm>
+#include <exception>
 #include <optional>
 #include <set>
 #include <string>
@@ -20,6 +21,7 @@
 #include <folly/json/json.h>
 #include <folly/logging/xlog.h>
 #include <thrift/lib/cpp/util/EnumUtils.h>
+#include <thrift/lib/cpp2/protocol/Serializer.h>
 
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
@@ -32,6 +34,7 @@
 #include "fboss/lib/config/agent/CoppConfigUtils.h"
 #include "fboss/lib/config/agent/InterfaceConfigUtils.h"
 #include "fboss/lib/config/agent/PortConfigUtils.h"
+#include "fboss/lib/config/agent/SwitchSettingsConfigUtils.h"
 #include "fboss/lib/config/agent/VlanConfigUtils.h"
 #include "fboss/lib/platforms/PlatformDescriptor.h"
 #include "fboss/lib/platforms/PlatformMappingUtils.h"
@@ -232,6 +235,27 @@ std::map<std::string, std::string> loadKeyValueConfig(
   return config;
 }
 
+cfg::AsicConfigEntry loadJsonConfig(
+    const std::string& contents,
+    const fs::path& path) {
+  cfg::AsicConfigEntry common;
+  try {
+    const auto json = folly::parseJson(contents);
+    if (json.isObject() && json.count("common") && json["common"].isObject() &&
+        json["common"].count("jsonConfig")) {
+      apache::thrift::SimpleJSONSerializer::deserialize(
+          folly::toJson(json["common"]), common);
+      folly::parseJson(common.jsonConfig().value());
+    } else {
+      common.set_jsonConfig(contents);
+    }
+  } catch (const std::exception& error) {
+    throw FbossError(
+        "Invalid JSON ASIC config in ", path.string(), ": ", error.what());
+  }
+  return common;
+}
+
 cfg::ChipConfig loadAsicConfig(const GeneratedAsicConfigFile& generatedFile) {
   const auto contents = readFile(generatedFile.path);
   cfg::AsicConfigEntry common;
@@ -240,8 +264,7 @@ cfg::ChipConfig loadAsicConfig(const GeneratedAsicConfigFile& generatedFile) {
       common.set_config(loadKeyValueConfig(contents, generatedFile.path));
       break;
     case cfg::AsicConfigType::JSON_CONFIG:
-      folly::parseJson(contents);
-      common.set_jsonConfig(contents);
+      common = loadJsonConfig(contents, generatedFile.path);
       break;
     case cfg::AsicConfigType::YAML_CONFIG:
       common.set_yamlConfig(contents);
@@ -272,19 +295,13 @@ fs::path getGeneratedPlatformMappingArtifactPath(
 }
 
 void addMatchingPlatformDescriptors(
-    const fs::path& variantsDirectory,
+    const fs::path& platformDirectory,
     std::string_view platform,
     std::vector<std::pair<fs::path, PlatformDescriptor>>& matches) {
-  if (!fs::is_directory(variantsDirectory)) {
-    return;
-  }
-
-  for (const auto& entry : fs::directory_iterator(variantsDirectory)) {
-    const auto descriptorPath = entry.path() / "platform_mapping" /
-        "generated" / kPlatformDescriptorFileName;
-    if (!entry.is_directory() || !fs::is_regular_file(descriptorPath)) {
-      continue;
-    }
+  for (const auto& directory :
+       PlatformDescriptorRegistry::findPlatformDescriptorDirectories(
+           platformDirectory.string())) {
+    const auto descriptorPath = directory / kPlatformDescriptorFileName;
     auto descriptor =
         PlatformDescriptorRegistry::loadPlatformDescriptorFromFile(
             descriptorPath.string());
@@ -296,12 +313,11 @@ void addMatchingPlatformDescriptors(
   }
 }
 
-std::pair<fs::path, PlatformDescriptor> findPlatformDescriptorByVariantScan(
+std::pair<fs::path, PlatformDescriptor> findPlatformDescriptorByDiscovery(
     const PlatformConfigDirectory& platformDirectory,
     std::string_view platform) {
   std::vector<std::pair<fs::path, PlatformDescriptor>> matches;
-  addMatchingPlatformDescriptors(
-      platformDirectory.path / "variants", platform, matches);
+  addMatchingPlatformDescriptors(platformDirectory.path, platform, matches);
   if (matches.empty()) {
     throw FbossError(
         "Generated platform descriptor does not exist for platform '",
@@ -309,17 +325,13 @@ std::pair<fs::path, PlatformDescriptor> findPlatformDescriptorByVariantScan(
         "'");
   }
 
-  std::sort(
-      matches.begin(), matches.end(), [](const auto& lhs, const auto& rhs) {
-        return lhs.first < rhs.first;
-      });
   const auto expectedAsicType = *matches.front().second.asicType();
   const auto expectedNumSwitchAsics = *matches.front().second.numSwitchAsics();
   for (const auto& [path, descriptor] : matches) {
     if (*descriptor.asicType() != expectedAsicType ||
         *descriptor.numSwitchAsics() != expectedNumSwitchAsics) {
       throw FbossError(
-          "Platform descriptor variants disagree on switch properties for '",
+          "Platform descriptors disagree on switch properties for '",
           platform,
           "'; conflicting descriptor: ",
           path.string());
@@ -346,7 +358,7 @@ std::pair<fs::path, PlatformDescriptor> resolvePlatformDescriptor(
         *platformMappingVariant,
         "'");
   }
-  return findPlatformDescriptorByVariantScan(platformDirectory, platform);
+  return findPlatformDescriptorByDiscovery(platformDirectory, platform);
 }
 
 std::unique_ptr<HwAsic> generateHwAsic(
@@ -761,26 +773,7 @@ cfg::SwitchSettings generateSwitchSettings(
         numSwitchAsics);
   }
 
-  cfg::Range64 portIdRange;
-  portIdRange.minimum() =
-      cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MIN();
-  portIdRange.maximum() =
-      cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MAX();
-
-  cfg::SwitchInfo switchInfo;
-  switchInfo.switchType() = cfg::SwitchType::NPU;
-  switchInfo.asicType() = *platformDescriptor.asicType();
-  switchInfo.switchIndex() = 0;
-  switchInfo.portIdRange() = std::move(portIdRange);
-
-  cfg::SwitchSettings switchSettings;
-  switchSettings.switchType() = cfg::SwitchType::NPU;
-  switchSettings.switchIdToSwitchInfo() = {{0, std::move(switchInfo)}};
-  // TODO(@joseph5wu): Remove this legacy field through T286888882. Most SAI
-  // HW-test configs and production COOP configs set it to true; D48978980
-  // derives the production value from the presence of saiSdk.
-  switchSettings.needL2EntryForNeighbor() = true;
-  return switchSettings;
+  return utility::genNpuSwitchSettingsConfig(*platformDescriptor.asicType());
 }
 
 cfg::SwitchConfig generateSwitchConfig(

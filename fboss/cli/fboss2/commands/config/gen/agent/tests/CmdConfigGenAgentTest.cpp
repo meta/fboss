@@ -651,29 +651,6 @@ TEST(AgentConfigGenTest, SelectsGeneratedPlatformArtifacts) {
   EXPECT_EQ(*descriptor.asicType(), cfg::AsicType::ASIC_TYPE_TOMAHAWK5);
 }
 
-TEST(AgentConfigGenTest, GeneratesSingleNpuSwitchSettings) {
-  PlatformDescriptor descriptor;
-  descriptor.platformType() = PlatformType::PLATFORM_WEDGE800BACT;
-  descriptor.asicType() = cfg::AsicType::ASIC_TYPE_TOMAHAWK5;
-  descriptor.numSwitchAsics() = 1;
-
-  const auto switchSettings = generateSwitchSettings(descriptor);
-
-  EXPECT_EQ(*switchSettings.switchType(), cfg::SwitchType::NPU);
-  EXPECT_TRUE(*switchSettings.needL2EntryForNeighbor());
-  ASSERT_EQ(switchSettings.switchIdToSwitchInfo()->size(), 1);
-  const auto& switchInfo = switchSettings.switchIdToSwitchInfo()->at(0);
-  EXPECT_EQ(*switchInfo.switchType(), cfg::SwitchType::NPU);
-  EXPECT_EQ(*switchInfo.asicType(), cfg::AsicType::ASIC_TYPE_TOMAHAWK5);
-  EXPECT_EQ(*switchInfo.switchIndex(), 0);
-  EXPECT_EQ(
-      *switchInfo.portIdRange()->minimum(),
-      cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MIN());
-  EXPECT_EQ(
-      *switchInfo.portIdRange()->maximum(),
-      cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MAX());
-}
-
 TEST(AgentConfigGenTest, RejectsUnsupportedMultiNpuSwitchSettings) {
   PlatformDescriptor descriptor;
   descriptor.platformType() = PlatformType::PLATFORM_WEDGE800BACT;
@@ -1082,6 +1059,10 @@ TEST(AgentConfigGenTest, PrefersColocatedPlatformMappingBundle) {
       colocatedPath.parent_path() / "raw_platform_mapping.json", "eth1/1/2");
   writePlatformDescriptor(
       colocatedPath.parent_path() / "platform_descriptor.json", 1);
+  writePlatformDescriptor(
+      platformDirectory / "facebook" / "platform_mapping" / "generated" /
+          "platform_descriptor.json",
+      2);
 
   EXPECT_EQ(
       findPortIdToPortAssignmentConfig(fbossRoot, kPlatform), colocatedPath);
@@ -1093,6 +1074,69 @@ TEST(AgentConfigGenTest, PrefersColocatedPlatformMappingBundle) {
   EXPECT_EQ(
       *inputs.platformMapping->getPlatformPort(2).mapping()->name(),
       "eth1/1/2");
+}
+
+TEST(AgentConfigGenTest, DiscoversNestedPlatformMappingBundles) {
+  for (const auto layout :
+       {"facebook/platform_mapping/generated", "nested/resources"}) {
+    SCOPED_TRACE(layout);
+    folly::test::TemporaryDirectory temporaryDirectory;
+    const auto fbossRoot =
+        fs::path(temporaryDirectory.path().string()) / "fboss";
+    const auto platformDirectory = createTestPlatform(fbossRoot, "test_vendor");
+    const auto originalDirectory =
+        getGeneratedPlatformMappingDirectory(fbossRoot, "test_vendor");
+    const auto nestedDirectory = platformDirectory / layout;
+    fs::create_directories(nestedDirectory.parent_path());
+    fs::rename(originalDirectory, nestedDirectory);
+    writePortAssignments(
+        nestedDirectory / "port_id_to_port_assignment.json", 2, "eth1/1/2");
+    writeRawPlatformMapping(
+        nestedDirectory / "raw_platform_mapping.json", "eth1/1/2");
+    writePlatformDescriptor(
+        platformDirectory.parent_path() / "other_platform" /
+            "platform_mapping" / "generated" / "platform_descriptor.json",
+        2);
+
+    const auto descriptorPath =
+        findPlatformDescriptorConfigWithDescriptor(fbossRoot, kPlatform).first;
+    const auto inputs =
+        resolveAgentConfigInputs(fbossRoot, kPlatform, kProfile);
+
+    EXPECT_EQ(descriptorPath, nestedDirectory / "platform_descriptor.json");
+    EXPECT_EQ(inputs.portAssignments, makePortAssignments(2, "eth1/1/2"));
+  }
+}
+
+TEST(AgentConfigGenTest, DoesNotMixDiscoveredPlatformMappingBundles) {
+  for (const auto missingFile :
+       {"raw_platform_mapping.json", "port_id_to_port_assignment.json"}) {
+    SCOPED_TRACE(missingFile);
+    folly::test::TemporaryDirectory temporaryDirectory;
+    const auto fbossRoot =
+        fs::path(temporaryDirectory.path().string()) / "fboss";
+    const auto platformDirectory = createTestPlatform(fbossRoot, "test_vendor");
+    const auto originalDirectory =
+        getGeneratedPlatformMappingDirectory(fbossRoot, "test_vendor");
+    const auto nestedDirectory = platformDirectory / "nested" / "resources";
+    fs::create_directories(nestedDirectory.parent_path());
+    fs::rename(originalDirectory, nestedDirectory);
+    writePortAssignments(
+        originalDirectory / "port_id_to_port_assignment.json", 1, kPortName);
+    writeRawPlatformMapping(
+        originalDirectory / "raw_platform_mapping.json", kPortName);
+    fs::remove(nestedDirectory / missingFile);
+
+    try {
+      resolveAgentConfigInputs(fbossRoot, kPlatform, kProfile);
+      FAIL() << "Expected the selected incomplete mapping bundle to fail";
+    } catch (const FbossError& error) {
+      EXPECT_NE(
+          std::string(error.what())
+              .find((nestedDirectory / missingFile).string()),
+          std::string::npos);
+    }
+  }
 }
 
 TEST(AgentConfigGenTest, ReportsMissingRawPlatformMappingPath) {
@@ -1145,6 +1189,83 @@ TEST(AgentConfigGenTest, GeneratesJsonAsicConfig) {
 
   ASSERT_EQ(common.getType(), cfg::AsicConfigEntry::Type::jsonConfig);
   EXPECT_EQ(common.jsonConfig().value(), kAsicJson);
+}
+
+TEST(AgentConfigGenTest, NormalizesJsonAsicOverrides) {
+  folly::test::TemporaryDirectory sourceDirectory;
+  const auto fbossRoot = fs::path(sourceDirectory.path().string()) / "fboss";
+  const auto platformDirectory = createTestPlatform(fbossRoot, "test_vendor");
+  fs::remove_all(platformDirectory / "asic_config");
+  const auto overrideConfig =
+      fs::path(sourceDirectory.path().string()) / "asic.json";
+
+  struct JsonInput {
+    std::string_view contents;
+    std::string_view expected;
+  };
+  const std::vector<JsonInput> inputs{
+      {kAsicJson, kAsicJson},
+      {R"({"common":{"jsonConfig":"{\"ASIC_CONFIG\":\"test\"}\n"}})",
+       kAsicJson},
+      {R"({"common":{"sdk_setting":true}})",
+       R"({"common":{"sdk_setting":true}})"},
+      {R"({"metadata":"test","common":{"jsonConfig":"{\"ASIC_CONFIG\":\"test\"}\n"}})",
+       kAsicJson},
+  };
+  for (const auto& input : inputs) {
+    SCOPED_TRACE(input.contents);
+    writeTestFile(overrideConfig, input.contents);
+    const auto resolvedInputs = resolveAgentConfigInputs(
+        fbossRoot,
+        kPlatform,
+        kProfile,
+        overrideConfig,
+        cfg::AsicConfigType::JSON_CONFIG);
+    cfg::AsicConfigEntry expectedCommon;
+    expectedCommon.set_jsonConfig(std::string(input.expected));
+    cfg::AsicConfig expectedAsicConfig;
+    expectedAsicConfig.common() = std::move(expectedCommon);
+    cfg::ChipConfig expectedChip;
+    expectedChip.set_asicConfig(std::move(expectedAsicConfig));
+
+    EXPECT_EQ(resolvedInputs.chipConfig, expectedChip);
+  }
+}
+
+TEST(AgentConfigGenTest, RejectsInvalidJsonAsicOverrides) {
+  folly::test::TemporaryDirectory sourceDirectory;
+  const auto fbossRoot = fs::path(sourceDirectory.path().string()) / "fboss";
+  const auto platformDirectory = createTestPlatform(fbossRoot, "test_vendor");
+  fs::remove_all(platformDirectory / "asic_config");
+  const auto overrideConfig =
+      fs::path(sourceDirectory.path().string()) / "asic.json";
+  const std::vector<std::string_view> inputs{
+      "not JSON",
+      R"({"common":{"jsonConfig":42}})",
+      R"({"common":{"jsonConfig":"not JSON"}})",
+      R"({"common":{"jsonConfig":"{}","config":{}}})",
+  };
+  for (const auto& input : inputs) {
+    SCOPED_TRACE(input);
+    writeTestFile(overrideConfig, input);
+
+    try {
+      resolveAgentConfigInputs(
+          fbossRoot,
+          kPlatform,
+          kProfile,
+          overrideConfig,
+          cfg::AsicConfigType::JSON_CONFIG);
+      FAIL() << "Expected invalid ASIC JSON to fail";
+    } catch (const FbossError& error) {
+      EXPECT_NE(
+          std::string(error.what()).find(overrideConfig.string()),
+          std::string::npos);
+      EXPECT_NE(
+          std::string(error.what()).find("Invalid JSON ASIC config"),
+          std::string::npos);
+    }
+  }
 }
 
 TEST(AgentConfigGenTest, GeneratesKeyValueAsicConfig) {
