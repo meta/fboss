@@ -756,7 +756,7 @@
               "name": "COME_PU31_TDA38640_PVNN_PCH_PIN",
               "sysfsPath": "/run/devmap/sensors/COME_HWMON1/power1_input",
               "type": 0,
-              "compute": "@/1000.0"
+              "compute": "@/1000000.0"
             },
             {
               "name": "COME_PU31_TDA38640_PVNN_PCH_POUT",
