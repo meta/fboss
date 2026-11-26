@@ -293,6 +293,24 @@
               "startPort": 2
             }
           ],
+          "ledCtrlBlockConfigs": [
+            {
+              "pmUnitScopedNamePrefix": "SMB_R_LED",
+              "deviceName": "port_led",
+              "csrOffsetCalc": "0x40490",
+              "numPorts": 1,
+              "ledPerPort": 1,
+              "startPort": 1
+            },
+            {
+              "pmUnitScopedNamePrefix": "SMB_L_LED",
+              "deviceName": "port_led",
+              "csrOffsetCalc": "0x48490",
+              "numPorts": 1,
+              "ledPerPort": 1,
+              "startPort": 2
+            }
+          ],
           "infoRomConfigs": [
             {
               "pmUnitScopedName": "MCB_IOB_INFO_ROM",
@@ -442,8 +460,113 @@
         {
           "busName": "MCB_IOB_I2C_MASTER_14",
           "address": "0x60",
-          "kernelDeviceName": "anacapa_mcbcpld",
-          "pmUnitScopedName": "MCB_CPLD"
+          "kernelDeviceName": "fbg_mcbcpld",
+          "pmUnitScopedName": "MCB_CPLD",
+          "initRegSettings": [
+            {
+              "__comment__": "QSFP28 LED 1 control register setting to enable the LED control from DOM FPGA",
+              "regOffset": 24,
+              "ioBuf": [
+                6
+              ]
+            },
+            {
+              "__comment__": "QSFP28 LED 2 control register setting to enable the LED control from DOM FPGA",
+              "regOffset": 25,
+              "ioBuf": [
+                6
+              ]
+            }
+          ],
+          "cpldSysfsAttrs": [
+            {
+              "name": "version_id",
+              "regAddr": "0x00",
+              "bitOffset": 4,
+              "numBits": 4,
+              "description": "Hardware version ID"
+            },
+            {
+              "name": "board_id",
+              "regAddr": "0x00",
+              "numBits": 4,
+              "description": "Board ID"
+            },
+            {
+              "name": "cpld_ver",
+              "regAddr": "0x01",
+              "numBits": 7,
+              "description": "CPLD major version"
+            },
+            {
+              "name": "cpld_minor_ver",
+              "regAddr": "0x02",
+              "numBits": 8,
+              "description": "CPLD minor version"
+            },
+            {
+              "name": "cpld_sub_ver",
+              "regAddr": "0x03",
+              "numBits": 8,
+              "description": "CPLD sub version"
+            },
+            {
+              "name": "oob_eeprom_wp",
+              "mode": "rw",
+              "regAddr": "0x06",
+              "bitOffset": 2,
+              "description": "OOB EEPROM write protect"
+            },
+            {
+              "name": "oob_eeprom_sel",
+              "mode": "rw",
+              "regAddr": "0x06",
+              "bitOffset": 3,
+              "description": "OOB EEPROM select"
+            },
+            {
+              "name": "smbl_pg",
+              "regAddr": "0x0A",
+              "bitOffset": 1,
+              "description": "Indicate all power rails are ready on SMB_L"
+            },
+            {
+              "name": "hs_48v_pg",
+              "regAddr": "0x0A",
+              "bitOffset": 6,
+              "description": "Hot swap 48V power good (1 = present, 0 = absent)"
+            },
+            {
+              "name": "rtml_pg",
+              "regAddr": "0x0B",
+              "bitOffset": 4,
+              "description": "RTM_L board VCC PG"
+            },
+            {
+              "name": "rtmr_pg",
+              "regAddr": "0x0B",
+              "bitOffset": 5,
+              "description": "RTM_R board VCC PG"
+            },
+            {
+              "name": "smbr_pg",
+              "regAddr": "0x0B",
+              "bitOffset": 6,
+              "description": "Indicate all power rails are ready on SMB_R"
+            },
+            {
+              "name": "smbl_present",
+              "regAddr": "0x10",
+              "bitOffset": 5,
+              "description": "Indicate SMB_L present (1 = present, 0 = absent)"
+            },
+            {
+              "name": "smbr_present",
+              "regAddr": "0x12",
+              "bitOffset": 3,
+              "description": "Indicate SMB_R present (1 = present, 0 = absent)"
+            }
+          ]
         },
         {
           "busName": "MCB_IOB_I2C_MASTER_15",
