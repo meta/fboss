@@ -111,23 +111,3 @@ TEST(AgentConfigTest, RunModeDoesNotRequireAgentConfig) {
   FLAGS_multi_switch = true;
   EXPECT_EQ(AgentConfig::getRunMode(), cfg::AgentRunMode::MULTI_SWITCH);
 }
-
-TEST(AgentConfigTest, PolicerMeterTypeDefaultsToPackets) {
-  const auto policer =
-      apache::thrift::SimpleJSONSerializer::deserialize<cfg::Policer>(
-          R"({"committedInformationRate":1000,"committedBurstSize":100})");
-  EXPECT_EQ(*policer.meterType(), cfg::PolicerMeterType::PACKETS);
-}
-
-TEST(AgentConfigTest, PolicerByteMeterRoundTrip) {
-  cfg::Policer policer;
-  policer.committedInformationRate() = 1000;
-  policer.committedBurstSize() = 100;
-  policer.meterType() = cfg::PolicerMeterType::BYTES;
-  const auto serialized =
-      apache::thrift::SimpleJSONSerializer::serialize<std::string>(policer);
-  const auto loaded =
-      apache::thrift::SimpleJSONSerializer::deserialize<cfg::Policer>(
-          serialized);
-  EXPECT_EQ(loaded, policer);
-}

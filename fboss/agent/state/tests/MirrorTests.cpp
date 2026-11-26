@@ -154,8 +154,9 @@ TEST_F(MirrorTest, FanOutDoesNotCopyPeerResolvedEgressPort) {
            cfg::SwitchType::NPU, cfg::AsicType::ASIC_TYPE_MOCK, 2, 99, 1)}};
   config_.mirrors()->push_back(
       utility::getGREMirror("mirror0", MirrorTest::tunnelDestination));
-  auto policer = makePolicer(1000, 100);
-  config_.mirrors()[0].policer() = policer;
+  const auto policer = makePolicer(1000, 100);
+  config_.policers()->push_back(policer);
+  config_.mirrors()[0].policerLabel() = *policer.label();
   configurePortMirror("mirror0", PortID(3));
   publishWithStateUpdate();
 
@@ -184,13 +185,18 @@ TEST_F(MirrorTest, FanOutDoesNotCopyPeerResolvedEgressPort) {
   ASSERT_NE(npu0Mirror, nullptr);
   EXPECT_FALSE(npu0Mirror->isResolved());
   EXPECT_FALSE(npu0Mirror->getEgressPortDesc().has_value());
-  EXPECT_EQ(npu0Mirror->getPolicer(), policer);
+  EXPECT_EQ(npu0Mirror->getPolicerLabel(), *policer.label());
   auto npu1Mirror =
       state_->getMirrors()->getMapNodeIf(npu1)->getNodeIf("mirror0");
   ASSERT_NE(npu1Mirror, nullptr);
   EXPECT_TRUE(npu1Mirror->isResolved());
   EXPECT_EQ(npu1Mirror->getEgressPortDesc(), PortDescriptor(PortID(3)));
-  EXPECT_EQ(npu1Mirror->getPolicer(), policer);
+  EXPECT_EQ(npu1Mirror->getPolicerLabel(), *policer.label());
+  auto l3Scope =
+      HwSwitchMatcher(std::unordered_set<SwitchID>{SwitchID(0), SwitchID(1)});
+  auto policerMap = state_->getPolicers()->getMapNodeIf(l3Scope);
+  ASSERT_NE(policerMap, nullptr);
+  EXPECT_EQ(policerMap->getNode(*policer.label())->toThrift(), policer);
 }
 
 TEST_F(MirrorTest, PolicerOmittedByDefault) {
@@ -200,55 +206,55 @@ TEST_F(MirrorTest, PolicerOmittedByDefault) {
   for (const auto& name : {"span", "gre", "sflow"}) {
     auto mirror = state_->getMirrors()->getNodeIf(name);
     ASSERT_NE(mirror, nullptr);
-    EXPECT_FALSE(mirror->getPolicer().has_value());
-    EXPECT_FALSE(mirror->toThrift().policer().has_value());
+    EXPECT_FALSE(mirror->getPolicerLabel().has_value());
+    EXPECT_FALSE(mirror->toThrift().policerLabel().has_value());
   }
   publishWithNoStateUpdate();
 }
 
 TEST_F(MirrorTest, PolicerCloneAndSerialization) {
-  configureAllMirrorFormats();
-  for (auto meterType :
-       {cfg::PolicerMeterType::PACKETS, cfg::PolicerMeterType::BYTES}) {
-    auto policer = makePolicer(int64_t{1} << 33, int64_t{1} << 32);
-    EXPECT_EQ(*policer.meterType(), cfg::PolicerMeterType::PACKETS);
-    policer.meterType() = meterType;
-    for (auto& mirrorConfig : *config_.mirrors()) {
-      mirrorConfig.policer() = policer;
-    }
-    publishWithStateUpdate();
-    state_->publish();
-    for (const auto& name : {"span", "gre", "sflow"}) {
-      SCOPED_TRACE(name);
-      auto mirror = state_->getMirrors()->getNodeIf(name);
-      ASSERT_NE(mirror, nullptr);
-      EXPECT_EQ(mirror->getPolicer(), policer);
-      auto fields = mirror->toThrift();
-      ASSERT_TRUE(fields.policer().has_value());
-      EXPECT_EQ(*fields.policer(), policer);
-
-      auto clone = mirror->clone();
-      EXPECT_EQ(*mirror, *clone);
-      EXPECT_EQ(clone->getPolicer(), policer);
-      auto changedPolicer = policer;
-      changedPolicer.committedInformationRate() = 2000;
-      changedPolicer.committedBurstSize() = 200;
-      clone->setPolicer(changedPolicer);
-      EXPECT_FALSE(*mirror == *clone);
-      EXPECT_EQ(mirror->getPolicer(), policer);
-      EXPECT_EQ(clone->getPolicer(), changedPolicer);
-      clone->setPolicer(std::nullopt);
-      EXPECT_FALSE(clone->getPolicer().has_value());
-      EXPECT_FALSE(clone->toThrift().policer().has_value());
-    }
-    auto reconstructed = SwitchState::fromThrift(state_->toThrift());
-    EXPECT_EQ(reconstructed->toThrift(), state_->toThrift());
-    for (const auto& name : {"span", "gre", "sflow"}) {
-      EXPECT_EQ(
-          reconstructed->getMirrors()->getNodeIf(name)->getPolicer(), policer);
-    }
-    publishWithNoStateUpdate();
+  *config_.mirrors() = {
+      utility::getGREMirror("gre", tunnelDestination),
+      utility::getSFlowMirror(
+          "sflow",
+          udpPorts.udpSrcPort,
+          udpPorts.udpDstPort,
+          tunnelDestination,
+          std::nullopt)};
+  auto policer = makePolicer(int64_t{1} << 33, int64_t{1} << 32);
+  policer.meterType() = cfg::PolicerMeterType::BYTES;
+  const auto label = *policer.label();
+  config_.policers()->push_back(policer);
+  for (auto& mirrorConfig : *config_.mirrors()) {
+    mirrorConfig.policerLabel() = label;
   }
+  publishWithStateUpdate();
+  state_->publish();
+
+  const auto policerNode = state_->getPolicers()->getNode(label);
+  const auto clonedMap = state_->getPolicers()->clone();
+  EXPECT_EQ(clonedMap->getNode(label), policerNode);
+  EXPECT_EQ(policerNode->clone()->toThrift(), policer);
+  EXPECT_EQ(policerNode->getLabel(), label);
+  EXPECT_EQ(policerNode->getMeterType(), cfg::PolicerMeterType::BYTES);
+  EXPECT_EQ(policerNode->getCommittedInformationRate(), int64_t{1} << 33);
+  EXPECT_EQ(policerNode->getCommittedBurstSize(), int64_t{1} << 32);
+
+  auto reconstructed = SwitchState::fromThrift(state_->toThrift());
+  EXPECT_EQ(reconstructed->getPolicers()->getNode(label)->toThrift(), policer);
+  for (const auto& name : {"gre", "sflow"}) {
+    SCOPED_TRACE(name);
+    const auto mirror = state_->getMirrors()->getNode(name);
+    EXPECT_EQ(mirror->getPolicerLabel(), label);
+    auto clone = mirror->clone();
+    EXPECT_EQ(clone->getPolicerLabel(), label);
+    clone->setPolicerLabel(std::nullopt);
+    EXPECT_FALSE(clone->getPolicerLabel().has_value());
+    EXPECT_EQ(mirror->getPolicerLabel(), label);
+    EXPECT_EQ(
+        reconstructed->getMirrors()->getNode(name)->getPolicerLabel(), label);
+  }
+  publishWithNoStateUpdate();
 }
 
 TEST_F(MirrorTest, IdenticalPolicerSettingsKeepDistinctLabelsAndReuseNodes) {
@@ -297,94 +303,88 @@ TEST_F(MirrorTest, PolicerChangesPreserveResolvedEndpoints) {
   mirror->setEgressPortDesc(PortDescriptor(egressPort));
   mirror->setMirrorTunnel(tunnel);
 
+  const std::string label = "mirror-policer";
   for (const auto& policer :
        {std::optional<cfg::Policer>(makePolicer(1000, 100)),
         std::optional<cfg::Policer>(makePolicer(2000, 100)),
         std::optional<cfg::Policer>(makePolicer(2000, 200)),
         std::optional<cfg::Policer>()}) {
     auto oldState = state_;
-    auto oldMirror = oldState->getMirrors()->getNodeIf("mirror0");
+    auto oldMirror = oldState->getMirrors()->getNode("mirror0");
     if (policer) {
-      config_.mirrors()[0].policer() = *policer;
+      *config_.policers() = {*policer};
+      config_.mirrors()[0].policerLabel() = label;
     } else {
-      config_.mirrors()[0].policer().reset();
+      config_.policers()->clear();
+      config_.mirrors()[0].policerLabel().reset();
     }
     publishWithStateUpdate();
     auto updated = state_->getMirrors()->getNodeIf("mirror0");
     ASSERT_NE(updated, nullptr);
-    EXPECT_EQ(updated->getPolicer(), policer);
+    if (oldMirror->getPolicerLabel() == updated->getPolicerLabel()) {
+      EXPECT_EQ(oldMirror, updated);
+    }
+    EXPECT_EQ(
+        updated->getPolicerLabel(),
+        config_.mirrors()[0].policerLabel().to_optional());
     EXPECT_TRUE(updated->isResolved());
     EXPECT_EQ(updated->getMirrorTunnel(), tunnel);
     EXPECT_EQ(updated->getEgressPort(), egressPort);
     EXPECT_EQ(updated->getEgressPortDesc(), PortDescriptor(egressPort));
 
     StateDelta delta(oldState, state_);
-    int changed = 0;
-    DeltaFunctions::forEachChanged(
-        delta.getMirrorsDelta(),
-        [&](auto oldNode, auto newNode) {
-          EXPECT_EQ(oldNode, oldMirror);
-          EXPECT_EQ(newNode, updated);
-          ++changed;
-        },
-        [](auto) { ADD_FAILURE() << "Mirror unexpectedly added"; },
-        [](auto) { ADD_FAILURE() << "Mirror unexpectedly removed"; });
-    EXPECT_EQ(changed, 1);
     StateDelta transported(oldState, delta.getOperDelta());
     EXPECT_EQ(transported.newState()->toThrift(), state_->toThrift());
+    const auto node = state_->getPolicers()->getNodeIf(label);
+    if (policer) {
+      ASSERT_NE(node, nullptr);
+      EXPECT_EQ(node->toThrift(), *policer);
+    } else {
+      EXPECT_EQ(node, nullptr);
+    }
     publishWithNoStateUpdate();
   }
 }
 
-TEST_F(MirrorTest, PolicerRejectsInvalidValues) {
-  configureAllMirrorFormats();
-  publishWithStateUpdate();
+TEST_F(MirrorTest, PolicerRejectsInvalidDefinitions) {
   auto invalidMeter = makePolicer(1000, 100);
   invalidMeter.meterType() = static_cast<cfg::PolicerMeterType>(-1);
-  for (auto& mirrorConfig : *config_.mirrors()) {
-    SCOPED_TRACE(*mirrorConfig.name());
-    for (const auto& policer :
-         {makePolicer(0, 100),
-          makePolicer(-1, 100),
-          makePolicer(1000, 0),
-          makePolicer(1000, -1),
-          invalidMeter}) {
-      mirrorConfig.policer() = policer;
-      publishWithFbossError();
-    }
-    mirrorConfig.policer().reset();
+  for (const auto& invalid :
+       {makePolicer(0, 100),
+        makePolicer(-1, 100),
+        makePolicer(1000, 0),
+        makePolicer(1000, -1),
+        makePolicer(1000, 100, ""),
+        makePolicer(1000, 100, std::string(32, 'a')),
+        makePolicer(1000, 100, std::string("a\0b", 3)),
+        invalidMeter}) {
+    *config_.policers() = {invalid};
+    publishWithFbossError();
   }
-  publishWithNoStateUpdate();
+  *config_.policers() = {makePolicer(1000, 100), makePolicer(2000, 100)};
+  publishWithFbossError();
 }
 
-TEST_F(MirrorTest, PolicerSetterValidatesBeforeMutation) {
+TEST_F(MirrorTest, RejectsInvalidPolicerReferences) {
   configureAllMirrorFormats();
+  const auto policer = makePolicer(1000, 100);
+  *config_.policers() = {policer};
+
+  auto& gre = config_.mirrors()[1];
+  gre.policerLabel() = "";
+  publishWithFbossError();
+  gre.policerLabel() = "undefined";
+  publishWithFbossError();
+
+  gre.policerLabel() = *policer.label();
   publishWithStateUpdate();
-  auto invalidMeter = makePolicer(1, 1);
-  invalidMeter.meterType() = static_cast<cfg::PolicerMeterType>(-1);
-  for (const auto& name : {"span", "gre", "sflow"}) {
-    SCOPED_TRACE(name);
-    auto mirror = state_->getMirrors()->getNodeIf(name)->clone();
-    for (auto meterType :
-         {cfg::PolicerMeterType::PACKETS, cfg::PolicerMeterType::BYTES}) {
-      auto policer = makePolicer(1, 1);
-      policer.meterType() = meterType;
-      mirror->setPolicer(policer);
-      EXPECT_EQ(mirror->getPolicer(), policer);
-      const auto fields = mirror->toThrift();
-      for (const auto& invalid :
-           {makePolicer(0, 1),
-            makePolicer(-1, 1),
-            makePolicer(1, 0),
-            makePolicer(1, -1),
-            invalidMeter}) {
-        EXPECT_THROW(mirror->setPolicer(invalid), FbossError);
-        EXPECT_EQ(mirror->toThrift(), fields);
-      }
-    }
-    mirror->setPolicer(std::nullopt);
-    EXPECT_FALSE(mirror->getPolicer().has_value());
-  }
+  config_.policers()->clear();
+  publishWithFbossError();
+
+  gre.policerLabel().reset();
+  publishWithStateUpdate();
+  EXPECT_EQ(state_->getPolicers()->getNodeIf(*policer.label()), nullptr);
+  EXPECT_FALSE(state_->getMirrors()->getNode("gre")->getPolicerLabel());
 }
 
 TEST_F(MirrorTest, MirrorWithPort) {

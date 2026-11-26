@@ -413,8 +413,8 @@ struct Mirror {
    * packets will be mirrored.
    */
   5: optional i32 samplingRate;
-  // If unset, mirrored traffic is not policed.
-  6: optional Policer policer;
+  // References a named policer in SwitchConfig. If unset, traffic is not policed.
+  6: optional string policerLabel;
 }
 
 /*

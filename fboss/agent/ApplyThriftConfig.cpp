@@ -7339,7 +7339,7 @@ std::shared_ptr<MultiSwitchMirrorMap> ThriftConfigApplier::updateMirrors() {
             mirror->getDscp(),
             mirror->getTruncate(),
             mirror->getSamplingRate(),
-            mirror->getPolicer());
+            mirror->getPolicerLabel());
       }
       newMirror->setSwitchId(SwitchID(switchId));
       multiSwitchMirrors->addNode(std::move(newMirror), switchMatcher);
@@ -7465,7 +7465,18 @@ std::shared_ptr<Mirror> ThriftConfigApplier::createMirror(
     samplingRate = mirrorConfig->samplingRate().value();
   }
 
-  auto mirror = make_shared<Mirror>(
+  auto policerLabel = mirrorConfig->policerLabel().to_optional();
+  if (policerLabel) {
+    if (!new_->getPolicers()->getNodeIf(*policerLabel)) {
+      throw FbossError(
+          "Mirror ",
+          *mirrorConfig->name(),
+          " references undefined policer ",
+          *policerLabel);
+    }
+  }
+
+  return make_shared<Mirror>(
       *mirrorConfig->name(),
       egressPortDesc,
       destinationIp,
@@ -7474,8 +7485,7 @@ std::shared_ptr<Mirror> ThriftConfigApplier::createMirror(
       dscpMark,
       truncate,
       samplingRate,
-      mirrorConfig->policer().to_optional());
-  return mirror;
+      std::move(policerLabel));
 }
 
 std::shared_ptr<Mirror> ThriftConfigApplier::updateMirror(

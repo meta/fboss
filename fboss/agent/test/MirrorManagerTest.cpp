@@ -14,6 +14,7 @@
 #include "fboss/agent/SwitchIdScopeResolver.h"
 #include "fboss/agent/gen-cpp2/switch_config_constants.h"
 #include "fboss/agent/state/Interface.h"
+#include "fboss/agent/state/Policer.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/test/HwTestHandle.h"
 #include "fboss/agent/test/TestUtils.h"
@@ -429,6 +430,7 @@ TYPED_TEST(MirrorManagerTest, ResolveMirrorWithoutEgressPort) {
 TYPED_TEST(MirrorManagerTest, PreservePolicerThroughResolutionChanges) {
   const auto params = this->getParamsHelper();
   cfg::Policer policer;
+  policer.label() = "export-policer";
   policer.committedInformationRate() = 256;
   policer.committedBurstSize() = 1024;
   this->updateState(
@@ -437,9 +439,15 @@ TYPED_TEST(MirrorManagerTest, PreservePolicerThroughResolutionChanges) {
             kMirrorName,
             std::optional<PortDescriptor>(),
             std::make_optional<IPAddress>(params.mirrorDestination));
-        mirror->setPolicer(policer);
+        mirror->setPolicerLabel(*policer.label());
+        auto updatedState = this->addNewMirror(state, mirror);
+        auto definition = std::make_shared<Policer>(policer);
+        updatedState->getPolicers()
+            ->modify(&updatedState)
+            ->addNode(
+                definition, this->sw_->getScopeResolver()->scope(definition));
         return this->addNeighbor(
-            this->addNewMirror(state, mirror),
+            updatedState,
             params.interfaces[0],
             params.neighborIPs[0],
             params.neighborMACs[0],
@@ -450,7 +458,7 @@ TYPED_TEST(MirrorManagerTest, PreservePolicerThroughResolutionChanges) {
       auto mirror = this->sw_->getState()->getMirrors()->getNodeIf(kMirrorName);
       ASSERT_NE(mirror, nullptr);
       EXPECT_EQ(mirror->isResolved(), resolved);
-      EXPECT_EQ(mirror->getPolicer(), std::make_optional(policer));
+      EXPECT_EQ(mirror->getPolicerLabel(), *policer.label());
       EXPECT_EQ(mirror->getMirrorTunnel().has_value(), resolved);
     });
   };

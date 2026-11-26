@@ -23,6 +23,8 @@
 
 #include <folly/ScopeGuard.h>
 
+#include <algorithm>
+
 using facebook::fboss::DeltaFunctions::forEachChanged;
 using std::shared_ptr;
 
@@ -495,6 +497,7 @@ bool isStateUpdateValidMultiSwitch(
         return LoopAction::CONTINUE;
       });
 
+  const auto& policers = std::as_const(*delta.newState()->getPolicers());
   std::map<SwitchID, uint32_t> switchId2Mirrors;
   for (const auto& [matcherStr, mirrors] :
        std::as_const(*(delta.newState()->getMirrors()))) {
@@ -519,6 +522,31 @@ bool isStateUpdateValidMultiSwitch(
                   << " is higher on  platform for switch " << switchId
                   << " than the max supported " << itr->second->getMaxMirrors();
         isValid = false;
+      }
+      for (const auto& [mirrorId, mirror] : std::as_const(*mirrors)) {
+        const auto label = mirror->getPolicerLabel();
+        if (!label) {
+          continue;
+        }
+        if (mirror->type() == Mirror::Type::SPAN ||
+            !itr->second->isSupported(
+                HwAsic::Feature::MIRROR_SESSION_POLICER)) {
+          XLOG(ERR) << "Mirror policer is not supported for " << mirrorId
+                    << " on switch " << switchId;
+          isValid = false;
+          continue;
+        }
+        const bool hasPolicer = std::any_of(
+            policers.begin(), policers.end(), [&](const auto& scopedPolicers) {
+              const auto& [policerScope, policerMap] = scopedPolicers;
+              return policerMap->getNodeIf(*label) &&
+                  HwSwitchMatcher(policerScope).has(switchId);
+            });
+        if (!hasPolicer) {
+          XLOG(ERR) << "Mirror " << mirrorId << " references undefined policer "
+                    << *label << " on switch " << switchId;
+          isValid = false;
+        }
       }
     }
   }
