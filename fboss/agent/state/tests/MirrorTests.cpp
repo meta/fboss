@@ -89,8 +89,10 @@ class MirrorTest : public ::testing::Test {
   }
   static cfg::Policer makePolicer(
       int64_t committedInformationRate,
-      int64_t committedBurstSize) {
+      int64_t committedBurstSize,
+      const std::string& label = "mirror-policer") {
     cfg::Policer policer;
+    policer.label() = label;
     policer.committedInformationRate() = committedInformationRate;
     policer.committedBurstSize() = committedBurstSize;
     return policer;
@@ -247,6 +249,38 @@ TEST_F(MirrorTest, PolicerCloneAndSerialization) {
     }
     publishWithNoStateUpdate();
   }
+}
+
+TEST_F(MirrorTest, IdenticalPolicerSettingsKeepDistinctLabelsAndReuseNodes) {
+  // A 31-byte label fits in SAI's 32-byte field with its terminator.
+  const auto first = makePolicer(1000, 100, std::string(31, 'a'));
+  const auto second = makePolicer(1000, 100, "second");
+  *config_.policers() = {first, second};
+  publishWithStateUpdate();
+
+  const auto firstNode = state_->getPolicers()->getNode(*first.label());
+  const auto secondNode = state_->getPolicers()->getNode(*second.label());
+  EXPECT_EQ(firstNode->toThrift(), first);
+  EXPECT_EQ(firstNode->getMeterType(), cfg::PolicerMeterType::PACKETS);
+  EXPECT_EQ(secondNode->toThrift(), second);
+
+  const auto oldState = state_;
+  config_.policers()->erase(config_.policers()->begin());
+  publishWithStateUpdate();
+  EXPECT_EQ(state_->getPolicers()->getNodeIf(*first.label()), nullptr);
+  EXPECT_EQ(state_->getPolicers()->getNode(*second.label()), secondNode);
+  const StateDelta delta(oldState, state_);
+  int removed = 0;
+  DeltaFunctions::forEachChanged(
+      delta.getPolicersDelta(),
+      [](auto, auto) { ADD_FAILURE() << "Policer unexpectedly changed"; },
+      [](auto) { ADD_FAILURE() << "Policer unexpectedly added"; },
+      [&](auto node) {
+        EXPECT_EQ(node, firstNode);
+        ++removed;
+      });
+  EXPECT_EQ(removed, 1);
+  publishWithNoStateUpdate();
 }
 
 TEST_F(MirrorTest, PolicerChangesPreserveResolvedEndpoints) {

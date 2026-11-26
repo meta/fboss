@@ -67,6 +67,8 @@
 #include "fboss/agent/state/MirrorOnDropReport.h"
 #include "fboss/agent/state/MirrorOnDropReportMap.h"
 #include "fboss/agent/state/NdpResponseTable.h"
+#include "fboss/agent/state/Policer.h"
+#include "fboss/agent/state/PolicerMap.h"
 #include "fboss/agent/state/Port.h"
 #include "fboss/agent/state/PortFlowletConfig.h"
 #include "fboss/agent/state/PortFlowletConfigMap.h"
@@ -728,6 +730,7 @@ class ThriftConfigApplier {
   shared_ptr<QcmCfg> updateQcmCfg(bool* changed);
   shared_ptr<QcmCfg> createQcmCfg(const cfg::QcmConfig& config);
   shared_ptr<MultiControlPlane> updateControlPlane();
+  std::shared_ptr<PolicerMap> updatePolicers();
   std::shared_ptr<MultiSwitchMirrorMap> updateMirrors();
   std::shared_ptr<Mirror> createMirror(const cfg::Mirror* config);
   std::shared_ptr<Mirror> updateMirror(
@@ -984,7 +987,13 @@ shared_ptr<SwitchState> ThriftConfigApplier::run() {
     }
   }
 
-  // updateMirrors must be called after updatePorts, mirror needs ports!
+  if (auto policers = updatePolicers()) {
+    new_->resetPolicers(
+        toMultiSwitchMap<MultiSwitchPolicerMap>(policers, scopeResolver_));
+    changed = true;
+  }
+
+  // updateMirrors uses the new ports and policer registry.
   {
     auto newMirrors = updateMirrors();
     if (newMirrors) {
@@ -7192,6 +7201,34 @@ Interface::Addresses ThriftConfigApplier::getInterfaceAddresses(
   }
 
   return addrs;
+}
+
+std::shared_ptr<PolicerMap> ThriftConfigApplier::updatePolicers() {
+  const auto& origPolicers = orig_->getPolicers();
+  PolicerMap::NodeContainer policers;
+  bool changed = false;
+  size_t numExistingProcessed = 0;
+  for (const auto& config : *cfg_->policers()) {
+    auto policer = std::make_shared<Policer>(config);
+    const auto& label = *config.label();
+    if (auto origPolicer = origPolicers->getNodeIf(label)) {
+      ++numExistingProcessed;
+      if (*origPolicer == *policer) {
+        policer = std::move(origPolicer);
+      } else {
+        changed = true;
+      }
+    } else {
+      changed = true;
+    }
+    if (!policers.emplace(label, std::move(policer)).second) {
+      throw FbossError("Duplicate policer label: ", label);
+    }
+  }
+  if (!changed && numExistingProcessed == origPolicers->numNodes()) {
+    return nullptr;
+  }
+  return std::make_shared<PolicerMap>(std::move(policers));
 }
 
 std::shared_ptr<MultiSwitchMirrorMap> ThriftConfigApplier::updateMirrors() {

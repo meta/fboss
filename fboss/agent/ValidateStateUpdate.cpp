@@ -511,6 +511,7 @@ bool isStateUpdateValidMultiSwitch(
       if (itr == hwAsics.end()) {
         XLOG(ERR) << "ASIC not found for the switch " << switchId;
         isValid = false;
+        continue;
       }
       if (itr->second->getMaxMirrors() < switchId2Mirrors[switchId]) {
         XLOG(ERR) << "Number of mirrors configured "
