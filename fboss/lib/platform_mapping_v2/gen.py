@@ -112,6 +112,7 @@ OSS_MULTI_NPU_SUPPORTED_PLATFORMS: dict[bool, list[str]] = {
         "leh800bcls_test_fixture",
         "leh800bcls_osfp_tray",
         "leh800bcls_dual_drain",
+        "leh800bcls_evt2_drainless",
     ],
 }
 
@@ -124,6 +125,7 @@ _RAW_PLATFORM_MAPPING_FAMILIES: dict[str, tuple[str, ...]] = {
     "ladakh800bcls_test_fixture": ("ladakh800bcls_test_fixture",),
     "leh800bcls": ("leh800bcls",),
     "leh800bcls_dual_drain": ("leh800bcls_dual_drain",),
+    "leh800bcls_evt2_drainless": ("leh800bcls_evt2_drainless",),
     "leh800bcls_osfp_tray": ("leh800bcls_osfp_tray",),
     "leh800bcls_rack": ("leh800bcls_rack",),
     "leh800bcls_test_fixture": ("leh800bcls_test_fixture",),
