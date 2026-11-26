@@ -75,6 +75,24 @@
       "asic_config_params": {
         "mmu_lossless": true
       }
+    },
+    "dual_drain": {
+      "platform_mapping_name": "leh800bcls_dual_drain"
+    },
+    "dual_drain_mmu_lossless": {
+      "platform_mapping_name": "leh800bcls_dual_drain",
+      "asic_config_params": {
+        "mmu_lossless": true
+      }
+    },
+    "evt2_drainless": {
+      "platform_mapping_name": "leh800bcls_evt2_drainless"
+    },
+    "evt2_drainless_mmu_lossless": {
+      "platform_mapping_name": "leh800bcls_evt2_drainless",
+      "asic_config_params": {
+        "mmu_lossless": true
+      }
     }
   }
 }
