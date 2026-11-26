@@ -323,6 +323,8 @@ void PlatformProductInfo::initMode() {
       type_ = PlatformType::PLATFORM_BLACKWOLF800BANW;
     } else if (FLAGS_mode == "yangra2") {
       type_ = PlatformType::PLATFORM_YANGRA2;
+    } else if (FLAGS_mode == "m4052clsi") {
+      type_ = PlatformType::PLATFORM_M4052CLSI;
     } else {
       throw std::runtime_error("invalid mode " + FLAGS_mode);
     }
