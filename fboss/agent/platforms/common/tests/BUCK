@@ -20,3 +20,19 @@ cpp_unittest(
         "//fboss/lib/platforms:platform_descriptor",
     ],
 )
+
+cpp_unittest(
+    name = "leh800bcls_platform_mapping_test",
+    srcs = [
+        "Leh800bclsPlatformMappingTest.cpp",
+    ],
+    network_access = network_access_utils.none(),
+    deps = [
+        "fbsource//xplat/folly:file_util",
+        "fbsource//xplat/folly/testing:test_util",
+        "//fboss/agent:agent_features",
+        "//fboss/agent/platforms/common/leh800bcls:leh800bcls_platform_mapping",
+        "//fboss/lib/platforms:product-info",
+    ],
+    external_deps = ["gflags"],
+)

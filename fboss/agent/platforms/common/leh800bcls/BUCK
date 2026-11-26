@@ -8,6 +8,7 @@ cpp_library(
         "Leh800bclsPlatformMapping.cpp",
     ],
     headers = [
+        "Leh800bclsDualDrainPlatformMapping.h",
         "Leh800bclsOsfpTrayPlatformMapping.h",
         "Leh800bclsPlatformMapping.h",
         "Leh800bclsProdPlatformMapping.h",
@@ -17,5 +18,6 @@ cpp_library(
     exported_deps = [
         "//fboss/agent:agent_features",
         "//fboss/agent/platforms/common:platform_mapping",
+        "//fboss/lib/platforms:product-info",
     ],
 )

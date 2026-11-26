@@ -9,4 +9,5 @@ add_library(leh800bcls_platform_mapping
 
 target_link_libraries(leh800bcls_platform_mapping
   platform_mapping
+  product_info
 )
