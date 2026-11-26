@@ -357,8 +357,13 @@ void getModulePrbsStats(DirectI2cInfo i2cInfo, std::vector<PortID> portList);
 
 bool verifyDirectI2cCompliance();
 
-// Fall back to qsfp_service's platform descriptor path when none is passed.
-void initPlatformDescriptorPathFromQsfpConfig();
+inline constexpr auto kDefaultPlatformDescriptorDir =
+    "/opt/fboss/share/platform_descriptors/";
+
+// Fall back to qsfp_service's platform descriptor path when none is passed,
+// then to fallbackDir if that path is not a directory on this host.
+void initPlatformDescriptorPathFromQsfpConfig(
+    const std::string& fallbackDir = kDefaultPlatformDescriptorDir);
 
 void printModuleTransactionStats(
     const std::vector<int32_t>& ports,

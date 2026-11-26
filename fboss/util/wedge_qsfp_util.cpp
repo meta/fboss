@@ -39,6 +39,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sysexits.h>
+#include <filesystem>
 #include <fstream>
 
 #include <thrift/lib/cpp/util/EnumUtils.h>
@@ -4691,7 +4692,7 @@ void getModulePrbsStatsDirectCmis(TransceiverI2CApi* bus, int module) {
   }
 }
 
-void initPlatformDescriptorPathFromQsfpConfig() {
+void initPlatformDescriptorPathFromQsfpConfig(const std::string& fallbackDir) {
   if (!FLAGS_platform_descriptor_config_path.empty()) {
     return;
   }
@@ -4704,6 +4705,18 @@ void initPlatformDescriptorPathFromQsfpConfig() {
     }
   } catch (const std::exception& ex) {
     XLOG(DBG2) << "No platform descriptor path from qsfp config: " << ex.what();
+  }
+  // On NetOS the qsfp config path points into qsfp_service's own image, which
+  // the toolbox cannot see; the toolbox ships its own copy at fallbackDir.
+  std::error_code ec;
+  if (!FLAGS_platform_descriptor_config_path.empty() &&
+      std::filesystem::is_directory(
+          FLAGS_platform_descriptor_config_path, ec)) {
+    return;
+  }
+  if (std::filesystem::is_directory(fallbackDir, ec)) {
+    XLOG(DBG2) << "Using platform descriptors from " << fallbackDir;
+    FLAGS_platform_descriptor_config_path = fallbackDir;
   }
 }
 

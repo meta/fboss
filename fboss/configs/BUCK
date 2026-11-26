@@ -37,5 +37,6 @@ buck_filegroup(
         "//netos/services/fboss_qsfp_service/...",
         "//netos/services/fboss_sw_agent/...",
         "//netos/services/fboss_wedge_agent/...",
+        "//netos/services/toolbox_layer/...",
     ],
 )

@@ -1,6 +1,7 @@
 // Copyright 2004-present Facebook. All Rights Reserved.
 
 #include "fboss/util/test/QsfpUtilTest.h"
+#include <fmt/format.h>
 #include <folly/FileUtil.h>
 #include <folly/Singleton.h>
 #include <folly/logging/xlog.h>
@@ -174,7 +175,7 @@ TEST_F(QsfpUtilTest, PlatformDescriptorPathFromQsfpConfig) {
   useQsfpConfig(config.path().string());
   FLAGS_platform_descriptor_config_path = "";
 
-  initPlatformDescriptorPathFromQsfpConfig();
+  initPlatformDescriptorPathFromQsfpConfig("/nonexistent/");
 
   EXPECT_EQ(FLAGS_platform_descriptor_config_path, "/qsfp/descriptors/");
 }
@@ -200,9 +201,54 @@ TEST_F(QsfpUtilTest, PlatformDescriptorPathWithoutQsfpConfig) {
   useQsfpConfig((dir.path() / "missing.conf").string());
   FLAGS_platform_descriptor_config_path = "";
 
-  initPlatformDescriptorPathFromQsfpConfig();
+  initPlatformDescriptorPathFromQsfpConfig("/nonexistent/");
 
   EXPECT_EQ(FLAGS_platform_descriptor_config_path, "");
+}
+
+TEST_F(QsfpUtilTest, PlatformDescriptorPathFallsBackWithoutQsfpConfig) {
+  gflags::FlagSaver saver;
+  folly::test::TemporaryDirectory dir;
+  useQsfpConfig((dir.path() / "missing.conf").string());
+  FLAGS_platform_descriptor_config_path = "";
+
+  initPlatformDescriptorPathFromQsfpConfig(dir.path().string());
+
+  EXPECT_EQ(FLAGS_platform_descriptor_config_path, dir.path().string());
+}
+
+TEST_F(QsfpUtilTest, PlatformDescriptorPathFallsBackWhenQsfpConfigPathMissing) {
+  gflags::FlagSaver saver;
+  folly::test::TemporaryFile config;
+  folly::writeFile(
+      std::string(
+          R"({"defaultCommandLineArgs": {"platform_descriptor_config_path": "/qsfp/descriptors/"}})"),
+      config.path().c_str());
+  useQsfpConfig(config.path().string());
+  folly::test::TemporaryDirectory fallback;
+  FLAGS_platform_descriptor_config_path = "";
+
+  initPlatformDescriptorPathFromQsfpConfig(fallback.path().string());
+
+  EXPECT_EQ(FLAGS_platform_descriptor_config_path, fallback.path().string());
+}
+
+TEST_F(QsfpUtilTest, PlatformDescriptorPathQsfpConfigDirWinsOverFallback) {
+  gflags::FlagSaver saver;
+  folly::test::TemporaryDirectory descriptors;
+  folly::test::TemporaryFile config;
+  folly::writeFile(
+      fmt::format(
+          R"({{"defaultCommandLineArgs": {{"platform_descriptor_config_path": "{}"}}}})",
+          descriptors.path().string()),
+      config.path().c_str());
+  useQsfpConfig(config.path().string());
+  folly::test::TemporaryDirectory fallback;
+  FLAGS_platform_descriptor_config_path = "";
+
+  initPlatformDescriptorPathFromQsfpConfig(fallback.path().string());
+
+  EXPECT_EQ(FLAGS_platform_descriptor_config_path, descriptors.path().string());
 }
 
 } // namespace fboss
