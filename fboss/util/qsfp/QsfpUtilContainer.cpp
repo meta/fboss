@@ -11,8 +11,11 @@ std::shared_ptr<QsfpUtilContainer> QsfpUtilContainer::getInstance() {
   return _qsfpUtilContainer.try_get();
 }
 
-QsfpUtilContainer::QsfpUtilContainer() {
-  detectTransceiverBus();
+TransceiverI2CApi* QsfpUtilContainer::getTransceiverBus() {
+  // call_once retries on a later call if detection throws.
+  std::call_once(busOnce_, [this] { detectTransceiverBus(); });
+  CHECK(bus_);
+  return bus_.get();
 }
 
 /*

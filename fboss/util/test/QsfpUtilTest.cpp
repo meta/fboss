@@ -10,6 +10,7 @@
 #include <fstream>
 #include "common/init/Init.h"
 #include "fboss/lib/platforms/PlatformDescriptor.h"
+#include "fboss/util/qsfp/QsfpUtilContainer.h"
 #include "fboss/util/wedge_qsfp_util.h"
 
 using namespace facebook::fboss;
@@ -249,6 +250,22 @@ TEST_F(QsfpUtilTest, PlatformDescriptorPathQsfpConfigDirWinsOverFallback) {
   initPlatformDescriptorPathFromQsfpConfig(fallback.path().string());
 
   EXPECT_EQ(FLAGS_platform_descriptor_config_path, descriptors.path().string());
+}
+
+// Commands that go through qsfp_service only need the event base. They must
+// work where direct hardware access is impossible, e.g. the NetOS toolbox.
+TEST_F(QsfpUtilTest, EventBaseDoesNotRequireTransceiverBus) {
+  gflags::FlagSaver saver;
+  folly::test::TemporaryDirectory dir;
+  // No fruid data, so platform detection on this host fails.
+  gflags::SetCommandLineOption(
+      "fruid_filepath", (dir.path() / "fruid.json").string().c_str());
+
+  auto container = QsfpUtilContainer::getInstance();
+  ASSERT_NE(container, nullptr);
+  container->getEventBase();
+
+  EXPECT_ANY_THROW(container->getTransceiverBus());
 }
 
 } // namespace fboss

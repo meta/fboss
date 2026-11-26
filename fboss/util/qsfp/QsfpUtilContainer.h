@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "fboss/util/wedge_qsfp_util.h"
 #include "folly/gen/Base.h"
 
@@ -19,13 +21,12 @@ class QsfpUtilContainer {
  public:
   static std::shared_ptr<QsfpUtilContainer> getInstance();
 
-  QsfpUtilContainer();
+  QsfpUtilContainer() = default;
   ~QsfpUtilContainer() {}
 
-  TransceiverI2CApi* getTransceiverBus() {
-    CHECK(bus_);
-    return bus_.get();
-  }
+  // Detects the platform and opens the direct transceiver bus on first use, so
+  // commands that go through qsfp_service never need direct hardware access.
+  TransceiverI2CApi* getTransceiverBus();
 
   folly::EventBase& getEventBase() {
     return evb_;
@@ -38,6 +39,7 @@ class QsfpUtilContainer {
  private:
   void detectTransceiverBus();
 
+  std::once_flag busOnce_;
   std::unique_ptr<TransceiverI2CApi> bus_;
   folly::EventBase evb_;
 };
