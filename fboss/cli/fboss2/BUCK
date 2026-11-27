@@ -1178,12 +1178,12 @@ cpp_library(
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [
-        "//fboss/agent:agent_config-cpp2-serialization",
+        "//fboss/agent:agent_config-cpp2-types",
         "//fboss/agent/platforms/common:platform_mapping",
-        "//fboss/configs/platforms/generic/forwarding_stack:config_generation-cpp2-serialization",
+        "//fboss/configs/platforms/generic/forwarding_stack:config_generation-cpp2-types",
         "//fboss/configs/platforms/generic/forwarding_stack/utils:config_generation_utils",
-        "//fboss/lib/if:fboss_common-cpp2-serialization",
-        "//fboss/lib/platforms:platform_descriptor_thrift-cpp2-serialization",
+        "//fboss/lib/if:fboss_common-cpp2-types",
+        "//fboss/lib/platforms:platform_descriptor_thrift-cpp2-types",
     ],
 )
 
@@ -1706,6 +1706,7 @@ ci_sandcastle(
         "fbcode//fboss/cli/fboss2:fboss2-config-gen-lib",
     ],
     ci_srcs = [
+        "fbcode/fboss/agent/switch_config.thrift",
         "fbcode/fboss/cli/fboss2/commands/config/gen/**",
         "fbcode/fboss/configs/platforms/**/asic_config/asic_config.json",
         "fbcode/fboss/configs/platforms/**/asic_config/generated/**",
