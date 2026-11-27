@@ -146,6 +146,13 @@ class AgentDiagShellStressTest : public AgentHwTest {
 };
 
 TEST_F(AgentDiagShellStressTest, stressDiagCmds) {
+#if !defined(TAJO_SDK_VERSION_1_42_8)
+  auto asic = hwAsicForSwitch(getCurrentSwitchIdForTesting());
+  if (asic->getAsicVendor() == HwAsic::AsicVendor::ASIC_VENDOR_TAJO) {
+    GTEST_SKIP() << "Leaba Python REPL is not available via diag_shell for "
+                    "this SDK";
+  }
+#endif
   auto setup = []() {};
   auto verify = [=, this]() { runDiagCmds(); };
   verifyAcrossWarmBoots(setup, verify);
