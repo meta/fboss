@@ -8,6 +8,7 @@ from typing import Any, Optional, Union
 from fboss.lib.platform_mapping_v2.platform_mapping_v2 import PlatformMappingV2
 from fboss.lib.platform_mapping_v2.read_files_utils import (
     discover_platform_mapping_inputs,
+    get_generated_dir,
     PlatformMappingInputs,
     read_platform_descriptor,
 )
@@ -313,7 +314,7 @@ def get_platform_mapping_output_dir(
     platform_descriptor_data: Optional[PlatformDescriptorData] = None,
 ) -> str:
     if output_root is None:
-        return os.path.join(vendor_data_map[platform_name].input_dir, "generated")
+        return get_generated_dir(vendor_data_map[platform_name].input_dir)
 
     output_dir = os.path.expanduser(output_root)
     vendor = (
@@ -378,8 +379,7 @@ def write_raw_platform_mapping_artifacts(
     write_raw_mapping = True
     if platform_name != base_platform:
         base_raw_mapping_file = os.path.join(
-            vendor_data_map[base_platform].input_dir,
-            "generated",
+            get_generated_dir(vendor_data_map[base_platform].input_dir),
             "raw_platform_mapping.json",
         )
         if os.path.exists(base_raw_mapping_file):

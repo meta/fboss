@@ -21,6 +21,7 @@ export_file(
 
 _GENERATED_PLATFORM_MAPPING_FILES = glob([
     "platforms/**/platform_mapping/generated/*.json",
+    "platforms/**/platform_mapping/generated/facebook/*.json",
 ])
 _PLATFORM_DESCRIPTOR_DIRS = {"/".join(src.split("/")[:-1]): True for src in _GENERATED_PLATFORM_MAPPING_FILES if src.endswith("/platform_descriptor.json")}
 

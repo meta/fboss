@@ -15,6 +15,7 @@ from fboss.lib.platform_mapping_v2.gen import (
 )
 from fboss.lib.platform_mapping_v2.read_files_utils import (
     discover_platform_mapping_inputs,
+    get_generated_dir,
     PlatformMappingInputs,
 )
 
@@ -85,7 +86,7 @@ class TestVerifyPlatformMappingGeneratedFiles(unittest.TestCase):
         generated_files = {}
         for platform_name in sorted(vendor_data_map):
             platform_input = vendor_data_map[platform_name]
-            generated_dir = os.path.join(platform_input.input_dir, "generated")
+            generated_dir = get_generated_dir(platform_input.input_dir)
             platform_descriptor_data = get_platform_descriptor_data(
                 vendor_data_map, platform_name
             )
@@ -102,8 +103,9 @@ class TestVerifyPlatformMappingGeneratedFiles(unittest.TestCase):
                     and platform_name != platform_input.base_platform
                 ):
                     base_raw_path = os.path.join(
-                        vendor_data_map[platform_input.base_platform].input_dir,
-                        "generated",
+                        get_generated_dir(
+                            vendor_data_map[platform_input.base_platform].input_dir
+                        ),
                         filename,
                     )
                     if os.path.exists(base_raw_path) and filecmp.cmp(

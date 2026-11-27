@@ -61,6 +61,36 @@ class PlatformMappingInput:
 
 PlatformMappingInputs = Dict[str, PlatformMappingInput]
 
+INTERNAL_SUBDIR = "facebook"
+
+
+def get_generated_dir(input_dir: str) -> str:
+    """Returns the generated output directory for a platform mapping input.
+
+    Inputs in `platform_mapping/` write to `platform_mapping/generated/`.
+    Internal inputs in `platform_mapping/facebook/` write to
+    `platform_mapping/generated/facebook/`.
+    """
+    normalized_dir = os.path.normpath(input_dir)
+    if os.path.basename(normalized_dir) == INTERNAL_SUBDIR:
+        return os.path.join(
+            os.path.dirname(normalized_dir), "generated", INTERNAL_SUBDIR
+        )
+    return os.path.join(input_dir, "generated")
+
+
+def _is_vendor_data_file(filepath: str) -> bool:
+    return (
+        filepath.endswith(".csv") or filepath.endswith(".json")
+    ) and not os.path.isdir(filepath)
+
+
+def _has_vendor_data(input_dir: str) -> bool:
+    return os.path.isdir(input_dir) and any(
+        _is_vendor_data_file(os.path.join(input_dir, filename))
+        for filename in os.listdir(input_dir)
+    )
+
 
 def read_vendor_data(input_file_path: str) -> Dict[str, str]:
     vendor_data = {}
@@ -69,9 +99,7 @@ def read_vendor_data(input_file_path: str) -> Dict[str, str]:
 
     for filename in sorted(os.listdir(input_file_path)):
         filepath = os.path.join(input_file_path, filename)
-        if (
-            filepath.endswith(".csv") or filepath.endswith(".json")
-        ) and not os.path.isdir(filepath):
+        if _is_vendor_data_file(filepath):
             with open(filepath, "r") as file:
                 content = file.read()
             vendor_data[filename] = content
@@ -104,7 +132,7 @@ def _find_variant_inputs(
     variant_inputs = []
     for variant in sorted(os.listdir(variants_dir)):
         variant_input_dir = os.path.join(variants_dir, variant, mapping_subdir)
-        if os.path.isdir(variant_input_dir):
+        if _has_vendor_data(variant_input_dir):
             variant_inputs.append((variant, variant_input_dir))
     return variant_inputs
 
@@ -128,7 +156,9 @@ def discover_platform_mapping_inputs(
 
             input_dir = os.path.join(platform_dir, mapping_subdir)
             variants_dir = os.path.join(platform_dir, "variants")
-            has_input = os.path.isdir(input_dir)
+            # A directory holding only internal inputs or generated outputs,
+            # such as `platform_mapping/{facebook,generated}/`, is not an input.
+            has_input = _has_vendor_data(input_dir)
             variant_inputs = _find_variant_inputs(variants_dir, mapping_subdir)
 
             if not has_input and not variant_inputs:

@@ -20,6 +20,7 @@ from fboss.lib.platform_mapping_v2.platform_mapping_v2 import (
 )
 from fboss.lib.platform_mapping_v2.read_files_utils import (
     discover_platform_mapping_inputs,
+    get_generated_dir,
     PlatformMappingInput,
     PlatformMappingInputs,
     read_platform_descriptor,
@@ -125,15 +126,9 @@ class TestPlatformMappingInputDiscovery(unittest.TestCase):
 
     def test_rejects_variants_without_base_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as platforms_dir:
-            variant_dir = os.path.join(
-                platforms_dir,
-                "arista",
-                "meru800bia",
-                "variants",
-                "meru800bia_variant",
-                "platform_mapping",
+            self._create_input(
+                platforms_dir, "arista", "meru800bia", variant="meru800bia_variant"
             )
-            os.makedirs(variant_dir)
 
             with self.assertRaisesRegex(
                 ValueError, "has platform mapping variants but no base input directory"
@@ -157,19 +152,24 @@ class TestPlatformMappingInputDiscovery(unittest.TestCase):
 
             self.assertEqual(len(inputs), 0)
 
-    def test_discovers_custom_mapping_subdirectory(self) -> None:
+    def test_discovers_internal_mapping_subdirectory(self) -> None:
+        internal_subdir = os.path.join("platform_mapping", "facebook")
         with tempfile.TemporaryDirectory() as platforms_dir:
             input_dir = self._create_input(
                 platforms_dir,
                 "cisco",
                 "morgan800cc",
-                mapping_subdir=os.path.join("facebook", "platform_mapping"),
+                mapping_subdir=internal_subdir,
             )
+            os.makedirs(get_generated_dir(input_dir))
 
+            public_inputs = discover_platform_mapping_inputs(platforms_dir)
             inputs = discover_platform_mapping_inputs(
                 platforms_dir,
-                mapping_subdir=os.path.join("facebook", "platform_mapping"),
+                mapping_subdir=internal_subdir,
             )
+
+            self.assertEqual(public_inputs, {})
 
             self.assertEqual(
                 inputs,
@@ -182,6 +182,25 @@ class TestPlatformMappingInputDiscovery(unittest.TestCase):
                     )
                 },
             )
+
+    def test_get_generated_dir(self) -> None:
+        cases = [
+            (
+                "cisco/m5120csc/platform_mapping",
+                "cisco/m5120csc/platform_mapping/generated",
+            ),
+            (
+                "cisco/morgan800cc/platform_mapping/facebook",
+                "cisco/morgan800cc/platform_mapping/generated/facebook",
+            ),
+            (
+                "celestica/montblanc/variants/odd/platform_mapping/facebook/",
+                "celestica/montblanc/variants/odd/platform_mapping/generated/facebook",
+            ),
+        ]
+        for input_dir, expected in cases:
+            with self.subTest(input_dir=input_dir):
+                self.assertEqual(get_generated_dir(input_dir), expected)
 
     def test_parser_uses_catalog_base_platform(self) -> None:
         base_data = read_vendor_data("fboss/lib/platform_mapping_v2/test/test_data")
