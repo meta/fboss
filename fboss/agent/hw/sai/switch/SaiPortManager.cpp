@@ -1221,7 +1221,8 @@ void SaiPortManager::programPfc(
     portHandle->port->setOptionalAttribute(
         SaiPortTraits::Attributes::PriorityFlowControl{*pfcInfo.pfcTxRx});
     XLOG(DBG3) << "Successfully enabled PFC on " << swPort->getName()
-               << ", TX/RX=" << std::hex << *pfcInfo.pfcTxRx;
+               << ", TX/RX=0x" << std::hex
+               << static_cast<int>(*pfcInfo.pfcTxRx);
 #if not defined(TAJO_SDK)
   } else {
     portHandle->port->setOptionalAttribute(
@@ -1229,8 +1230,8 @@ void SaiPortManager::programPfc(
     portHandle->port->setOptionalAttribute(
         SaiPortTraits::Attributes::PriorityFlowControlTx{*pfcInfo.pfcTx});
     XLOG(DBG3) << "Successfully enabled PFC on " << swPort->getName()
-               << ", TX=" << std::hex << *pfcInfo.pfcTx << ", Rx=" << std::hex
-               << *pfcInfo.pfcRx;
+               << ", TX=0x" << std::hex << static_cast<int>(*pfcInfo.pfcTx)
+               << ", Rx=0x" << static_cast<int>(*pfcInfo.pfcRx);
 #endif
   }
 }
