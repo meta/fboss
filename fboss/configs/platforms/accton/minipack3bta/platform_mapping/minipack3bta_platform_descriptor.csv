@@ -1,2 +1,2 @@
 System_Vendor,Platform_Type,Product_Name_Prefixes,Mode_Names,Asic_Type,Variant_Attributes
-accton,PLATFORM_MINIPACK3BTA,Minipack3BTA-MINIPACK3BTA,minipack3bta,ASIC_TYPE_TOMAHAWKULTRA1,minipack3bta_16rifs=false
+accton,PLATFORM_MINIPACK3BTA,Minipack3BTA;MINIPACK3BTA,minipack3bta,ASIC_TYPE_TOMAHAWKULTRA1,minipack3bta_16rifs=false
