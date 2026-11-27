@@ -1678,6 +1678,9 @@
         },
         {
           "test_name_regex": "roundtrip.preprod_2_trunk_2_preprod.warm_boot.*$"
+        },
+        {
+          "test_name_regex": "roundtrip.trunk_2_(prod|preprod)_2_trunk.cold_boot.AgentVrfTest.(RouteInVrf|MoveInterfaceAtRuntime)$"
         }
     ],
     "brcm/11.7.0.0_dnx_odp/11.7.0.0_dnx_odp/jericho3/mono": [
