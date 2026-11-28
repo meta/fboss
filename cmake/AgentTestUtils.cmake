@@ -189,6 +189,7 @@ add_library(config_utils
 
 target_link_libraries(config_utils
   agent_features
+  agent_test_utils
   asic_test_utils
   voq_test_utils
   fboss_types
@@ -198,7 +199,6 @@ target_link_libraries(config_utils
   switch_config_cpp2
   test_ensemble_if
   port_test_utils
-  trunk_test_utils
   trunk_utils
 )
 
