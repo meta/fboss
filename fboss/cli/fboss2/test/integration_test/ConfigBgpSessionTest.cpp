@@ -184,7 +184,7 @@ TEST_F(ConfigBgpSessionTest, AgentCommitSnapshotsBgpAndRollbackPreservesIt) {
   resetBgpDaemonLimit();
   commitConfig();
   waitForAgentReady();
-  const std::string agentSha = gitHead();
+  const std::string agentSha = getGit().getHead();
   ASSERT_FALSE(agentSha.empty())
       << "could not read git HEAD after agent commit";
 
