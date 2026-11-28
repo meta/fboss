@@ -2,9 +2,11 @@
 
 #pragma once
 
+#include <condition_variable>
+#include <mutex>
+
 #include "fboss/agent/SwSwitch.h"
 #include "fboss/agent/if/gen-cpp2/MultiSwitchCtrl.h"
-#include "fboss/agent/if/gen-cpp2/multiswitch_ctrl_handlers.h"
 
 namespace facebook::fboss {
 
@@ -12,7 +14,11 @@ class MultiSwitchThriftHandler
     : public apache::thrift::ServiceHandler<multiswitch::MultiSwitchCtrl> {
  public:
   explicit MultiSwitchThriftHandler(SwSwitch* sw) : sw_(sw) {}
+
+#if FOLLY_HAS_COROUTINES
   void cancelEventSyncers();
+  void waitForEventSyncers();
+#endif
 
 #if FOLLY_HAS_COROUTINES
   folly::coro::Task<
@@ -47,6 +53,10 @@ class MultiSwitchThriftHandler
   static L2Entry getL2Entry(L2EntryThrift thriftEntry);
 
  private:
+#if FOLLY_HAS_COROUTINES
+  bool startEventSyncer();
+  void finishEventSyncer();
+#endif
   void processLinkState(
       SwitchID switchId,
       const multiswitch::LinkChangeEvent& linkChangeEvent);
@@ -70,5 +80,12 @@ class MultiSwitchThriftHandler
   folly::CancellationSource fdbCancellationSource_;
   folly::CancellationSource statsCancellationSource_;
   folly::CancellationSource switchReachabilityCancellationSource_;
+#if FOLLY_HAS_COROUTINES
+  // Guards the event syncer (sink) refcount and shutdown flag
+  std::mutex eventSyncerMutex_;
+  std::condition_variable eventSyncerCv_;
+  int activeEventSyncers_{0};
+  bool eventSyncersStopping_{false};
+#endif
 };
 } // namespace facebook::fboss
