@@ -20,6 +20,7 @@ _GENERATOR_REGISTRY: dict[tuple[str, str], type[BaseAsicConfigGenerator]] = {
     ("broadcom", "tomahawk5"): BroadcomXgsGenerator,
     ("broadcom", "tomahawk6"): BroadcomXgsGenerator,
     ("broadcom", "jericho3"): BroadcomDnxGenerator,
+    ("broadcom", "qumran4d"): BroadcomDnxGenerator,
 }
 
 GeneratedAsicConfigs = dict[str, dict[str, GeneratedVariant]]
