@@ -25,6 +25,9 @@ class Repl {
   bool running() const {
     return running_;
   }
+  virtual bool hasExited() const {
+    return false;
+  }
   virtual std::string getPrompt() const = 0;
   virtual std::vector<folly::File> getStreams() const = 0;
 
