@@ -463,6 +463,78 @@ TEST_F(DHCPv4HandlerTest, DHCPRequest) {
   counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.pkts.sum", 1);
 }
 
+TEST_F(DHCPv4HandlerTest, DHCPRequestMaxMessageSize) {
+  constexpr uint16_t kMaxMsgSize = 576;
+  constexpr size_t kFixedPartAndCookieSize = 240;
+  constexpr size_t kMsgTypeOptSize = 3;
+  constexpr size_t kTrailingPadSize = 4;
+  constexpr size_t kAgentOptSize = 8;
+  constexpr size_t kEndOptSize = 1;
+  constexpr size_t kMaxOptDataLen = 255;
+  constexpr size_t kOptHeaderSize = 2;
+  const string maxMsgSizeOpt =
+      fmt::format("39 02 {:02x} {:02x}", kMaxMsgSize >> 8, kMaxMsgSize & 0xff);
+  const size_t relayedSizeWithoutFiller = kFixedPartAndCookieSize +
+      kMsgTypeOptSize + PktUtil::parseHexData(maxMsgSizeOpt).length() +
+      kTrailingPadSize + kAgentOptSize + kEndOptSize;
+
+  auto vendorSpecificOpt = [](size_t dataLen) {
+    string opt = fmt::format(" 2b {:02x}", dataLen);
+    for (size_t i = 0; i < dataLen; ++i) {
+      opt += " 41";
+    }
+    return opt;
+  };
+  auto optionsForRelayedSize = [&](size_t relayedSize) {
+    string options = maxMsgSizeOpt;
+    for (size_t fillerSize = relayedSize - relayedSizeWithoutFiller;
+         fillerSize > 0;) {
+      const size_t dataLen =
+          std::min(fillerSize - kOptHeaderSize, kMaxOptDataLen);
+      options += vendorSpecificOpt(dataLen);
+      fillerSize -= kOptHeaderSize + dataLen;
+    }
+    return options;
+  };
+
+  auto handle = setupTestHandle();
+  auto sw = handle->getSw();
+  auto clientMac = kClientMac.toString();
+  std::replace(clientMac.begin(), clientMac.end(), ':', ' ');
+  auto sendRequest = [&](const string& options) {
+    sendDHCPPacket(
+        handle.get(),
+        clientMac,
+        "ff ff ff ff ff ff",
+        "00 01",
+        "00 00 00 00",
+        "ff ff ff ff",
+        "00 43",
+        "00 44",
+        "01",
+        "35 01 01",
+        options);
+  };
+
+  EXPECT_HW_CALL(sw, stateChangedImpl(_, _)).Times(0);
+  {
+    CounterCache counters(sw);
+    EXPECT_SWITCHED_PKT(sw, "DHCP request", checkDHCPReq());
+    sendRequest(optionsForRelayedSize(kMaxMsgSize));
+    counters.update();
+    counters.checkDelta(SwitchStats::kCounterPrefix + "dhcpV4.pkt.sum", 1);
+    counters.checkDelta(SwitchStats::kCounterPrefix + "dhcpV4.bad_pkt.sum", 0);
+  }
+  {
+    CounterCache counters(sw);
+    EXPECT_HW_CALL(sw, sendPacketSwitchedAsync_(_)).Times(0);
+    sendRequest(optionsForRelayedSize(kMaxMsgSize + 1));
+    counters.update();
+    counters.checkDelta(SwitchStats::kCounterPrefix + "dhcpV4.pkt.sum", 1);
+    counters.checkDelta(SwitchStats::kCounterPrefix + "dhcpV4.bad_pkt.sum", 1);
+  }
+}
+
 TEST_F(DHCPv4HandlerTest, RelayOverrideDHCPRequest) {
   auto handle = setupTestHandle();
   auto sw = handle->getSw();
