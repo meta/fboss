@@ -12,6 +12,7 @@
 #include "fboss/agent/LldpManager.h"
 
 #include <fmt/format.h>
+#include <folly/lang/Assume.h>
 #include <thrift/lib/cpp/util/EnumUtils.h>
 #include "fboss/agent/AgentFeatures.h"
 #include "fboss/agent/FbossError.h"
@@ -381,6 +382,7 @@ void PortUpdateHandler::computeFabricOverdrainPct(const StateDelta& delta) {
             "Unhandled asic type: ",
             apache::thrift::util::enumNameSafe(asicType));
     }
+    folly::assume_unreachable();
   };
   for (const auto& [swIndex, bwInfo] : swIndexToBwInfo) {
     double fabricOverdrainPct = 0;
