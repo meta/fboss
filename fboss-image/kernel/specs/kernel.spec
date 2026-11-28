@@ -29,6 +29,9 @@ Source0: https://cdn.kernel.org/pub/linux/kernel/v6.x/linux-%{version}.tar.xz
 Source1: fboss-reference.config
 Source2: fboss-local-overrides.config
 
+# Kernel patches
+Patch1: 0001-hwmon-k10temp-add-ccd-support-for-family-1ah.patch
+
 # Default in-container scripts dir (override via --define container_scripts_dir if needed)
 %{!?container_scripts_dir:%global container_scripts_dir /src/fboss-image/kernel/scripts}
 
@@ -77,6 +80,7 @@ Requires: kernel-headers = %{epoch}:%{version}-%{release}
 # SRPM creation phase - everything here goes into source RPM
 %prep
 %setup -q -n linux-%{version}
+%patch1 -p1
 
 # Prepare kernel config (defconfig + FBOSS reference + local overrides)
 %{__chmod} +x %{container_scripts_dir}/prepare_config.sh
