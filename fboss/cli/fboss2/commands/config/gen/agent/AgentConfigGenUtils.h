@@ -17,6 +17,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/platforms/common/PlatformMapping.h"
@@ -35,6 +36,9 @@ struct ResolvedAgentConfigInputs {
   std::optional<LinkTopology> linkTopology;
   // Asic config inputs
   cfg::ChipConfig chipConfig;
+  // Inputs read from facebook/ directories. An explicit ASIC config file counts
+  // when its path below the FBOSS root passes through facebook/.
+  std::vector<std::filesystem::path> internalInputs;
 };
 
 /*
@@ -137,6 +141,8 @@ std::filesystem::path generateAgentConfig(
     std::optional<std::string_view> platformMappingVariant = std::nullopt);
 
 // Produces serialized Agent config contents for a generic declaration request.
+// A request from an open-source declaration fails if it resolves an internal
+// input.
 std::string generateAgentConfigForManifest(
     const ConfigGenerationRequest& request);
 

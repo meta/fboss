@@ -16,6 +16,7 @@
 #include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <folly/FileUtil.h>
 #include <folly/json/json.h>
@@ -27,6 +28,7 @@
 #include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/cli/fboss2/commands/config/gen/PlatformConfigPathUtils.h"
 #include "fboss/cli/fboss2/utils/ConfigFileUtils.h"
+#include "fboss/configs/platforms/generic/forwarding_stack/utils/ConfigPathUtils.h"
 #include "fboss/configs/platforms/generic/forwarding_stack/utils/FeatureDefaultCommandArgsUtils.h" // @manual=//fboss/configs/platforms/generic/forwarding_stack/utils:config_generation_utils
 #include "fboss/configs/platforms/generic/forwarding_stack/utils/LinkTopologyUtils.h"
 #include "fboss/lib/config/PlatformConfigUtils.h"
@@ -56,6 +58,7 @@ constexpr std::string_view kSaiUserDefinedTrapArg = "sai_user_defined_trap";
 struct GeneratedAsicConfigFile {
   fs::path path;
   cfg::AsicConfigType configType;
+  std::vector<fs::path> internalInputs;
 };
 
 bool isCommandLineArgEnabled(
@@ -143,10 +146,17 @@ GeneratedAsicConfigFile resolveGeneratedAsicConfig(
 
   const auto asicConfigDirectory =
       findPlatformConfigComponentDirectory(platformDirectory, "asic_config");
-  const auto metadataPath = asicConfigDirectory / "asic_config.json";
-  if (!fs::is_regular_file(metadataPath)) {
+  const auto metadataFile =
+      findConfigFile(asicConfigDirectory, "asic_config.json");
+  if (!metadataFile) {
     throw FbossError(
-        "ASIC config metadata does not exist: ", metadataPath.string());
+        "ASIC config metadata does not exist: ",
+        (asicConfigDirectory / "asic_config.json").string());
+  }
+  const auto& metadataPath = metadataFile->path;
+  std::vector<fs::path> internalInputs;
+  if (metadataFile->isInternal) {
+    internalInputs.push_back(metadataPath);
   }
 
   const auto metadata = folly::parseJson(readFile(metadataPath));
@@ -197,21 +207,33 @@ GeneratedAsicConfigFile resolveGeneratedAsicConfig(
         metadataPath.string());
   }
 
-  fs::path selectedPath;
   if (asicConfigFile) {
-    selectedPath = *asicConfigFile;
-  } else {
-    auto fileName = variantName;
-    fileName += getGeneratedFileExtension(configType);
-    selectedPath = asicConfigDirectory / "generated" / fileName;
+    if (!fs::is_regular_file(*asicConfigFile)) {
+      throw FbossError(
+          "ASIC config override does not exist: ", asicConfigFile->string());
+    }
+    return {
+        .path = *asicConfigFile,
+        .configType = configType,
+        .internalInputs = std::move(internalInputs)};
   }
-  if (!fs::is_regular_file(selectedPath)) {
+
+  auto fileName = variantName;
+  fileName += getGeneratedFileExtension(configType);
+  const auto generatedDirectory = asicConfigDirectory / "generated";
+  auto generatedFile = findConfigFile(generatedDirectory, fileName);
+  if (!generatedFile) {
     throw FbossError(
-        asicConfigFile ? "ASIC config override does not exist: "
-                       : "Generated ASIC config does not exist: ",
-        selectedPath.string());
+        "Generated ASIC config does not exist: ",
+        (generatedDirectory / fileName).string());
   }
-  return {.path = std::move(selectedPath), .configType = configType};
+  if (generatedFile->isInternal) {
+    internalInputs.push_back(generatedFile->path);
+  }
+  return {
+      .path = std::move(generatedFile->path),
+      .configType = configType,
+      .internalInputs = std::move(internalInputs)};
 }
 
 std::map<std::string, std::string> loadKeyValueConfig(
@@ -534,7 +556,8 @@ std::string generateAgentConfigContents(
     const std::optional<cfg::AsicConfigType>& asicConfigType,
     std::optional<std::string_view> asicConfigVariant,
     std::optional<std::string_view> linkTopologyVariant,
-    std::optional<std::string_view> platformMappingVariant) {
+    std::optional<std::string_view> platformMappingVariant,
+    bool allowInternalInputs) {
   auto inputs = resolveAgentConfigInputs(
       fbossRoot,
       platform,
@@ -544,6 +567,14 @@ std::string generateAgentConfigContents(
       asicConfigVariant,
       linkTopologyVariant,
       platformMappingVariant);
+  if (!allowInternalInputs && !inputs.internalInputs.empty()) {
+    throw FbossError(
+        "Open-source config generation declaration for '",
+        platform,
+        "' uses internal input ",
+        inputs.internalInputs.front().string(),
+        "; move the declaration to forwarding_stack/facebook/");
+  }
   auto defaultCommandLineArgs = generateFeatureDefaultCommandArgs(
       fbossRoot,
       ServiceType::AGENT,
@@ -736,10 +767,33 @@ ResolvedAgentConfigInputs resolveAgentConfigInputs(
   auto platformMapping =
       std::make_unique<PlatformMapping>(reconstructPlatformMapping(
           readRawPlatformMapping(rawMappingPath), portAssignments));
+  std::vector<fs::path> internalInputs;
+  if (isInternalConfigPath(descriptorPath, platformDirectory.path)) {
+    internalInputs.push_back(descriptorPath);
+  }
   std::optional<LinkTopology> linkTopology;
   if (linkTopologyVariant) {
-    linkTopology =
-        loadLinkTopologyVariant(platformDirectory.path, *linkTopologyVariant);
+    const auto linkTopologyFile =
+        findLinkTopologyVariant(platformDirectory.path, *linkTopologyVariant);
+    if (linkTopologyFile.isInternal) {
+      internalInputs.push_back(linkTopologyFile.path);
+    }
+    linkTopology = loadLinkTopologyCsv(linkTopologyFile.path);
+  }
+  const auto asicConfig = resolveGeneratedAsicConfig(
+      platformDirectory,
+      platform,
+      normalizedAsicConfigVariant,
+      asicConfigFile,
+      asicConfigType);
+  internalInputs.insert(
+      internalInputs.end(),
+      asicConfig.internalInputs.begin(),
+      asicConfig.internalInputs.end());
+  if (asicConfigFile &&
+      isInternalConfigPath(
+          fs::absolute(*asicConfigFile), fs::absolute(fbossRoot))) {
+    internalInputs.push_back(*asicConfigFile);
   }
 
   return {
@@ -748,12 +802,8 @@ ResolvedAgentConfigInputs resolveAgentConfigInputs(
       .portAssignments = std::move(portAssignments),
       .platformMapping = std::move(platformMapping),
       .linkTopology = std::move(linkTopology),
-      .chipConfig = loadAsicConfig(resolveGeneratedAsicConfig(
-          platformDirectory,
-          platform,
-          normalizedAsicConfigVariant,
-          asicConfigFile,
-          asicConfigType)),
+      .chipConfig = loadAsicConfig(asicConfig),
+      .internalInputs = std::move(internalInputs),
   };
 }
 
@@ -847,7 +897,8 @@ fs::path generateAgentConfig(
           asicConfigType,
           asicConfigVariant,
           std::nullopt,
-          platformMappingVariant));
+          platformMappingVariant,
+          true));
   return outputPath;
 }
 
@@ -870,7 +921,8 @@ std::string generateAgentConfigForManifest(
           : std::nullopt,
       request.platformMappingVariant
           ? std::optional<std::string_view>(*request.platformMappingVariant)
-          : std::nullopt);
+          : std::nullopt,
+      request.internal);
 }
 
 } // namespace facebook::fboss::configgen

@@ -6,12 +6,14 @@ cpp_library(
     name = "config_generation_utils",
     srcs = [
         "ConfigGenerationSpecUtils.cpp",
+        "ConfigPathUtils.cpp",
         "FeatureDefaultCommandArgsUtils.cpp",
         "LinkTopologyUtils.cpp",
         "ThriftConfigUtils.cpp",
     ],
     headers = [
         "ConfigGenerationSpecUtils.h",
+        "ConfigPathUtils.h",
         "FeatureDefaultCommandArgsUtils.h",
         "LinkTopologyUtils.h",
         "ThriftConfigUtils.h",

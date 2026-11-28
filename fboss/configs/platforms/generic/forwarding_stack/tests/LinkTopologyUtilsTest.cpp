@@ -33,6 +33,10 @@ void writeTestFile(const fs::path& path, std::string_view contents) {
   }
 }
 
+constexpr std::string_view kVariantCsv =
+    "portA,portB,profile,hasTransceiver\n"
+    "eth1/1/1,eth1/2/1,PROFILE_100G_4_NRZ_RS528_OPTICAL,true\n";
+
 TEST(LinkTopologyUtilsTest, ParsesPairedSelfLoopAndUnmodeledPeerEntries) {
   constexpr std::string_view kCsv =
       "portA,portB,profile,hasTransceiver\n"
@@ -74,9 +78,6 @@ TEST(LinkTopologyUtilsTest, RejectsInvalidRows) {
 }
 
 TEST(LinkTopologyUtilsTest, LoadsVariantFromPlatformDirectory) {
-  constexpr std::string_view kCsv =
-      "portA,portB,profile,hasTransceiver\n"
-      "eth1/1/1,eth1/2/1,PROFILE_100G_4_NRZ_RS528_OPTICAL,true\n";
   const LinkTopology expected{
       {.portA = "eth1/1/1",
        .portB = "eth1/2/1",
@@ -88,11 +89,39 @@ TEST(LinkTopologyUtilsTest, LoadsVariantFromPlatformDirectory) {
   writeTestFile(
       platformDirectory / "forwarding_stack" / "link_topology" /
           "link_test_default.csv",
-      kCsv);
+      kVariantCsv);
 
   EXPECT_EQ(
       loadLinkTopologyVariant(platformDirectory, "link_test_default"),
       expected);
+}
+
+TEST(LinkTopologyUtilsTest, FindsInternalVariant) {
+  folly::test::TemporaryDirectory temporaryDirectory;
+  const fs::path platformDirectory{temporaryDirectory.path().string()};
+  const auto internalPath = platformDirectory / "forwarding_stack" /
+      "link_topology" / "facebook" / "link_test_default.csv";
+  writeTestFile(internalPath, kVariantCsv);
+
+  const auto resolved =
+      findLinkTopologyVariant(platformDirectory, "link_test_default");
+
+  EXPECT_EQ(resolved.path, internalPath);
+  EXPECT_TRUE(resolved.isInternal);
+}
+
+TEST(LinkTopologyUtilsTest, RejectsVariantOnBothSides) {
+  folly::test::TemporaryDirectory temporaryDirectory;
+  const fs::path platformDirectory{temporaryDirectory.path().string()};
+  const auto topologyDirectory =
+      platformDirectory / "forwarding_stack" / "link_topology";
+  writeTestFile(topologyDirectory / "link_test_default.csv", kVariantCsv);
+  writeTestFile(
+      topologyDirectory / "facebook" / "link_test_default.csv", kVariantCsv);
+
+  EXPECT_THROW(
+      findLinkTopologyVariant(platformDirectory, "link_test_default"),
+      FbossError);
 }
 
 TEST(LinkTopologyUtilsTest, RejectsInvalidOrMissingVariant) {

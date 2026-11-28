@@ -29,6 +29,8 @@ target_include_directories(feature_default_command_args_cpp2
 add_library(config_generation_utils
   fboss/configs/platforms/generic/forwarding_stack/utils/ConfigGenerationSpecUtils.h
   fboss/configs/platforms/generic/forwarding_stack/utils/ConfigGenerationSpecUtils.cpp
+  fboss/configs/platforms/generic/forwarding_stack/utils/ConfigPathUtils.h
+  fboss/configs/platforms/generic/forwarding_stack/utils/ConfigPathUtils.cpp
   fboss/configs/platforms/generic/forwarding_stack/utils/FeatureDefaultCommandArgsUtils.h
   fboss/configs/platforms/generic/forwarding_stack/utils/FeatureDefaultCommandArgsUtils.cpp
   fboss/configs/platforms/generic/forwarding_stack/utils/LinkTopologyUtils.h

@@ -148,7 +148,7 @@ LinkTopology loadLinkTopologyCsv(const std::filesystem::path& path) {
   return parseLinkTopologyCsv(contents, path.string());
 }
 
-LinkTopology loadLinkTopologyVariant(
+ResolvedConfigFile findLinkTopologyVariant(
     const std::filesystem::path& platformDirectory,
     std::string_view variant) {
   const std::filesystem::path component{variant};
@@ -159,18 +159,26 @@ LinkTopology loadLinkTopologyVariant(
 
   auto fileName = std::string(variant);
   fileName += ".csv";
-  const auto path = platformDirectory / "forwarding_stack" /
-      kLinkTopologyDirectoryName / fileName;
-  if (!std::filesystem::is_regular_file(path)) {
+  const auto directory =
+      platformDirectory / "forwarding_stack" / kLinkTopologyDirectoryName;
+  auto resolved = findConfigFile(directory, fileName);
+  if (!resolved) {
     throw FbossError(
         "Link topology variant '",
         variant,
         "' does not exist for platform '",
         platformDirectory.filename().string(),
         "': ",
-        path.string());
+        (directory / fileName).string());
   }
-  return loadLinkTopologyCsv(path);
+  return std::move(*resolved);
+}
+
+LinkTopology loadLinkTopologyVariant(
+    const std::filesystem::path& platformDirectory,
+    std::string_view variant) {
+  return loadLinkTopologyCsv(
+      findLinkTopologyVariant(platformDirectory, variant).path);
 }
 
 } // namespace facebook::fboss::configgen

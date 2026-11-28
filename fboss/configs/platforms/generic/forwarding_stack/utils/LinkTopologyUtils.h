@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/configs/platforms/generic/forwarding_stack/utils/ConfigPathUtils.h"
 
 namespace facebook::fboss::configgen {
 
@@ -52,7 +53,13 @@ LinkTopology parseLinkTopologyCsv(
 
 LinkTopology loadLinkTopologyCsv(const std::filesystem::path& path);
 
-// Loads <platformDirectory>/forwarding_stack/link_topology/<variant>.csv.
+// Resolves <variant>.csv in <platformDirectory>/forwarding_stack/link_topology/
+// or its facebook/ directory. Throws when neither or both exist.
+ResolvedConfigFile findLinkTopologyVariant(
+    const std::filesystem::path& platformDirectory,
+    std::string_view variant);
+
+// Loads the link topology resolved by findLinkTopologyVariant().
 LinkTopology loadLinkTopologyVariant(
     const std::filesystem::path& platformDirectory,
     std::string_view variant);

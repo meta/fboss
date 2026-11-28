@@ -22,6 +22,7 @@
 #include "fboss/agent/FbossError.h"
 #include "fboss/cli/fboss2/commands/config/gen/PlatformConfigPathUtils.h"
 #include "fboss/configs/platforms/generic/forwarding_stack/utils/ConfigGenerationSpecUtils.h"
+#include "fboss/configs/platforms/generic/forwarding_stack/utils/ConfigPathUtils.h"
 
 namespace facebook::fboss::configgen {
 namespace fs = std::filesystem;
@@ -95,6 +96,12 @@ void validatePathComponent(
   }
 }
 
+fs::path getServiceOutputDirectory(
+    const fs::path& platformDirectory,
+    std::string_view serviceName) {
+  return platformDirectory / "forwarding_stack" / "generated" / serviceName;
+}
+
 std::string getOutputFileName(
     std::string_view profile,
     const std::optional<std::string>& variant) {
@@ -161,8 +168,12 @@ ConfigGenerationPlan createConfigGenerationPlan(
       }
       validatePathComponent(platformMappingVariant, "platformMappingVariant");
 
-      auto outputPath = platformDirectory / "forwarding_stack" / "generated" /
-          plan.serviceName / getOutputFileName(profile, variant);
+      auto outputDirectory =
+          getServiceOutputDirectory(platformDirectory, plan.serviceName);
+      if (target.isInternal) {
+        outputDirectory /= kInternalConfigDirectoryName;
+      }
+      auto outputPath = outputDirectory / getOutputFileName(profile, variant);
       if (!plan.outputPaths.insert(outputPath).second) {
         throw FbossError(
             "Config generation declarations contain duplicate output ",
@@ -183,6 +194,7 @@ ConfigGenerationPlan createConfigGenerationPlan(
           .serviceName = plan.serviceName,
           .platformDirectory = platformDirectory,
           .outputPath = outputPath,
+          .internal = target.isInternal,
       };
       plan.configs.push_back(
           {.outputPath = std::move(outputPath),
@@ -203,21 +215,30 @@ std::set<fs::path> findGeneratedConfigPaths(
     const fs::path& fbossRoot,
     std::string_view serviceName,
     const std::optional<fs::path>& platformDirectoryScope) {
-  const auto addPlatformOutputs = [&](const fs::path& platformDirectory,
-                                      std::set<fs::path>& paths) {
-    const auto serviceDirectory =
-        platformDirectory / "forwarding_stack" / "generated" / serviceName;
-    if (!fs::is_directory(serviceDirectory)) {
+  const auto addOutputs = [](const fs::path& outputDirectory,
+                             bool allowInternalDirectory,
+                             std::set<fs::path>& paths) {
+    if (!fs::is_directory(outputDirectory)) {
       return;
     }
-    for (const auto& outputEntry : fs::directory_iterator(serviceDirectory)) {
-      if (!outputEntry.is_regular_file()) {
+    for (const auto& outputEntry : fs::directory_iterator(outputDirectory)) {
+      if (outputEntry.is_regular_file()) {
+        paths.insert(outputEntry.path());
+      } else if (
+          !allowInternalDirectory || !outputEntry.is_directory() ||
+          outputEntry.path().filename() != kInternalConfigDirectoryName) {
         throw FbossError(
             "Unexpected entry in generated config directory: ",
             outputEntry.path().string());
       }
-      paths.insert(outputEntry.path());
     }
+  };
+  const auto addPlatformOutputs = [&](const fs::path& platformDirectory,
+                                      std::set<fs::path>& paths) {
+    const auto serviceDirectory =
+        getServiceOutputDirectory(platformDirectory, serviceName);
+    addOutputs(serviceDirectory, true, paths);
+    addOutputs(serviceDirectory / kInternalConfigDirectoryName, false, paths);
   };
 
   std::set<fs::path> paths;

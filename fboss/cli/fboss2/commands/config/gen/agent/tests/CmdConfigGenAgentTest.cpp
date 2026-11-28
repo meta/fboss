@@ -397,6 +397,22 @@ void writeConfigGenerationTarget(
       contents);
 }
 
+void writeInternalConfigGenerationTarget(
+    const fs::path& platformDirectory,
+    std::string_view contents) {
+  writeTestFile(
+      platformDirectory / "forwarding_stack" / "facebook" /
+          "config_generation.json",
+      contents);
+}
+
+fs::path moveToInternalDirectory(const fs::path& path) {
+  auto internalPath = path.parent_path() / "facebook" / path.filename();
+  fs::create_directories(internalPath.parent_path());
+  fs::rename(path, internalPath);
+  return internalPath;
+}
+
 std::string readFile(const fs::path& path) {
   std::string contents;
   if (!folly::readFile(path.c_str(), contents)) {
@@ -982,6 +998,35 @@ TEST(AgentConfigGenTest, UsesExplicitAsicConfigFile) {
           ->yamlConfig()
           .value(),
       kVendorAsicYaml);
+}
+
+TEST(AgentConfigGenTest, ReportsInternalExplicitAsicConfigFile) {
+  folly::test::TemporaryDirectory temporaryDirectory;
+  const auto fbossRoot = fs::path(temporaryDirectory.path().string()) / "fboss";
+  createTestPlatform(fbossRoot, "test_vendor");
+  const auto internalConfig =
+      fbossRoot / "lib" / "asic_config_v2" / "facebook" / "vendor_config.yml";
+  const auto externalConfig = fs::path(temporaryDirectory.path().string()) /
+      "facebook" / "vendor_config.yml";
+  writeTestFile(internalConfig, kAsicYaml);
+  writeTestFile(externalConfig, kAsicYaml);
+
+  EXPECT_EQ(
+      resolveAgentConfigInputs(
+          fbossRoot,
+          kPlatform,
+          kProfile,
+          internalConfig,
+          cfg::AsicConfigType::YAML_CONFIG)
+          .internalInputs,
+      std::vector<fs::path>{internalConfig});
+  EXPECT_TRUE(resolveAgentConfigInputs(
+                  fbossRoot,
+                  kPlatform,
+                  kProfile,
+                  externalConfig,
+                  cfg::AsicConfigType::YAML_CONFIG)
+                  .internalInputs.empty());
 }
 
 TEST(AgentConfigGenTest, UsesExplicitAsicConfigTypeWithoutMetadata) {
@@ -1824,6 +1869,94 @@ TEST(AgentConfigGenTest, VerifiesMissingStaleAndObsoleteManifestOutputs) {
   EXPECT_FALSE(fs::exists(missingPath));
   EXPECT_EQ(readFile(stalePath), "stale\n");
   EXPECT_EQ(readFile(obsoletePath), "obsolete\n");
+}
+
+TEST(AgentConfigGenTest, WritesInternalManifestOutputsToInternalDirectory) {
+  folly::test::TemporaryDirectory sourceDirectory;
+  const auto fbossRoot = fs::path(sourceDirectory.path().string()) / "fboss";
+  constexpr std::string_view kManifestPlatform = "wedge800bact";
+  const auto platformDirectory =
+      createTestPlatform(fbossRoot, "test_vendor", kManifestPlatform);
+  writeInternalConfigGenerationTarget(
+      platformDirectory,
+      R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT"},{"profile":"HW_TEST"}]}})");
+  const auto serviceDirectory =
+      platformDirectory / "forwarding_stack" / "generated" / "agent";
+  const auto previousPublicPath = serviceDirectory / "default.conf";
+  writeTestFile(previousPublicPath, "previously open source\n");
+
+  const std::vector<fs::path> expectedPaths{
+      serviceDirectory / "facebook" / "default.conf",
+      serviceDirectory / "facebook" / "hw_test.conf"};
+  EXPECT_EQ(
+      generateConfigsFromManifest(
+          fbossRoot, ServiceType::AGENT, generateAgentConfigForManifest),
+      expectedPaths);
+  EXPECT_FALSE(fs::exists(previousPublicPath));
+  EXPECT_TRUE(verifyConfigsFromManifest(
+                  fbossRoot, ServiceType::AGENT, generateAgentConfigForManifest)
+                  .isFresh());
+
+  writeTestFile(previousPublicPath, "previously open source\n");
+  EXPECT_EQ(
+      verifyConfigsFromManifest(
+          fbossRoot, ServiceType::AGENT, generateAgentConfigForManifest)
+          .obsolete,
+      std::vector<fs::path>{previousPublicPath});
+}
+
+TEST(AgentConfigGenTest, ReportsInternalInputs) {
+  folly::test::TemporaryDirectory sourceDirectory;
+  const auto fbossRoot = fs::path(sourceDirectory.path().string()) / "fboss";
+  const auto platformDirectory = createTestPlatform(fbossRoot, "test_vendor");
+  const auto asicConfigDirectory = platformDirectory / "asic_config";
+  const auto generatedMappingDirectory =
+      getGeneratedPlatformMappingDirectory(fbossRoot, "test_vendor");
+  const auto metadataPath =
+      moveToInternalDirectory(asicConfigDirectory / "asic_config.json");
+  const auto asicConfigPath = moveToInternalDirectory(
+      asicConfigDirectory / "generated" / "hw_test.yml");
+  const auto descriptorPath = moveToInternalDirectory(
+      generatedMappingDirectory / "platform_descriptor.json");
+  moveToInternalDirectory(
+      generatedMappingDirectory / "raw_platform_mapping.json");
+  moveToInternalDirectory(
+      generatedMappingDirectory / "port_id_to_port_assignment.json");
+
+  const std::vector<fs::path> expected{
+      descriptorPath, metadataPath, asicConfigPath};
+  EXPECT_EQ(
+      resolveAgentConfigInputs(fbossRoot, kPlatform, "hw_test").internalInputs,
+      expected);
+}
+
+TEST(AgentConfigGenTest, RejectsInternalInputForOpenSourceManifest) {
+  folly::test::TemporaryDirectory sourceDirectory;
+  const auto fbossRoot = fs::path(sourceDirectory.path().string()) / "fboss";
+  constexpr std::string_view kManifestPlatform = "wedge800bact";
+  const auto platformDirectory =
+      createTestPlatform(fbossRoot, "test_vendor", kManifestPlatform);
+  moveToInternalDirectory(
+      platformDirectory / "asic_config" / "generated" / "hw_test.yml");
+  writeConfigGenerationTarget(
+      platformDirectory,
+      R"({"serviceToOptions":{"AGENT":[{"profile":"HW_TEST"}]}})");
+
+  EXPECT_THROW(
+      generateConfigsFromManifest(
+          fbossRoot, ServiceType::AGENT, generateAgentConfigForManifest),
+      FbossError);
+  EXPECT_FALSE(
+      fs::exists(platformDirectory / "forwarding_stack" / "generated"));
+
+  moveToInternalDirectory(
+      platformDirectory / "forwarding_stack" / "config_generation.json");
+  EXPECT_EQ(
+      generateConfigsFromManifest(
+          fbossRoot, ServiceType::AGENT, generateAgentConfigForManifest),
+      std::vector<fs::path>{
+          platformDirectory / "forwarding_stack" / "generated" / "agent" /
+          "facebook" / "hw_test.conf"});
 }
 
 TEST(AgentConfigGenTest, DoesNotPartiallyWriteManifestOutputs) {

@@ -40,6 +40,9 @@ struct ConfigGenerationRequest {
   std::string serviceName;
   std::filesystem::path platformDirectory;
   std::filesystem::path outputPath;
+  // Whether the declaration is internal. An open-source declaration must not
+  // resolve internal inputs.
+  bool internal{false};
 };
 
 using ConfigContentsGenerator =
@@ -61,7 +64,8 @@ struct ConfigVerificationResult {
 // Otherwise every per-platform declaration and generated output is owned. All
 // contents are generated before any output is written, then canonical
 // forwarding_stack/generated/<service> outputs are atomically refreshed and
-// obsolete owned outputs are removed.
+// obsolete owned outputs are removed. Outputs of an internal declaration are
+// written to forwarding_stack/generated/<service>/facebook instead.
 std::vector<std::filesystem::path> generateConfigsFromManifest(
     const std::filesystem::path& fbossRoot,
     ServiceType service,

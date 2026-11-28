@@ -25,10 +25,16 @@ struct ConfigGenerationTarget {
   PlatformType platform;
   std::filesystem::path platformDirectory;
   ConfigGenerationSpec spec;
+  // Whether the declaration is
+  // forwarding_stack/facebook/config_generation.json. Every output generated
+  // from an internal declaration is internal.
+  bool isInternal{false};
 };
 
 ConfigGenerationSpec parseConfigGenerationSpec(std::string_view contents);
 
+// Loads forwarding_stack/config_generation.json or
+// forwarding_stack/facebook/config_generation.json. Exactly one must exist.
 ConfigGenerationTarget loadConfigGenerationTarget(
     const std::filesystem::path& platformDirectory);
 

@@ -60,6 +60,35 @@ TEST(ConfigGenerationSpecUtilsTest, LoadsPlatformFromOwningDirectory) {
   EXPECT_EQ(target.platform, PlatformType::PLATFORM_MONTBLANC);
   EXPECT_EQ(target.platformDirectory, platformDirectory);
   EXPECT_EQ(target.spec, parseConfigGenerationSpec(kConfig));
+  EXPECT_FALSE(target.isInternal);
+}
+
+TEST(ConfigGenerationSpecUtilsTest, LoadsInternalDeclaration) {
+  folly::test::TemporaryDirectory temporaryDirectory;
+  const fs::path platformDirectory =
+      fs::path(temporaryDirectory.path().string()) / "montblanc";
+  writeTestFile(
+      platformDirectory / "forwarding_stack" / "facebook" /
+          "config_generation.json",
+      kConfig);
+
+  const auto target = loadConfigGenerationTarget(platformDirectory);
+
+  EXPECT_EQ(target.platform, PlatformType::PLATFORM_MONTBLANC);
+  EXPECT_TRUE(target.isInternal);
+}
+
+TEST(ConfigGenerationSpecUtilsTest, RejectsDeclarationsOnBothSides) {
+  folly::test::TemporaryDirectory temporaryDirectory;
+  const fs::path platformDirectory =
+      fs::path(temporaryDirectory.path().string()) / "montblanc";
+  const auto forwardingStackDirectory = platformDirectory / "forwarding_stack";
+  writeTestFile(forwardingStackDirectory / "config_generation.json", kConfig);
+  writeTestFile(
+      forwardingStackDirectory / "facebook" / "config_generation.json",
+      kConfig);
+
+  EXPECT_THROW(loadConfigGenerationTarget(platformDirectory), std::exception);
 }
 
 TEST(ConfigGenerationSpecUtilsTest, RejectsInvalidConfigs) {

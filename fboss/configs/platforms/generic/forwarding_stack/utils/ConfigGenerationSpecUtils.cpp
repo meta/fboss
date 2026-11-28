@@ -23,6 +23,7 @@
 #include <thrift/lib/cpp/util/EnumUtils.h>
 
 #include "fboss/agent/FbossError.h"
+#include "fboss/configs/platforms/generic/forwarding_stack/utils/ConfigPathUtils.h"
 #include "fboss/configs/platforms/generic/forwarding_stack/utils/ThriftConfigUtils.h"
 
 namespace facebook::fboss::configgen {
@@ -156,12 +157,19 @@ ConfigGenerationSpec parseConfigGenerationSpec(std::string_view contents) {
 
 ConfigGenerationTarget loadConfigGenerationTarget(
     const fs::path& platformDirectory) {
-  const auto path =
-      platformDirectory / "forwarding_stack" / kConfigGenerationFile;
-  std::string contents;
-  if (!folly::readFile(path.c_str(), contents)) {
+  const auto forwardingStackDirectory = platformDirectory / "forwarding_stack";
+  const auto declaration =
+      findConfigFile(forwardingStackDirectory, kConfigGenerationFile);
+  if (!declaration) {
     throw FbossError(
-        "Unable to read config generation declaration from ", path.string());
+        "Config generation declaration does not exist in ",
+        forwardingStackDirectory.string());
+  }
+  std::string contents;
+  if (!folly::readFile(declaration->path.c_str(), contents)) {
+    throw FbossError(
+        "Unable to read config generation declaration from ",
+        declaration->path.string());
   }
 
   try {
@@ -169,11 +177,12 @@ ConfigGenerationTarget loadConfigGenerationTarget(
         .platform = getPlatformType(platformDirectory.filename().string()),
         .platformDirectory = platformDirectory,
         .spec = parseConfigGenerationSpec(contents),
+        .isInternal = declaration->isInternal,
     };
   } catch (const std::exception& error) {
     throw FbossError(
         "Unable to parse config generation declaration from ",
-        path.string(),
+        declaration->path.string(),
         ": ",
         error.what());
   }
@@ -197,8 +206,8 @@ std::vector<ConfigGenerationTarget> loadConfigGenerationTargets(
     for (const auto& platformEntry :
          fs::directory_iterator(vendorEntry.path())) {
       if (platformEntry.is_directory() &&
-          fs::is_regular_file(
-              platformEntry.path() / "forwarding_stack" /
+          findConfigFile(
+              platformEntry.path() / "forwarding_stack",
               kConfigGenerationFile)) {
         platformDirectories.push_back(platformEntry.path());
       }
