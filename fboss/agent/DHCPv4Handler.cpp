@@ -461,14 +461,10 @@ bool DHCPv4Handler::addAgentOptions(
         isDHCP = true;
         break;
       case DHCP_MAX_MESSAGE_SIZE: {
-        // Only read the value when the option actually declares data.
-        // isOptionInBounds() already guarantees optIndex + 2 + optLen <= size,
-        // so with optLen > 0 the read at optIndex + 2 is in bounds; a length-0
-        // option (which still passes isOptionInBounds) is skipped to avoid an
-        // out-of-bounds read.
         const size_t optLen = optionsIn[optIndex + 1];
-        if (optLen > 0) {
-          maxMsgSize = ntohs(optionsIn[optIndex + 2]);
+        if (optLen >= sizeof(maxMsgSize)) {
+          maxMsgSize = (static_cast<uint16_t>(optionsIn[optIndex + 2]) << 8) |
+              optionsIn[optIndex + 3];
         }
         break;
       }
