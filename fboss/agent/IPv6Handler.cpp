@@ -60,6 +60,8 @@ namespace facebook::fboss {
 
 namespace {
 
+const IPAddressV6 kAllNodesLinkLocal("ff02::1");
+
 // True for a Neighbor Discovery (RFC 4861), SEcure Neighbor Discovery (SEND,
 // RFC 3971) or Multicast Listener Discovery (MLD, RFC 2710 / RFC 3810) message
 // behind IPv6 extension headers, or a chain ending in ICMPv6 too short to hold
@@ -576,7 +578,7 @@ void IPv6Handler::handleRouterSolicitation(
   // Send the response
   IPAddressV6 dstIP = hdr.ipv6->srcAddr;
   if (dstIP.isZero()) {
-    dstIP = IPAddressV6("ff01::1");
+    dstIP = kAllNodesLinkLocal;
   }
 
   XLOG(DBG4) << "sending router advertisement in response to solicitation from "
@@ -666,13 +668,12 @@ void IPv6Handler::handleNeighborSolicitation(
 
   auto type = ICMPv6Type::ICMPV6_TYPE_NDP_NEIGHBOR_SOLICITATION;
 
-  if ((!ndpOptions.sourceLinkLayerAddress.has_value() &&
-       hdr.ipv6->dstAddr.isMulticast()) ||
-      (ndpOptions.sourceLinkLayerAddress.has_value() &&
-       hdr.ipv6->srcAddr.isZero())) {
-    /* rfc 4861 -  must not be included when the source IP address is the
-      unspecified address.  must be included in multicast solicitations a
-    */
+  const bool hasSrcLinkLayerAddr =
+      ndpOptions.sourceLinkLayerAddress.has_value();
+  const bool isSrcLinkLayerAddrValid = hdr.ipv6->srcAddr.isZero()
+      ? !hasSrcLinkLayerAddr
+      : (hasSrcLinkLayerAddr || !hdr.ipv6->dstAddr.isMulticast());
+  if (!isSrcLinkLayerAddrValid) {
     XLOG(DBG6) << "bad IPv6 neighbor solicitation request:"
                << " either multicast solicitation is missing source link layer"
                << " option or notification has source link layer address but"
@@ -1313,8 +1314,7 @@ void IPv6Handler::sendNeighborAdvertisement(
   uint32_t flags =
       NeighborAdvertisementFlags::ROUTER | NeighborAdvertisementFlags::OVERRIDE;
   if (dstIP.isZero()) {
-    // TODO: add a constructor that doesn't require string processing
-    dstIP = IPAddressV6("ff01::1");
+    dstIP = kAllNodesLinkLocal;
   } else {
     flags |= NeighborAdvertisementFlags::SOLICITED;
   }
