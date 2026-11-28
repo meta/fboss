@@ -10,6 +10,7 @@
 
 #include "fboss/agent/rib/RouteUpdater.h"
 
+#include <concepts>
 #include <numeric>
 
 #include <boost/container/flat_map.hpp>
@@ -594,7 +595,8 @@ void RibRouteUpdater::removeAllUnclaimedMplsRoutesForClient(
 // this way helps with clarifying their meaning.
 namespace {
 struct NextHopCombinedWeightsKey {
-  explicit NextHopCombinedWeightsKey(NextHop nhop)
+  template <std::same_as<NextHop> T>
+  explicit NextHopCombinedWeightsKey(const T& nhop)
       : ip(nhop.addr()),
         intfId(nhop.intfID()),
         action(nhop.labelForwardingAction()),
