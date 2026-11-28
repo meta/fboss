@@ -1,15 +1,15 @@
 // Copyright (c) Meta Platforms, Inc. and affiliates.
 
-#include "fboss/lib/bsp/m4061clsc/M4061clscBspPlatformMapping.h"
+#include "fboss/lib/bsp/m4061clscl/M4061clsclBspPlatformMapping.h"
 
 #include <thrift/lib/cpp2/protocol/Serializer.h>
 
 namespace facebook::fboss {
 
-M4061clscBspPlatformMapping::M4061clscBspPlatformMapping()
-    : BspPlatformMapping("m4061clsc") {}
+M4061clsclBspPlatformMapping::M4061clsclBspPlatformMapping()
+    : BspPlatformMapping("m4061clscl") {}
 
-M4061clscBspPlatformMapping::M4061clscBspPlatformMapping(
+M4061clsclBspPlatformMapping::M4061clsclBspPlatformMapping(
     const std::string& platformMappingStr)
     : BspPlatformMapping(
           apache::thrift::SimpleJSONSerializer::deserialize<

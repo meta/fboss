@@ -9,7 +9,7 @@
 #include "fboss/lib/bsp/ladakh800bcls/Ladakh800bclsBspPlatformMapping.h"
 #include "fboss/lib/bsp/leh800bcls/Leh800bclsBspPlatformMapping.h"
 #include "fboss/lib/bsp/m4052actm/M4052ACTMBspPlatformMapping.h"
-#include "fboss/lib/bsp/m4061clsc/M4061clscBspPlatformMapping.h"
+#include "fboss/lib/bsp/m4061clscl/M4061clsclBspPlatformMapping.h"
 #include "fboss/lib/bsp/m4061nhp/M4061nhpBspPlatformMapping.h"
 #include "fboss/lib/bsp/m4062nhp/M4062nhpBspPlatformMapping.h"
 #include "fboss/lib/bsp/m5120csc/M5120cscBspPlatformMapping.h"
@@ -189,13 +189,13 @@ Leh800bclsSystemContainer::getInstance() {
   return _Leh800bclsSystemContainer.try_get();
 }
 
-using M4061clscSystemContainer =
-    BspGenericSystemContainer<M4061clscBspPlatformMapping>;
-folly::Singleton<M4061clscSystemContainer> _m4061clscSystemContainer;
+using M4061clsclSystemContainer =
+    BspGenericSystemContainer<M4061clsclBspPlatformMapping>;
+folly::Singleton<M4061clsclSystemContainer> _m4061clsclSystemContainer;
 template <>
-std::shared_ptr<M4061clscSystemContainer>
-M4061clscSystemContainer::getInstance() {
-  return _m4061clscSystemContainer.try_get();
+std::shared_ptr<M4061clsclSystemContainer>
+M4061clsclSystemContainer::getInstance() {
+  return _m4061clsclSystemContainer.try_get();
 }
 
 using M4052ACTMSystemContainer =

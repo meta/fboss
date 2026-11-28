@@ -64,7 +64,7 @@ add_library(led_manager_lib
   fboss/led_service/LedUtils.cpp
   fboss/led_service/MinipackBaseLedManager.cpp
   fboss/led_service/MontblancLedManager.cpp
-  fboss/led_service/M4061clscLedManager.cpp
+  fboss/led_service/M4061clsclLedManager.cpp
   fboss/led_service/Icecube800banwLedManager.cpp
   fboss/led_service/Icecube800bcLedManager.cpp
   fboss/led_service/M4052ACTMLedManager.cpp
@@ -95,7 +95,7 @@ target_link_libraries(led_manager_lib
   log_thrift_call
   led_utils
   montblanc_bsp
-  m4061clsc_bsp
+  m4061clscl_bsp
   icecube800bc_bsp
   m4061nhp_bsp
   m4062nhp_bsp
