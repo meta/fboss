@@ -18,6 +18,8 @@ StartLimitBurst=5
 Type=notify
 LimitNOFILE=10000000
 LimitCORE=32G
+MemoryMax=8G
+MemorySwapMax=0
 
 Environment="PATH=/opt/fboss/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 Environment="LD_LIBRARY_PATH=/opt/fboss/lib"
