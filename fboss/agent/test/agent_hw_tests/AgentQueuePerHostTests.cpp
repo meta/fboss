@@ -341,8 +341,11 @@ class AgentQueuePerHostTest : public AgentHwTest {
           if (qid == 0) {
             EXPECT_EVENTUALLY_GE(pktsOnQueue, 1);
           } else {
+            /* 1 pkt each for ttl < 128 and ttl >= 128 */
             EXPECT_EVENTUALLY_EQ(
-                pktsOnQueue, 2 /* 1 pkt each for ttl < 128 and ttl >= 128 */);
+                pktsOnQueue,
+                utility::getQueuePerHostExpectedLoopbackPktCount(
+                    getAgentEnsemble()->getL3Asics(), 2));
           }
         }
       }
@@ -385,8 +388,10 @@ class AgentQueuePerHostTest : public AgentHwTest {
      * implemented as a state observer which would update resolved neighbors
      * with classIDs.
      */
-    applyNewState([this](std::shared_ptr<SwitchState> /*in*/) {
-      auto state = this->addNeighbors<folly::IPAddressV4>(getProgrammedState());
+    // Compose on the in-progress state so a LookupClassUpdater class-ID
+    // update queued in the same batch is not dropped.
+    applyNewState([this](const std::shared_ptr<SwitchState>& in) {
+      auto state = this->addNeighbors<folly::IPAddressV4>(in);
       state = this->addNeighbors<folly::IPAddressV6>(state);
       state = this->resolveNeighbors<folly::IPAddressV4>(state);
       state = this->resolveNeighbors<folly::IPAddressV6>(state);
@@ -396,9 +401,9 @@ class AgentQueuePerHostTest : public AgentHwTest {
     if (blockNeighbor) {
       setMacAddrsToBlock();
     }
-    applyNewState([this, blockNeighbor](std::shared_ptr<SwitchState> /*in*/) {
-      auto state = this->updateClassID<folly::IPAddressV4>(
-          getProgrammedState(), blockNeighbor);
+    applyNewState([this,
+                   blockNeighbor](const std::shared_ptr<SwitchState>& in) {
+      auto state = this->updateClassID<folly::IPAddressV4>(in, blockNeighbor);
       state = this->updateClassID<folly::IPAddressV6>(state, blockNeighbor);
       return state;
     });
@@ -408,15 +413,16 @@ class AgentQueuePerHostTest : public AgentHwTest {
     if (blockNeighbor) {
       setMacAddrsToBlock();
     }
-    applyNewState([this, blockNeighbor](std::shared_ptr<SwitchState> /*in*/) {
-      auto state = this->addNeighbors<folly::IPAddressV4>(getProgrammedState());
-      state = this->addNeighbors<folly::IPAddressV6>(state);
-      state = this->resolveNeighbors<folly::IPAddressV4>(state);
-      state = this->resolveNeighbors<folly::IPAddressV6>(state);
-      state = this->updateClassID<folly::IPAddressV4>(state, blockNeighbor);
-      state = this->updateClassID<folly::IPAddressV6>(state, blockNeighbor);
-      return state;
-    });
+    applyNewState(
+        [this, blockNeighbor](const std::shared_ptr<SwitchState>& in) {
+          auto state = this->addNeighbors<folly::IPAddressV4>(in);
+          state = this->addNeighbors<folly::IPAddressV6>(state);
+          state = this->resolveNeighbors<folly::IPAddressV4>(state);
+          state = this->resolveNeighbors<folly::IPAddressV6>(state);
+          state = this->updateClassID<folly::IPAddressV4>(state, blockNeighbor);
+          state = this->updateClassID<folly::IPAddressV6>(state, blockNeighbor);
+          return state;
+        });
   }
 
   void verifyHostToQueueMappingClassIDsAfterResolveHelper(bool blockNeighbor) {
@@ -486,9 +492,8 @@ class AgentQueuePerHostTest : public AgentHwTest {
 
   void verifyTtldCounter() {
     auto setup = [this]() {
-      applyNewState([this](std::shared_ptr<SwitchState> /*in*/) {
-        auto state =
-            this->addNeighbors<folly::IPAddressV4>(getProgrammedState());
+      applyNewState([this](const std::shared_ptr<SwitchState>& in) {
+        auto state = this->addNeighbors<folly::IPAddressV4>(in);
         state = this->addNeighbors<folly::IPAddressV6>(state);
         state = this->resolveNeighbors<folly::IPAddressV4>(state);
         state = this->resolveNeighbors<folly::IPAddressV6>(state);
@@ -604,18 +609,16 @@ TEST_F(AgentQueuePerHostTest, VerifyTtldCounter) {
 TEST_F(AgentQueuePerHostTest, RemovePendingNeighborDoesNotCrash) {
   auto setup = [this]() {
     this->applyNewState(
-        [this](const std::shared_ptr<SwitchState>& /*in*/) {
-          auto state =
-              this->addNeighbors<folly::IPAddressV4>(getProgrammedState());
+        [this](const std::shared_ptr<SwitchState>& in) {
+          auto state = this->addNeighbors<folly::IPAddressV4>(in);
           state = this->addNeighbors<folly::IPAddressV6>(state);
           return state;
         },
         "inject Pending neighbors");
 
     this->applyNewState(
-        [this](const std::shared_ptr<SwitchState>& /*in*/) {
-          auto state =
-              this->removeNeighbors<folly::IPAddressV4>(getProgrammedState());
+        [this](const std::shared_ptr<SwitchState>& in) {
+          auto state = this->removeNeighbors<folly::IPAddressV4>(in);
           state = this->removeNeighbors<folly::IPAddressV6>(state);
           return state;
         },

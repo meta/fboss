@@ -202,13 +202,16 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
 
   template <typename AddrT>
   void addResolvedNeighborWithClassID() {
-    applyNewState([this](std::shared_ptr<SwitchState> /*in*/) {
-      auto state1 = addNeighbors<AddrT>(this->getProgrammedState());
-      auto state2 = resolveNeighbors<AddrT>(state1);
-      return state2;
+    // Compose on the in-progress state. Cloning getProgrammedState() drops a
+    // LookupClassUpdater class-ID update queued in the same batch, so the FDB
+    // metadata write never reaches hardware and the looped packet misses the
+    // host queue.
+    applyNewState([this](const std::shared_ptr<SwitchState>& in) {
+      auto state1 = addNeighbors<AddrT>(in);
+      return resolveNeighbors<AddrT>(state1);
     });
-    applyNewState([this](std::shared_ptr<SwitchState> /*in*/) {
-      return updateClassID<AddrT>(this->getProgrammedState());
+    applyNewState([this](const std::shared_ptr<SwitchState>& in) {
+      return updateClassID<AddrT>(in);
     });
   }
 
@@ -227,6 +230,7 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
     if (frontPanel) {
       learnSrcMacOnEcmpTxPortIfPending(kEcmpWidth);
     }
+    getSw()->updateStats();
     auto statBefore = utility::getAclInOutPackets(getSw(), ttlCounterName);
 
     const auto beforePortStats =
@@ -274,7 +278,10 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
         if (qid == 0) {
           EXPECT_EVENTUALLY_GE(pktsOnQueue, 1);
         } else {
-          EXPECT_EVENTUALLY_EQ(pktsOnQueue, 2);
+          EXPECT_EVENTUALLY_EQ(
+              pktsOnQueue,
+              utility::getQueuePerHostExpectedLoopbackPktCount(
+                  getAgentEnsemble()->getL3Asics(), 2));
         }
       }
 

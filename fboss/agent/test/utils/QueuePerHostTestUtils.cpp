@@ -11,10 +11,12 @@
 
 #include "fboss/agent/HwSwitch.h"
 #include "fboss/agent/TxPacket.h"
+#include "fboss/agent/hw/switch_asics/HwAsic.h"
 #include "fboss/agent/hw/test/HwSwitchEnsemble.h"
 #include "fboss/agent/packet/PktFactory.h"
 #include "fboss/agent/state/SwitchState.h"
 #include "fboss/agent/test/AgentEnsemble.h"
+#include "fboss/agent/test/TestUtils.h"
 #include "fboss/agent/test/utils/AclTestUtils.h"
 #include "fboss/agent/test/utils/ConfigUtils.h"
 #include "fboss/agent/test/utils/CoppTestUtils.h"
@@ -86,9 +88,12 @@ void verifyQueuePerHostMappingImpl(
     GetPortStatsFunc getHwPortStatsFn,
     std::optional<uint16_t> l4SrcPort,
     std::optional<uint16_t> l4DstPort,
-    std::optional<uint8_t> dscp) {
+    std::optional<uint8_t> dscp,
+    int expectedPktsOnQueue) {
   auto ttlAclName = utility::getQueuePerHostTtlAclName();
   auto ttlCounterName = utility::getQueuePerHostTtlCounterName();
+
+  updateStatFn();
 
   std::map<int, int64_t> beforeQueueOutPkts;
   WITH_RETRIES({
@@ -181,7 +186,7 @@ void verifyQueuePerHostMappingImpl(
         EXPECT_EVENTUALLY_EQ(pktsOnQueue, 0);
       } else {
         if (qid == kQueueId) {
-          EXPECT_EVENTUALLY_EQ(pktsOnQueue, 2);
+          EXPECT_EVENTUALLY_EQ(pktsOnQueue, expectedPktsOnQueue);
         } else if (qid == 0) {
           EXPECT_EVENTUALLY_GE(pktsOnQueue, 0);
         } else {
@@ -558,7 +563,8 @@ void verifyQueuePerHostMapping(
       std::move(getHwPortStatsFn),
       l4SrcPort,
       l4DstPort,
-      dscp);
+      dscp,
+      getQueuePerHostExpectedLoopbackPktCount(ensemble->getAsic(), 2));
 }
 
 void verifyQueuePerHostMapping(
@@ -594,7 +600,9 @@ void verifyQueuePerHostMapping(
       std::move(getHwPortStatsFn),
       l4SrcPort,
       l4DstPort,
-      dscp);
+      dscp,
+      getQueuePerHostExpectedLoopbackPktCount(
+          hwSwitch->getPlatform()->getAsic(), 2));
 }
 
 void verifyQueuePerHostMapping(
@@ -654,7 +662,7 @@ void verifyQueuePerHostMapping(
       utility::getAllocatePktFn(ensemble),
       getSendPacketFunc(ensemble),
       getAclStatGetFn(ensemble->getSw()),
-      []() {},
+      [ensemble]() { ensemble->getSw()->updateStats(); },
       ensemble->getProgrammedState(),
       ensemble->masterLogicalPortIds(),
       vlanId,
@@ -667,7 +675,32 @@ void verifyQueuePerHostMapping(
       getPortStats,
       l4SrcPort,
       l4DstPort,
-      dscp);
+      dscp,
+      getQueuePerHostExpectedLoopbackPktCount(ensemble->getL3Asics(), 2));
+}
+
+int getQueuePerHostExpectedLoopbackPktCount(
+    const HwAsic* hwAsic,
+    int pktCount) {
+  /*
+   * On Cisco ASICs, split horizon check is after ACL matching. The queue
+   * counter increments once more for the looped-back packet.
+   */
+  switch (hwAsic->getAsicType()) {
+    case cfg::AsicType::ASIC_TYPE_EBRO:
+    case cfg::AsicType::ASIC_TYPE_YUBA:
+    case cfg::AsicType::ASIC_TYPE_G202X:
+      return 2 * pktCount;
+    default:
+      return pktCount;
+  }
+}
+
+int getQueuePerHostExpectedLoopbackPktCount(
+    const std::vector<const HwAsic*>& hwAsics,
+    int pktCount) {
+  return getQueuePerHostExpectedLoopbackPktCount(
+      checkSameAndGetAsicForTesting(hwAsics), pktCount);
 }
 
 } // namespace facebook::fboss::utility
