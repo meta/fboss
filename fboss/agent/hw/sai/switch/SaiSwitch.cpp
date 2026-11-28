@@ -4442,7 +4442,15 @@ void SaiSwitch::packetRxCallbackPort(
   const bool isCpuPort =
       platform_->getAsic()->isSupported(HwAsic::Feature::CPU_PORT) &&
       (portSaiId == getCPUPortSaiId());
-  if (!processVlanUntaggedPackets()) {
+  // P200 supports both routed ports (untagged packets) and VLAN-backed
+  // ports/LAG members. The ASIC-wide P200 behavior cannot decide this per
+  // packet, so honor a cached nonzero VLAN mapping when one exists.
+  const auto vlanItr =
+      concurrentIndices_->vlanIds.find(PortDescriptorSaiId(portSaiId));
+  const bool hasP200Vlan = asicType_ == cfg::AsicType::ASIC_TYPE_P200 &&
+      vlanItr != concurrentIndices_->vlanIds.cend() &&
+      vlanItr->second != VlanID(0);
+  if (!processVlanUntaggedPackets() || hasP200Vlan) {
     // NPU switch: need vlan resolution
     if (isCpuPort ||
         (allowMissingSrcPort &&
@@ -4466,8 +4474,6 @@ void SaiSwitch::packetRxCallbackPort(
       return;
     } else {
       swPortId = portItr->second.portID;
-      const auto vlanItr =
-          concurrentIndices_->vlanIds.find(PortDescriptorSaiId(portSaiId));
       if (vlanItr == concurrentIndices_->vlanIds.cend()) {
         XLOG(ERR) << "RX packet had port in no known vlan: 0x" << std::hex
                   << portSaiId;
@@ -4540,10 +4546,15 @@ void SaiSwitch::packetRxCallbackLag(
   swAggPortId = aggPortItr->second;
   // Resolve a vlan only where the platform has them. A lag carrying a router
   // interface of its own is in no vlan, and the frames it traps arrive
-  // untagged, the same way they do for a port router interface.
-  if (!processVlanUntaggedPackets()) {
-    const auto vlanItr =
-        concurrentIndices_->vlanIds.find(PortDescriptorSaiId(lagSaiId));
+  // untagged, the same way they do for a port router interface. P200 can also
+  // have a VLAN-backed LAG, so use its nonzero cached VLAN mapping even though
+  // processVlanUntaggedPackets() is true for the ASIC.
+  const auto vlanItr =
+      concurrentIndices_->vlanIds.find(PortDescriptorSaiId(lagSaiId));
+  const bool hasP200Vlan = asicType_ == cfg::AsicType::ASIC_TYPE_P200 &&
+      vlanItr != concurrentIndices_->vlanIds.cend() &&
+      vlanItr->second != VlanID(0);
+  if (!processVlanUntaggedPackets() || hasP200Vlan) {
     if (vlanItr == concurrentIndices_->vlanIds.cend()) {
       XLOG(ERR) << "RX packet had lag in no known vlan: 0x" << std::hex
                 << lagSaiId;
