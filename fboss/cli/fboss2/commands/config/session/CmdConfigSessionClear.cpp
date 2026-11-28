@@ -21,7 +21,7 @@ namespace facebook::fboss {
 
 CmdConfigSessionClearTraits::RetType CmdConfigSessionClear::queryClient(
     const HostInfo& /* hostInfo */) {
-  // Remove each staged session file (agent + BGP configs and the metadata).
+  // Remove each staged session file (every config domain and the metadata).
   // stagedSessionFilePaths() is the single source of truth, so this handles
   // every config domain uniformly -- including a BGP-only session -- without
   // calling getInstance() (which would create a session we are trying to

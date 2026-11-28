@@ -73,7 +73,7 @@ class CmdConfigBgpPolicyRoutingPolicyTermTestFixture
 
   bool sessionFileExists() {
     return std::filesystem::exists(
-        ConfigSession::getInstance().getBgpSessionConfigPath());
+        ConfigSession::getInstance().stagedPath(cli::ServiceType::BGP));
   }
 };
 

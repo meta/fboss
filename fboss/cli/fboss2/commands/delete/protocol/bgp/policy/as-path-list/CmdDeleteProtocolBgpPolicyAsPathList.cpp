@@ -112,7 +112,7 @@ CmdDeleteProtocolBgpPolicyAsPathList::queryClient(
             "Config saved to: {}",
             args.listName(),
             args.regex(),
-            session.getBgpSessionConfigPath());
+            session.stagedPath(cli::ServiceType::BGP));
       }
     }
     return fmt::format(
@@ -140,7 +140,7 @@ CmdDeleteProtocolBgpPolicyAsPathList::queryClient(
   return fmt::format(
       "Successfully deleted BGP as-path-list {}\nConfig saved to: {}",
       args.listName(),
-      session.getBgpSessionConfigPath());
+      session.stagedPath(cli::ServiceType::BGP));
 }
 
 void CmdDeleteProtocolBgpPolicyAsPathList::printOutput(const RetType& output) {

@@ -850,8 +850,8 @@ CmdConfigProtocolBgpNeighbor::queryClient(
     result.message += fmt::format(" for neighbor {}", args.peerAddr());
   }
   session.saveBgpConfig();
-  result.message +=
-      fmt::format("\nConfig saved to: {}", session.getBgpSessionConfigPath());
+  result.message += fmt::format(
+      "\nConfig saved to: {}", session.stagedPath(cli::ServiceType::BGP));
   return result.message;
 }
 

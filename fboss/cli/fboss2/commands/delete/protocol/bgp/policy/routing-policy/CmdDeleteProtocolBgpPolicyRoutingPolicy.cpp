@@ -140,7 +140,7 @@ CmdDeleteProtocolBgpPolicyRoutingPolicy::queryClient(
   return fmt::format(
       "Successfully deleted BGP routing-policy {}\nConfig saved to: {}",
       args.policyName(),
-      session.getBgpSessionConfigPath());
+      session.stagedPath(cli::ServiceType::BGP));
 }
 
 void CmdDeleteProtocolBgpPolicyRoutingPolicy::printOutput(

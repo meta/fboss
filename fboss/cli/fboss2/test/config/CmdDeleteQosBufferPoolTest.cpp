@@ -9,6 +9,7 @@
 #include "fboss/cli/fboss2/commands/delete/qos/buffer_pool/CmdDeleteQosBufferPool.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
+#include "fboss/cli/fboss2/test/TestableConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
 using namespace ::testing;
@@ -95,7 +96,7 @@ TEST_F(CmdDeleteQosBufferPoolTestFixture, deletesUnreferencedPool) {
   EXPECT_TRUE(hasPool("queue-held"));
   // Same action level as `config qos buffer-pool`.
   EXPECT_EQ(
-      ConfigSession::getInstance().getRequiredAction(cli::ServiceType::AGENT),
+      TestableConfigSession::get().getRequiredAction(cli::ServiceType::AGENT),
       cli::ConfigActionLevel::SERVICE_RESTART);
 }
 

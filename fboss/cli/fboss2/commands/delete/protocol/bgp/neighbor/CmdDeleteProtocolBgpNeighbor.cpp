@@ -64,7 +64,7 @@ CmdDeleteProtocolBgpNeighbor::queryClient(
   return fmt::format(
       "Successfully deleted BGP neighbor {}\nConfig saved to: {}",
       args.peerAddr(),
-      session.getBgpSessionConfigPath());
+      session.stagedPath(cli::ServiceType::BGP));
 }
 
 void CmdDeleteProtocolBgpNeighbor::printOutput(const RetType& output) {

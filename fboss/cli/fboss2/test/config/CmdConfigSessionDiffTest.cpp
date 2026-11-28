@@ -53,7 +53,9 @@ TEST_F(CmdConfigSessionDiffTestFixture, diffNoSession) {
 
 TEST_F(CmdConfigSessionDiffTestFixture, diffIdenticalConfigs) {
   setupTestableConfigSession();
-  ConfigSession::getInstance().getAgentConfig();
+  // A session file that is a byte-for-byte copy of the live config.
+  std::filesystem::create_directories(getSessionConfigPath().parent_path());
+  createTestConfig(getSessionConfigPath(), readFile(getSystemConfigPath()));
 
   auto cmd = CmdConfigSessionDiff();
   utils::RevisionList emptyRevisions(std::vector<std::string>{});
@@ -250,6 +252,7 @@ TEST_F(CmdConfigSessionDiffTestFixture, diffWithCurrentKeyword) {
 TEST_F(CmdConfigSessionDiffTestFixture, diffNonexistentRevision) {
   setupTestableConfigSession();
   ConfigSession::getInstance().getAgentConfig();
+  ConfigSession::getInstance().saveConfig();
 
   auto cmd = CmdConfigSessionDiff();
   // Use a fake SHA that doesn't exist

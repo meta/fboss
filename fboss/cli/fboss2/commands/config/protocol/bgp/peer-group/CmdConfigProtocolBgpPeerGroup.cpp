@@ -643,8 +643,8 @@ CmdConfigProtocolBgpPeerGroup::queryClient(
     result.message += fmt::format(" for peer-group {}", args.groupName());
   }
   session.saveBgpConfig();
-  result.message +=
-      fmt::format("\nConfig saved to: {}", session.getBgpSessionConfigPath());
+  result.message += fmt::format(
+      "\nConfig saved to: {}", session.stagedPath(cli::ServiceType::BGP));
   return result.message;
 }
 

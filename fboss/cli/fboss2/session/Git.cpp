@@ -210,11 +210,21 @@ std::string Git::commit(
 
 std::vector<GitCommit> Git::log(const std::string& filePath, size_t limit)
     const {
+  return log(std::vector<std::string>{filePath}, limit);
+}
+
+std::vector<GitCommit> Git::log(
+    const std::vector<std::string>& filePaths,
+    size_t limit) const {
+  if (filePaths.empty()) {
+    return {};
+  }
   // Use a custom format with null byte separators to parse reliably
   // Format: SHA1, author_name, author_email, timestamp, subject
   // Use %s (subject) instead of %B (body) to get just the first line
   std::vector<std::string> args = {
-      "log", "--format=%H%x00%an%x00%ae%x00%at%x00%s%x00", "--", filePath};
+      "log", "--format=%H%x00%an%x00%ae%x00%at%x00%s%x00", "--"};
+  args.insert(args.end(), filePaths.begin(), filePaths.end());
 
   if (limit > 0) {
     args.insert(args.begin() + 1, "-n");
