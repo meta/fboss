@@ -1661,6 +1661,79 @@ TEST_F(NdpTest, UpdateNeighborEntryToAggregatePort) {
       entry->getPort(), PortDescriptor(AggregatePortID(kAggregatePortID)));
 }
 
+/*
+ * Removing an AggregatePort from config must flush the neighbor entries
+ * resolved on it. NeighborUpdater subscribes to the aggregate port delta with
+ * the single-handler forEachChanged overload, whose body is guarded by
+ * `if (oldNode && newNode)` -- a removal has a null new node and was skipped
+ * entirely, so portDown()/portFlushEntries() never ran.
+ *
+ * A surviving entry keeps a PortDescriptor naming the deleted aggregate.
+ * NeighborCacheImpl::getUpdateFnToProgramEntry() then calls phyPortID() on it,
+ * which is CHECK(isPhysicalPort()) and aborts fboss_sw_agent; the
+ * entry is also mirrored into a static MacEntry by
+ * MacTableUtils::updateOrAddStaticEntryIfNbrExists(), and SaiFdbManager::
+ * addMac() aborts fboss_hw_agent resolving the dead LAG handle.
+ */
+TEST_F(NdpTest, FlushOnAggPortRemoval) {
+  auto handle = this->setupTestHandle();
+  auto sw = handle->getSw();
+
+  auto getNDPTableEntry = [&](IPAddressV6 ip, InterfaceID intf) {
+    return sw->getState()
+        ->getInterfaces()
+        ->getNodeIf(intf)
+        ->getNdpTable()
+        ->getEntryIf(ip);
+  };
+  auto neighborAddr = IPAddressV6("2401:db00:2110:3004::d");
+  auto intfID =
+      sw->getState()->getInterfaceIDForPort(PortDescriptor(PortID(1)));
+
+  seconds raInterval = seconds(0);
+  seconds ndpInterval = seconds(0);
+
+  // Bring up an AggregatePort with its subports forwarding.
+  auto configWithAggPort = createSwitchConfig(raInterval, ndpInterval, true);
+  sw->applyConfig("Add aggports", configWithAggPort);
+
+  AggregatePort::PartnerState pState{};
+  for (int i = 0; i < kSubportCount; i++) {
+    ProgramForwardingAndPartnerState addPortToAggregatePort(
+        PortID(i + 1),
+        kAggregatePortID,
+        AggregatePort::Forwarding::ENABLED,
+        pState);
+    sw->updateStateNoCoalescing(
+        "Adding member port to AggregatePort", addPortToAggregatePort);
+  }
+
+  // Resolve a neighbor on the aggregate.
+  WaitForNdpEntryCreation neighborCreate(sw, neighborAddr, intfID, false);
+  sendNeighborAdvertisement(
+      handle.get(),
+      neighborAddr.str(),
+      "02:05:73:f9:46:fc",
+      PortDescriptor(kAggregatePortID),
+      5,
+      true);
+  EXPECT_TRUE(neighborCreate.wait());
+  auto entry = getNDPTableEntry(neighborAddr, intfID);
+  ASSERT_NE(entry, nullptr);
+  ASSERT_EQ(entry->getPort(), PortDescriptor(kAggregatePortID));
+
+  // Remove the AggregatePort. The entry above must not survive it.
+  auto configNoAggPort = createSwitchConfig(raInterval, ndpInterval, false);
+  sw->applyConfig("Remove aggports", configNoAggPort);
+  EXPECT_EQ(
+      nullptr,
+      sw->getState()->getAggregatePorts()->getNodeIf(kAggregatePortID));
+
+  WITH_RETRIES_N_TIMED(5, std::chrono::milliseconds(1000), {
+    EXPECT_EVENTUALLY_EQ(getNDPTableEntry(neighborAddr, intfID), nullptr);
+  });
+}
+
 TEST_F(NdpTest, PendingNdp) {
   auto handle = this->setupTestHandleWithPortRif();
   auto sw = handle->getSw();

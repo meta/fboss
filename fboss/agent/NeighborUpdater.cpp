@@ -129,6 +129,8 @@ void NeighborUpdater::stateUpdated(const StateDelta& delta) {
   forEachChanged(
       delta.getAggregatePortsDelta(),
       &NeighborUpdater::aggregatePortChanged,
+      [](NeighborUpdater*, const std::shared_ptr<AggregatePort>&) {},
+      &NeighborUpdater::aggregatePortRemoved,
       this);
 }
 
@@ -192,6 +194,15 @@ void NeighborUpdater::portChanged(
     XLOG(DBG2) << "Purging neighbor entry for physical port " << portId;
     portDown(PortDescriptor(portId));
   }
+}
+
+void NeighborUpdater::aggregatePortRemoved(
+    const std::shared_ptr<AggregatePort>& oldAggPort) {
+  // Entries left on a removed aggregate can never be probed, and keep
+  // re-adding a static MacEntry that names the dead LAG.
+  XLOG(DBG2) << "Flushing neighbor entries for removed aggregate port "
+             << oldAggPort->getID();
+  portFlushEntries(PortDescriptor(oldAggPort->getID()));
 }
 
 void NeighborUpdater::aggregatePortChanged(
