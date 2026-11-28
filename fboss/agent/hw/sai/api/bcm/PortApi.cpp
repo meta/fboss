@@ -268,6 +268,22 @@ std::optional<sai_attr_id_t>
 SaiPortTraits::Attributes::AttributeSystemPortId::operator()() {
   return std::nullopt;
 }
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeAttachedCoreIndex::operator()() {
+#if defined(BRCM_SAI_SDK_DNX)
+  return SAI_PORT_ATTR_ATTACHED_CORE_INDEX;
+#else
+  return std::nullopt;
+#endif
+}
+std::optional<sai_attr_id_t>
+SaiPortTraits::Attributes::AttributeAttachedCorePortIndex::operator()() {
+#if defined(BRCM_SAI_SDK_DNX)
+  return SAI_PORT_ATTR_ATTACHED_CORE_PORT_INDEX;
+#else
+  return std::nullopt;
+#endif
+}
 std::optional<sai_attr_id_t> SaiPortSerdesTraits::Attributes::
     AttributeRxAfeAdaptiveEnableWrapper::operator()() {
   return std::nullopt;
