@@ -5,6 +5,9 @@
 
 DEFINE_bool(enable_lacp, false, "Run LACP in agent");
 
+// Shared by the hw agent and the sw agent, so define it once here.
+DEFINE_bool(enable_stats_update_thread, true, "Run stats update thread");
+
 DEFINE_int32(switchIndex, 0, "Switch Index for Asic");
 
 DEFINE_bool(janga_test, false, "Enable Janga test fixture platform mapping");
