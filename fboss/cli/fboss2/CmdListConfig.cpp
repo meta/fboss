@@ -91,6 +91,7 @@
 #include "fboss/cli/fboss2/commands/config/tunnel/srv6/decap/CmdConfigTunnelSrv6Decap.h"
 #include "fboss/cli/fboss2/commands/config/tunnel/srv6/encap/CmdConfigTunnelSrv6Encap.h"
 #include "fboss/cli/fboss2/commands/config/vlan/CmdConfigVlan.h"
+#include "fboss/cli/fboss2/commands/config/vlan/CmdConfigVlanConfig.h"
 #include "fboss/cli/fboss2/commands/config/vlan/CmdConfigVlanDefault.h"
 #include "fboss/cli/fboss2/commands/config/vlan/port/CmdConfigVlanPort.h"
 #include "fboss/cli/fboss2/commands/config/vlan/port/tagging_mode/CmdConfigVlanPortTaggingMode.h"
@@ -813,6 +814,12 @@ const CommandTree& kConfigCommandTree() {
           commandHandler<CmdConfigVlan>,
           argRegistrar<CmdConfigVlanTraits>,
           {{
+               "name",
+               "Configure the name of a VLAN",
+               commandHandler<CmdConfigVlanConfig>,
+               argRegistrar<CmdConfigVlanConfigTraits>,
+           },
+           {
                "port",
                "Configure VLAN port settings",
                commandHandler<CmdConfigVlanPort>,
