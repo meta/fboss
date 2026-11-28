@@ -452,7 +452,7 @@ void DHCPv6Handler::processDHCPv6RelayReply(
       sw,
       destMac,
       cpuMac,
-      intf->getVlanID(),
+      sw->getVlanIDForTx(intf),
       dhcpPacket.peerAddr,
       switchIp,
       DHCPv6Packet::DHCP6_CLIENT_UDPPORT,

@@ -421,7 +421,7 @@ void DHCPv4Handler::processReply(
   }
 
   // Prepare the packet to be sent out
-  EthHdr ethHdr = makeEthHdr(cpuMac, dstMac, intf->getVlanID());
+  EthHdr ethHdr = makeEthHdr(cpuMac, dstMac, sw->getVlanIDForTx(intf));
   auto ipHdr = makeIpv4Header(
       switchIp,
       clientIP,
