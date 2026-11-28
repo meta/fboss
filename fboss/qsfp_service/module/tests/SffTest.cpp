@@ -11,6 +11,8 @@
 #include "fboss/qsfp_service/test/TransceiverManagerTestHelper.h"
 
 #include "fboss/qsfp_service/module/sff/Sff8472Module.h"
+#include "fboss/qsfp_service/module/sff/Sff8472FieldInfo.h"
+#include "fboss/qsfp_service/module/sff/SffFieldInfo.h"
 #include "fboss/qsfp_service/module/sff/SffModule.h"
 #include "fboss/qsfp_service/module/tests/FakeTransceiverImpl.h"
 #include "fboss/qsfp_service/module/tests/TransceiverTestsHelper.h"
@@ -656,5 +658,15 @@ TEST_F(SffTest, setTransceiverLoopbackRejectsOutputMode) {
             portName, side, true, phy::LoopbackMode::OUTPUT),
         FbossError);
   }
+}
+
+// Regression test for #1651 Bug 1: the raw temperature word is a signed
+// 16-bit value in 1/256 C units, so 0x8000 must decode to -128 C, not +128 C.
+TEST(SffFieldInfoGetTempTest, decodesSignedBoundary) {
+  EXPECT_DOUBLE_EQ(SffFieldInfo::getTemp(0x8000), -128.0);
+  EXPECT_DOUBLE_EQ(Sff8472FieldInfo::getTemp(0x8000), -128.0);
+  EXPECT_DOUBLE_EQ(SffFieldInfo::getTemp(0x7FFF), 127.99609375);
+  EXPECT_DOUBLE_EQ(Sff8472FieldInfo::getTemp(0xFF00), -1.0);
+  EXPECT_DOUBLE_EQ(SffFieldInfo::getTemp(0x1980), 25.5);
 }
 } // namespace facebook::fboss
