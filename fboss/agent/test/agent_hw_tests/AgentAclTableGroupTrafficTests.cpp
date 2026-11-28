@@ -36,6 +36,11 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
     FLAGS_enable_acl_table_group = true;
   }
 
+  bool portRifOneLoop() const {
+    return checkSameAndGetAsicForTesting(getAgentEnsemble()->getL3Asics())
+               ->getAsicType() == cfg::AsicType::ASIC_TYPE_P200;
+  }
+
   // Ebro (wedge400c) and P200 derive the shared ACL key profile from the first
   // table, so every table's qualifiers must be added up front.
   bool isSingleStageAclTableAsic() const {
@@ -55,64 +60,59 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
     return cfg;
   }
 
+  // Host byte on the port RIF prefix. The virtual default VLAN RIF is
+  // created first on P200 and takes 1::/64, so interface 2000 is 2::/64.
+  // An SVI still has 1::/64 on this interface. Read the programmed prefix.
   template <typename AddrT>
-  const std::map<AddrT, std::pair<folly::MacAddress, cfg::AclLookupClass>>&
-  getIpToMacAndClassID() {
-    if constexpr (std::is_same<AddrT, folly::IPAddressV4>::value) {
-      static const std::map<
-          folly::IPAddressV4,
-          std::pair<folly::MacAddress, cfg::AclLookupClass>>
-          ipToMacAndClassID = {
-              {folly::IPAddressV4("1.0.0.10"),
-               std::make_pair(
-                   folly::MacAddress("0:2:3:4:5:10"),
-                   cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_0)},
-              {folly::IPAddressV4("1.0.0.11"),
-               std::make_pair(
-                   folly::MacAddress("0:2:3:4:5:11"),
-                   cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_1)},
-              {folly::IPAddressV4("1.0.0.12"),
-               std::make_pair(
-                   folly::MacAddress("0:2:3:4:5:12"),
-                   cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_2)},
-              {folly::IPAddressV4("1.0.0.13"),
-               std::make_pair(
-                   folly::MacAddress("0:2:3:4:5:13"),
-                   cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_3)},
-              {folly::IPAddressV4("1.0.0.14"),
-               std::make_pair(
-                   folly::MacAddress("0:2:3:4:5:14"),
-                   cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_4)},
-          };
-      return ipToMacAndClassID;
-    } else {
-      static const std::map<
-          folly::IPAddressV6,
-          std::pair<folly::MacAddress, cfg::AclLookupClass>>
-          ipToMacAndClassID = {
-              {folly::IPAddressV6("1::10"),
-               std::make_pair(
-                   folly::MacAddress("0:2:3:4:5:10"),
-                   cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_0)},
-              {folly::IPAddressV6("1::11"),
-               std::make_pair(
-                   folly::MacAddress("0:2:3:4:5:11"),
-                   cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_1)},
-              {folly::IPAddressV6("1::12"),
-               std::make_pair(
-                   folly::MacAddress("0:2:3:4:5:12"),
-                   cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_2)},
-              {folly::IPAddressV6("1::13"),
-               std::make_pair(
-                   folly::MacAddress("0:2:3:4:5:13"),
-                   cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_3)},
-              {folly::IPAddressV6("1::14"),
-               std::make_pair(
-                   folly::MacAddress("0:2:3:4:5:14"),
-                   cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_4)},
-          };
-      return ipToMacAndClassID;
+  AddrT hostAddress(uint8_t host) {
+    auto intf = getProgrammedState()->getInterfaces()->getNode(kIntfID);
+    for (const auto& addrAndMask : intf->getAddressesCopy()) {
+      const auto& addr = addrAndMask.first;
+      if constexpr (std::is_same<AddrT, folly::IPAddressV4>::value) {
+        if (!addr.isV4()) {
+          continue;
+        }
+        auto bytes = addr.asV4().toByteArray();
+        bytes[3] = host;
+        return folly::IPAddressV4(bytes);
+      } else {
+        if (!addr.isV6()) {
+          continue;
+        }
+        auto bytes = addr.asV6().toByteArray();
+        bytes[15] = host;
+        return folly::IPAddressV6(bytes);
+      }
     }
+    XLOG(FATAL) << "Interface has no address for the test traffic";
+    return AddrT();
+  }
+
+  template <typename AddrT>
+  std::map<AddrT, std::pair<folly::MacAddress, cfg::AclLookupClass>>
+  getIpToMacAndClassID() {
+    return {
+        {hostAddress<AddrT>(10),
+         std::make_pair(
+             folly::MacAddress("0:2:3:4:5:10"),
+             cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_0)},
+        {hostAddress<AddrT>(11),
+         std::make_pair(
+             folly::MacAddress("0:2:3:4:5:11"),
+             cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_1)},
+        {hostAddress<AddrT>(12),
+         std::make_pair(
+             folly::MacAddress("0:2:3:4:5:12"),
+             cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_2)},
+        {hostAddress<AddrT>(13),
+         std::make_pair(
+             folly::MacAddress("0:2:3:4:5:13"),
+             cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_3)},
+        {hostAddress<AddrT>(14),
+         std::make_pair(
+             folly::MacAddress("0:2:3:4:5:14"),
+             cfg::AclLookupClass::CLASS_QUEUE_PER_HOST_QUEUE_4)},
+    };
   }
 
   const std::vector<uint8_t> ttlfields = {64, 128};
@@ -146,7 +146,8 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
   template <typename AddrT>
   std::shared_ptr<SwitchState> updateNeighbors(
       const std::shared_ptr<SwitchState>& inState,
-      bool setClassIDs) {
+      bool setClassIDs,
+      std::optional<folly::MacAddress> macOverride = std::nullopt) {
     using NeighborTableT = typename std::conditional_t<
         std::is_same<AddrT, folly::IPAddressV4>::value,
         ArpTable,
@@ -157,12 +158,17 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
     for (const auto& ipToMacAndClassID : getIpToMacAndClassID<AddrT>()) {
       auto ip = ipToMacAndClassID.first;
       auto [neighborMac, classID] = ipToMacAndClassID.second;
+      if (macOverride.has_value()) {
+        neighborMac = *macOverride;
+      }
 
+      auto intf = outState->getInterfaces()->getNode(kIntfID);
+      // Port RIF stores MAC and port on the interface neighbor. The VLAN FDB
+      // path looks up kVlanID, which a port RIF does not create.
+      auto portRif = intf->getType() == cfg::InterfaceType::PORT;
       NeighborTableT* neighborTable;
-      neighborTable = outState->getInterfaces()
-                          ->getNode(kIntfID)
-                          ->template getNeighborTable<NeighborTableT>()
-                          ->modify(kIntfID, &outState);
+      neighborTable = intf->template getNeighborTable<NeighborTableT>()->modify(
+          kIntfID, &outState);
       auto neighborPort = PortDescriptor(masterLogicalPortIds()[0]);
       auto existingEntry = neighborTable->getEntryIf(ip);
 
@@ -179,7 +185,7 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
             ip, neighborMac, neighborPort, kIntfID, NeighborState::REACHABLE);
       }
 
-      if (getSw()->needL2EntryForNeighbor()) {
+      if (getSw()->needL2EntryForNeighbor() && !portRif) {
         outState = utility::NeighborTestUtils::updateMacEntryForUpdatedNbrEntry(
             outState, kVlanID, existingEntry, neighborTable->getEntryIf(ip));
       }
@@ -198,6 +204,17 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
   std::shared_ptr<SwitchState> updateClassID(
       const std::shared_ptr<SwitchState>& inState) {
     return updateNeighbors<AddrT>(inState, true);
+  }
+
+  // The looped frame's DMAC is the neighbor MAC. On a port RIF that has to be
+  // the router MAC, or ETHERNET_NO_TERMINATION_ON_L3_PORT drops it before the
+  // DSCP 26 lookup. Restored before the DSCP 26 send.
+  template <typename AddrT>
+  void programDscpNeighborMac(std::optional<folly::MacAddress> mac) {
+    applyNewState([this, mac](std::shared_ptr<SwitchState> /*in*/) {
+      return this->updateNeighbors<AddrT>(
+          this->getProgrammedState(), true /*setClassIDs*/, mac);
+    });
   }
 
   template <typename AddrT>
@@ -329,11 +346,10 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
 
     if constexpr (std::is_same<AddrT, folly::IPAddressV4>::value) {
       testType = "IPv4 Traffic";
-      dstIP = folly::IPAddressV4("1.0.0.10");
     } else if constexpr (std::is_same<AddrT, folly::IPAddressV6>::value) {
       testType = "IPv6 Traffic";
-      dstIP = folly::IPAddressV6("1::10");
     }
+    dstIP = hostAddress<AddrT>(10);
 
     return std::make_pair(testType, dstIP);
   }
@@ -353,11 +369,31 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
     auto [testType, dstIP] = testTypeAndIpHelper<AddrT>();
     XLOG(DBG2) << "TestType: " << testType;
 
+    auto oneLookup =
+        1 * 2 * 2 * (utility::kUdpPorts().size() + utility::kTcpPorts().size());
+    auto ttlDelta =
+        2 * (utility::kUdpPorts().size() + utility::kTcpPorts().size());
+    bool oneLoop = portRifOneLoop();
+
     if (frontPanel) {
       learnSrcMacOnEcmpTxPortIfPending(kEcmpWidth);
     }
     auto beforeAclPkts = pktCounterHelper();
-    sendAllPacketshelper<AddrT>(dstIP, frontPanel, 0);
+    if (oneLoop) {
+      auto intfMac =
+          getProgrammedState()->getInterfaces()->getNode(kIntfID)->getMac();
+      programDscpNeighborMac<AddrT>(intfMac);
+    }
+    // Hop limit 2 returns once as hop limit 1 with DSCP 26. That lookup is
+    // the DSCP counter. The following transmit is taken by
+    // L3_TTL_OR_HOP_LIMIT_IS_ONE. Both TTL iterations are overridden, so
+    // the count stays oneLookup.
+    sendAllPacketshelper<AddrT>(
+        dstIP,
+        frontPanel,
+        0,
+        oneLoop ? std::optional<uint8_t>(2) : std::nullopt,
+        oneLoop);
 
     WITH_RETRIES({
       auto [dscpAclPkts, ttlAclPkts] = pktCounterHelper();
@@ -365,17 +401,20 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
                  << " Intermediate ICP pkts: " << dscpAclPkts;
       XLOG(DBG2) << "Before Ttl pkts: " << beforeAclPkts.second
                  << " Intermediate Ttl pkts: " << ttlAclPkts;
+      // Hop limit 2 misses the 0x80 TTL entry. The DSCP 26 count is the return.
       EXPECT_EVENTUALLY_EQ(
-          dscpAclPkts - beforeAclPkts.first,
-          (1 * 2 * 2 *
-           (utility::kUdpPorts().size() + utility::kTcpPorts().size())));
-      EXPECT_EVENTUALLY_EQ(
-          ttlAclPkts - beforeAclPkts.second,
-          (2 * (utility::kUdpPorts().size() + utility::kTcpPorts().size())));
+          ttlAclPkts - beforeAclPkts.second, oneLoop ? 0 : ttlDelta);
+      EXPECT_EVENTUALLY_EQ(dscpAclPkts - beforeAclPkts.first, oneLookup);
     });
+    if (oneLoop) {
+      programDscpNeighborMac<AddrT>(std::nullopt);
+    }
 
     auto intermediateAclPkts = pktCounterHelper();
-    sendAllPacketshelper<AddrT>(dstIP, frontPanel, utility::kIcpDscp());
+    // Host neighbor, hop limits 64 and 128. On a port RIF the routed copy is
+    // dropped, so the DSCP 26 packet is counted once. Ebro still loops it.
+    sendAllPacketshelper<AddrT>(
+        dstIP, frontPanel, utility::kIcpDscp(), std::nullopt, oneLoop);
 
     WITH_RETRIES({
       auto [dscpAclPkts, ttlAclPkts] = pktCounterHelper();
@@ -383,13 +422,10 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
                  << " After ICP pkts: " << dscpAclPkts;
       XLOG(DBG2) << "Intermediate Ttl pkts: " << intermediateAclPkts.second
                  << " After Ttl pkts: " << ttlAclPkts;
-      EXPECT_EVENTUALLY_EQ(
-          ttlAclPkts - intermediateAclPkts.second,
-          (2 * (utility::kUdpPorts().size() + utility::kTcpPorts().size())));
+      EXPECT_EVENTUALLY_EQ(ttlAclPkts - intermediateAclPkts.second, ttlDelta);
       EXPECT_EVENTUALLY_EQ(
           dscpAclPkts - intermediateAclPkts.first,
-          (2 * 2 * 2 *
-           (utility::kUdpPorts().size() + utility::kTcpPorts().size())));
+          oneLoop ? oneLookup : oneLookup * 2);
     });
   }
 
@@ -433,20 +469,35 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
 
   template <typename AddrT>
   AddrT kSrcIP() {
-    if constexpr (std::is_same<AddrT, folly::IPAddressV4>::value) {
-      return folly::IPAddressV4("1.0.0.1");
-    } else {
-      return folly::IPAddressV6("1::1");
-    }
+    // Host 1 on the port RIF subnet. Not the interface address itself
+    // when that address uses host 0 (IPv6).
+    return hostAddress<AddrT>(1);
   }
 
  private:
   template <typename AddrT>
-  void sendAllPacketshelper(AddrT dstIP, bool frontPanel, uint8_t dscp) {
+  void sendAllPacketshelper(
+      AddrT dstIP,
+      bool frontPanel,
+      uint8_t dscp,
+      std::optional<uint8_t> ttlOverride = std::nullopt,
+      bool portInject = false) {
     sendAllPackets(
-        dstIP, frontPanel, dscp, IP_PROTO::IP_PROTO_UDP, utility::kUdpPorts());
+        dstIP,
+        frontPanel,
+        dscp,
+        IP_PROTO::IP_PROTO_UDP,
+        utility::kUdpPorts(),
+        ttlOverride,
+        portInject);
     sendAllPackets(
-        dstIP, frontPanel, dscp, IP_PROTO::IP_PROTO_TCP, utility::kTcpPorts());
+        dstIP,
+        frontPanel,
+        dscp,
+        IP_PROTO::IP_PROTO_TCP,
+        utility::kTcpPorts(),
+        ttlOverride,
+        portInject);
   }
 
   template <typename AddrT>
@@ -455,11 +506,32 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
       bool frontPanel,
       uint8_t dscp,
       IP_PROTO proto,
-      const std::vector<uint32_t>& ports) {
+      const std::vector<uint32_t>& ports,
+      std::optional<uint8_t> ttlOverride = std::nullopt,
+      bool portInject = false) {
     for (auto ttl : ttlfields) {
+      if (ttlOverride.has_value()) {
+        ttl = *ttlOverride;
+      }
       for (auto port : ports) {
-        sendPacket(dstIP, frontPanel, ttl, dscp, proto, port, std::nullopt);
-        sendPacket(dstIP, frontPanel, ttl, dscp, proto, std::nullopt, port);
+        sendPacket(
+            dstIP,
+            frontPanel,
+            ttl,
+            dscp,
+            proto,
+            port,
+            std::nullopt,
+            portInject);
+        sendPacket(
+            dstIP,
+            frontPanel,
+            ttl,
+            dscp,
+            proto,
+            std::nullopt,
+            port,
+            portInject);
       }
     }
   }
@@ -472,15 +544,25 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
       uint8_t dscp,
       IP_PROTO proto,
       std::optional<uint16_t> l4SrcPort,
-      std::optional<uint16_t> l4DstPort) {
-    auto intfMac = utility::getInterfaceMac(getProgrammedState(), kVlanID);
+      std::optional<uint16_t> l4DstPort,
+      bool portInject = false) {
+    auto intf = getProgrammedState()->getInterfaces()->getNode(kIntfID);
+    // SVI MAC is keyed by VLAN. A port RIF has no such VLAN.
+    // Do not tag the default VLAN: that is the virtual CPU RIF, and the
+    // punt is reported on port 0, which is not a configured port.
+    auto portRif = intf->getType() == cfg::InterfaceType::PORT;
+    folly::MacAddress intfMac = portRif
+        ? intf->getMac()
+        : utility::getInterfaceMac(getProgrammedState(), kVlanID);
+    std::optional<VlanID> txVlan =
+        portRif ? std::nullopt : std::optional<VlanID>(kVlanID);
     auto srcMac = utility::MacAddressGenerator().get(intfMac.u64HBO() + 1);
     std::unique_ptr<facebook::fboss::TxPacket> txPacket;
     CHECK(proto == IP_PROTO::IP_PROTO_UDP || proto == IP_PROTO::IP_PROTO_TCP);
     if (proto == IP_PROTO::IP_PROTO_UDP) {
       txPacket = utility::makeUDPTxPacket(
           getSw(),
-          kVlanID,
+          txVlan,
           srcMac,
           intfMac,
           kSrcIP<AddrT>(),
@@ -492,7 +574,7 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
     } else if (proto == IP_PROTO::IP_PROTO_TCP) {
       txPacket = utility::makeTCPTxPacket(
           getSw(),
-          kVlanID,
+          txVlan,
           srcMac,
           intfMac,
           kSrcIP<AddrT>(),
@@ -502,7 +584,13 @@ class AgentAclTableGroupTrafficTest : public AgentHwTest {
           dscp << 2,
           ttl);
     }
-    if (frontPanel) {
+    // Port inject is the DSCP 0 port-RIF return. It is pipeline bypass.
+    // The DSCP 26 send keeps the original choice: switched when frontPanel
+    // is false, and out of the ECMP port when frontPanel is true.
+    if (portInject) {
+      getSw()->sendPacketOutOfPortAsync(
+          std::move(txPacket), masterLogicalPortIds()[1]);
+    } else if (frontPanel) {
       utility::EcmpSetupAnyNPorts6 ecmpHelper(
           getProgrammedState(), getSw()->needL2EntryForNeighbor());
       auto outPort = ecmpHelper.ecmpPortDescriptorAt(kEcmpWidth).phyPortID();
