@@ -137,6 +137,45 @@ unique_ptr<HwTestHandle> setupTestHandleNAT() {
   return createTestHandle(testStateNAT());
 }
 
+const IPAddressV4 kPortInterfaceIP("10.0.99.1");
+
+shared_ptr<SwitchState> testStateWithPortInterfaceReplySrc() {
+  auto state = testState();
+  const HwSwitchMatcher matcher(std::unordered_set<SwitchID>{SwitchID(0)});
+
+  auto portIntf = make_shared<Interface>(
+      InterfaceID(99),
+      std::nullopt,
+      folly::StringPiece("fboss99"),
+      MacAddress("00:02:00:00:00:99"),
+      9000,
+      false, /* is virtual */
+      false, /* is state_sync disabled */
+      cfg::InterfaceType::PORT);
+  portIntf->setPortID(PortID(10));
+  portIntf->setAddresses({{folly::IPAddress(kPortInterfaceIP), 24}});
+  state->getInterfaces()->modify(&state)->addNode(portIntf, matcher);
+
+  auto switchSettings = std::make_shared<SwitchSettings>();
+  switchSettings->setDhcpV4ReplySrc(kPortInterfaceIP);
+  switchSettings->setDefaultVlan(1);
+  auto multiSwitchSwitchSettings = std::make_shared<MultiSwitchSettings>();
+  multiSwitchSwitchSettings->addNode(matcher.matcherString(), switchSettings);
+  state->resetSwitchSettings(multiSwitchSwitchSettings);
+  addSwitchInfo(
+      state,
+      cfg::SwitchType::NPU,
+      0, /*SwitchId*/
+      cfg::AsicType::ASIC_TYPE_MOCK,
+      cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MIN(),
+      cfg::switch_config_constants::DEFAULT_PORT_ID_RANGE_MAX(),
+      0, /* switchIndex*/
+      std::nullopt, /* sysPort min*/
+      std::nullopt, /*sysPort max()*/
+      MockPlatform::getMockLocalMac().toString());
+  return state;
+}
+
 void sendDHCPPacket(
     HwTestHandle* handle,
     string srcMac,
@@ -636,6 +675,47 @@ TEST_F(DHCPv4HandlerTest, RelaySrcDHCPReply) {
   counters.update();
   counters.checkDelta(SwitchStats::kCounterPrefix + "dhcpV4.pkt.sum", 1);
   counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.pkts.sum", 1);
+}
+
+TEST_F(DHCPv4HandlerTest, DHCPReplyForPortInterface) {
+  auto handle = createTestHandle(testStateWithPortInterfaceReplySrc());
+  auto sw = handle->getSw();
+  auto senderMac = MockPlatform::getMockLocalMac().toString();
+  std::replace(senderMac.begin(), senderMac.end(), ':', ' ');
+  auto targetMac = kClientMac.toString();
+  std::replace(targetMac.begin(), targetMac.end(), ':', ' ');
+
+  const string vlan = "00 01";
+  const string dhcpServerIP = "14 14 14 14";
+  const string switchIP = "0a 00 00 01";
+  const string bootpServerPort = "00 43";
+  const string bootpClientPort = "00 44";
+  const string bootReply = "02";
+  const string dhcpOfferMsgTypeOpt = "35  01  02";
+  const string agentOption = "52 02 00 00";
+  const string yiaddr = "0a 00 00 0a";
+
+  CounterCache counters(sw);
+  EXPECT_HW_CALL(sw, stateChangedImpl(_, _)).Times(0);
+  EXPECT_SWITCHED_PKT(
+      sw, "DHCP reply", checkDHCPReply(kPortInterfaceIP, VlanID(1)));
+
+  sendDHCPPacket(
+      handle.get(),
+      senderMac,
+      targetMac,
+      vlan,
+      dhcpServerIP,
+      switchIP,
+      bootpClientPort,
+      bootpServerPort,
+      bootReply,
+      dhcpOfferMsgTypeOpt,
+      agentOption,
+      yiaddr);
+
+  counters.update();
+  counters.checkDelta(SwitchStats::kCounterPrefix + "dhcpV4.pkt.sum", 1);
 }
 
 TEST_F(DHCPv4HandlerTest, DHCPBadRequest) {
