@@ -658,12 +658,12 @@ TEST_F(AgentPacketSendLldpTest, LldpLoopbackTest) {
   auto verify = [=, this]() {
     auto* lldpManager = getSw()->getLldpMgr();
     ASSERT_NE(lldpManager, nullptr);
-    lldpManager->sendLldpOnAllPorts();
     size_t expectedNumLldpEntries =
         this->masterLogicalPortIds({cfg::PortType::INTERFACE_PORT,
                                     cfg::PortType::HYPER_PORT_MEMBER})
             .size();
     WITH_RETRIES({
+      lldpManager->sendLldpOnAllPorts();
       auto* db = lldpManager->getDB();
       auto neighbors = db->getNeighbors();
       XLOG(DBG2) << "LLDP neighbors found: " << neighbors.size();
