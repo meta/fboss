@@ -72,10 +72,15 @@ class ConfigFileManager;
  * To revert to a previous configuration:
  *   1. User runs: fboss2-dev config rollback [<revision>]
  *   2. ConfigSession::rollback() is called, which:
- *      a. Reads the target revision's agent.conf from Git history
- *      b. Atomically writes it to /etc/coop/cli/agent.conf
- *      c. Creates a new Git commit indicating the rollback
- *      d. Calls wedge_agent to reload the configuration (or restarts
+ *      a. Refuses if the live config differs from HEAD (uncommitted drift),
+ *         unless --force, which first commits that config plus a metadata
+ *         entry as a snapshot (so `config rollback` and `config history`
+ *         can see it). The snapshot records a coldboot: the level the
+ *         drift needs is unknown.
+ *      b. Reads the target revision's agent.conf from Git history
+ *      c. Atomically writes it to /etc/coop/cli/agent.conf
+ *      d. Creates a new Git commit indicating the rollback
+ *      e. Calls wedge_agent to reload the configuration (or restarts
  *         it if necessary)
  *
  * CONFIGURATION FILES:
@@ -198,11 +203,17 @@ class ConfigSession {
   // Throws std::runtime_error if there are conflicts that cannot be resolved.
   void rebase();
 
-  // Rollback to a specific revision (git commit SHA) or to the previous
-  // revision Returns the git commit SHA of the new commit created for the
-  // rollback
-  std::string rollback(const HostInfo& hostInfo);
-  std::string rollback(const HostInfo& hostInfo, const std::string& commitSha);
+  // Rollback to a specific revision (git commit SHA or ref), or to the previous
+  // revision when commitSha is empty. Returns the git commit SHA of the new
+  // commit created for the rollback.
+  // Throws when a domain's live (promoted) config differs from HEAD: that
+  // config was applied but never committed, and the rollback would discard it.
+  // With force, it is committed as a snapshot first so it stays recoverable,
+  // and the rollback restarts the drifted services disruptively.
+  std::string rollback(
+      const HostInfo& hostInfo,
+      const std::string& commitSha = "",
+      bool force = false);
 
   // Check if an agent config session exists (~/.fboss2/agent.conf staged).
   bool sessionExists() const;
@@ -399,6 +410,15 @@ class ConfigSession {
   // whole history is returned (conservative).
   std::map<cli::ServiceType, cli::ConfigActionLevel> rolledBackActionLevels(
       const std::string& resolvedSha) const;
+
+  // --force rollback over uncommitted live config: commit each drifted
+  // domain's live content (second of the pair) plus a metadata entry as a
+  // snapshot so it stays in history. On failure the touched files are put
+  // back and a runtime_error is thrown. Returns the committed metadata JSON.
+  std::string snapshotLiveDrift(
+      const std::vector<std::pair<ConfigDomain, std::string>>& drifted,
+      const std::string& head,
+      const std::string& metadataPath);
 
   // Track the highest action level required for pending config changes per
   // service. Persisted to disk so it survives across CLI invocations within a
