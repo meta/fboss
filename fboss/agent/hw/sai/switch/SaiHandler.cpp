@@ -214,7 +214,8 @@ void SaiHandler::listHwObjects(
 
 BootType SaiHandler::getBootType() {
   auto log = LOG_THRIFT_CALL(DBG1);
-  hw_->ensureConfigured(__func__);
+  // Known from init, and SwSwitch asks for it before the HwSwitch is
+  // configured.
   return hw_->getBootType();
 }
 

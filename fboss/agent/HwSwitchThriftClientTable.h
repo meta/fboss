@@ -61,6 +61,7 @@ class HwSwitchThriftClientTable {
 
   virtual state::SwitchState getProgrammedState(const SwitchID& switchId);
   virtual SwitchRunState getHwSwitchRunState(const SwitchID& switchId);
+  virtual BootType getHwSwitchBootType(const SwitchID& switchId);
 
  private:
   std::map<

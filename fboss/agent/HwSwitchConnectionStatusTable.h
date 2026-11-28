@@ -21,7 +21,10 @@ class HwSwitchConnectionStatusTable {
  public:
   explicit HwSwitchConnectionStatusTable(SwSwitch* sw) : sw_(sw) {}
   void connected(SwitchID switchId);
+  // Connection lost without an exit notification, i.e. the HwSwitch crashed.
   bool disconnected(SwitchID switchId);
+  // The HwSwitch notified a graceful exit and saved its warm boot state.
+  bool gracefullyExited(SwitchID switchId);
   // Blocks until at least numSwitches are connected. One is enough for a
   // caller that just needs somewhere to send to. A caller that fans an update
   // out to every switch has to ask for all of them, because a switch that has

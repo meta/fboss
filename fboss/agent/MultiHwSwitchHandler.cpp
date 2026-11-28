@@ -415,7 +415,10 @@ void MultiHwSwitchHandler::notifyHwSwitchDisconnected(
     throw FbossError("No hw switch syncer for switch id: ", switchId);
   }
 
-  if (connectionStatusTable_.disconnected(SwitchID(switchId))) {
+  auto removed = gracefulExit
+      ? connectionStatusTable_.gracefullyExited(SwitchID(switchId))
+      : connectionStatusTable_.disconnected(SwitchID(switchId));
+  if (removed) {
     // cancel any pending long poll request
     iter->second->notifyHwSwitchDisconnected();
     if (!gracefulExit) {

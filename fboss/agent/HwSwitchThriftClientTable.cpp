@@ -277,4 +277,17 @@ SwitchRunState HwSwitchThriftClientTable::getHwSwitchRunState(
   return runState;
 }
 
+BootType HwSwitchThriftClientTable::getHwSwitchBootType(
+    const SwitchID& switchId) {
+  auto client = getClient(switchId);
+  try {
+    return client->sync_getBootType();
+  } catch (const std::exception& ex) {
+    // The caller retries and logs the final failure once.
+    XLOG(DBG2) << "Failed to get hw switch boot type for switch : " << switchId
+               << " error: " << ex.what();
+    throw;
+  }
+}
+
 } // namespace facebook::fboss

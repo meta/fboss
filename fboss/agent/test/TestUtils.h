@@ -782,6 +782,26 @@ class HwSwitchThriftClientTableForTesting : public HwSwitchThriftClientTable {
     return runState_;
   }
 
+  BootType getHwSwitchBootType(const SwitchID& /* switchId */) override {
+    ++bootTypeQueryCount_;
+    if (shouldThrowOnGetBootType_) {
+      throw std::runtime_error("Failed to get boot type");
+    }
+    return bootType_;
+  }
+
+  void setBootType(BootType bootType) {
+    bootType_ = bootType;
+  }
+
+  void setShouldThrowOnGetBootType(bool shouldThrow) {
+    shouldThrowOnGetBootType_ = shouldThrow;
+  }
+
+  int getBootTypeQueryCount() const {
+    return bootTypeQueryCount_;
+  }
+
   void setRunState(SwitchRunState state) {
     runState_ = state;
   }
@@ -803,6 +823,9 @@ class HwSwitchThriftClientTableForTesting : public HwSwitchThriftClientTable {
   SwitchRunState runState_{SwitchRunState::INITIALIZED};
   bool shouldThrowOnGetProgrammedState_{false};
   bool shouldThrowOnGetRunState_{false};
+  BootType bootType_{BootType::WARM_BOOT};
+  bool shouldThrowOnGetBootType_{false};
+  int bootTypeQueryCount_{0};
 };
 
 } // namespace facebook::fboss
