@@ -116,7 +116,12 @@ void FwUtilImpl::doFirmwareAction(
     }
 
     if (fwConfig.preUpgrade().has_value()) {
-      doPreUpgrade(fpd);
+      if (dryRun_) {
+        XLOG(INFO) << "Dry run mode enabled, skipping preUpgrade operation for "
+                   << fpd;
+      } else {
+        doPreUpgrade(fpd);
+      }
     }
 
     if (fwConfig.upgrade().has_value()) {
@@ -128,7 +133,13 @@ void FwUtilImpl::doFirmwareAction(
 
     // do post upgrade operation
     if (fwConfig.postUpgrade().has_value()) {
-      doPostUpgrade(fpd);
+      if (dryRun_) {
+        XLOG(INFO)
+            << "Dry run mode enabled, skipping postUpgrade operation for "
+            << fpd;
+      } else {
+        doPostUpgrade(fpd);
+      }
     }
   } else if (action == "read" && fwConfig.read().has_value()) {
     // do pre upgrade operation
