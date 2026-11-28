@@ -2875,6 +2875,7 @@ cpp_library(
         ":stats",
         ":switchid_scope_resolver",
         ":vrf_resource_accountant",
+        "//fboss/agent/if:fboss-cpp2-types",
         "//fboss/agent/state:state",
         "//fboss/lib:unique_ref_map",
     ],
