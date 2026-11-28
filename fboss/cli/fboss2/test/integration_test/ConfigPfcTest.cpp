@@ -786,6 +786,99 @@ TEST_F(ConfigPfcTest, BufferPoolPriorityGroupAndPortPfc) {
   XLOG(INFO) << "TEST PASSED";
 }
 
+TEST_F(ConfigPfcTest, PriorityGroupStaticLimitBytes) {
+  // Focused coverage for PortPgConfig.staticLimitBytes:
+  //   fboss2-dev config qos priority-group-policy <name> group-id <id> \
+  //       static-limit-bytes <bytes>
+  //
+  // The policy here is never bound to a port. Bound to one, a static limit
+  // makes the agent attach a static-threshold buffer profile to the ingress
+  // priority group, which some ASICs (e.g. TH5) reject and the hw agent
+  // aborts. A policy of its own also means no other test's bindings can leak
+  // in, and the test can delete it at the end.
+  policyName_ = "cli_e2e_test_static_limit_pg_policy";
+  constexpr int kTargetGroup = 3;
+  constexpr int kOtherGroup = 4;
+  constexpr int64_t kFirstStaticLimitBytes = 1048576; // 1 MiB
+  constexpr int64_t kFinalStaticLimitBytes = 7340032; // 7 MiB
+  const PgSpec target{kTargetGroup, "ONE_HALF", kOneHalf, 14478, 726440, 9652};
+  const PgSpec other{kOtherGroup, "ONE_HALF", kOneHalf, 4826, 726440, 9652};
+
+  const auto before = getRunningConfig();
+  const bool hadPool =
+      hasNamedEntry(before, "bufferPoolConfigs", bufferPoolName_);
+  if (hasNamedEntry(before, "portPgConfigs", policyName_)) {
+    // Only this test uses the name, so this is what an aborted earlier run
+    // left behind. Start from scratch, or its static limits would mask ours.
+    XLOG(WARN) << "Deleting PG policy " << policyName_
+               << " left over from an earlier run";
+    ASSERT_EQ(
+        runCli({"delete", "qos", "priority-group-policy", policyName_})
+            .exitCode,
+        0);
+  }
+
+  XLOG(INFO) << "[Step 1] Configuring the buffer pool and two PGs";
+  configureBufferPool(/*sharedBytes=*/78773528, /*headroomBytes=*/4405376);
+  configurePgMultiAttr(target);
+  configurePgMultiAttr(other);
+
+  XLOG(INFO) << "[Step 2] Setting static-limit-bytes twice on PG "
+             << kTargetGroup;
+  // The second value must replace the first in the same entry, not add a
+  // second entry for the group.
+  for (int64_t bytes : {kFirstStaticLimitBytes, kFinalStaticLimitBytes}) {
+    auto r = runCli(
+        {"config",
+         "qos",
+         "priority-group-policy",
+         policyName_,
+         "group-id",
+         std::to_string(kTargetGroup),
+         "static-limit-bytes",
+         std::to_string(bytes)});
+    ASSERT_EQ(r.exitCode, 0) << r.stderr;
+  }
+  commitConfig();
+  waitForAgentReady();
+
+  XLOG(INFO) << "[Step 3] Verifying running config...";
+  {
+    const auto config = getRunningConfig();
+    ASSERT_TRUE(hasNamedEntry(config, "portPgConfigs", policyName_));
+    const auto& pgList = config["sw"]["portPgConfigs"][policyName_];
+    EXPECT_EQ(pgList.size(), 2u)
+        << "repeated commands must update the PG entry, not append one";
+
+    const auto* pg = findPg(pgList, kTargetGroup);
+    ASSERT_NE(pg, nullptr) << "PG id " << kTargetGroup << " missing";
+    ASSERT_TRUE(pg->count("staticLimitBytes"))
+        << "static-limit-bytes did not reach the running config";
+    EXPECT_EQ((*pg)["staticLimitBytes"].asInt(), kFinalStaticLimitBytes)
+        << "the second static-limit-bytes command must overwrite the first";
+    // The CLI writes one field at a time: the rest of the group must survive.
+    expectPgMatch(*pg, target);
+
+    const auto* untouched = findPg(pgList, kOtherGroup);
+    ASSERT_NE(untouched, nullptr) << "PG id " << kOtherGroup << " missing";
+    EXPECT_EQ(untouched->count("staticLimitBytes"), 0)
+        << "PG id " << kOtherGroup << " was never given a static limit";
+  }
+
+  XLOG(INFO) << "[Step 4] Leaving the DUT as found";
+  // Leaf first: the pool delete refuses while the policy references it.
+  ASSERT_EQ(
+      runCli({"delete", "qos", "priority-group-policy", policyName_}).exitCode,
+      0);
+  commitConfig();
+  waitForAgentReady();
+  EXPECT_FALSE(hasNamedEntry(getRunningConfig(), "portPgConfigs", policyName_))
+      << "PG policy " << policyName_ << " still in the running config";
+  ASSERT_NO_FATAL_FAILURE(removeBufferPoolIfCreated(hadPool));
+
+  XLOG(INFO) << "TEST PASSED";
+}
+
 TEST_F(ConfigPfcTest, BufferPoolSharedBytes) {
   // Focused coverage for BufferPoolConfig.sharedBytes:
   //   fboss2-dev config qos buffer-pool <name> shared-bytes <bytes>
