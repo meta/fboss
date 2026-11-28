@@ -6,6 +6,7 @@
   "pwmTransitionValue": 55,
   "pwmLowerThreshold": 20,
   "pwmUpperThreshold": 100,
+  "shutdownCmd": "echo 0 > /run/devmap/cplds/TAHAN_SMB_CPLD/th5_pwr_en",
   "controlInterval": {
     "sensorReadInterval": 5,
     "pwmUpdateInterval": 5
@@ -216,6 +217,16 @@
       }
     }
   ],
+  "shutdownCondition": {
+    "numOvertempSensorForShutdown": 1,
+    "conditions": [
+      {
+        "sensorName": "SMB_TH5_TEMP",
+        "overtempThreshold": 110.0,
+        "slidingWindowSize": 3
+      }
+    ]
+  },
   "fans": [
     {
       "fanName": "FAN9_FRONT",
