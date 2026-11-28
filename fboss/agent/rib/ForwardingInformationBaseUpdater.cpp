@@ -160,15 +160,9 @@ ForwardingInformationBaseUpdater::createUpdatedFib(
     CHECK(fibRoute->isPublished());
     updatedFib.emplace_hint(updatedFib.cend(), fibPrefix.str(), fibRoute);
   }
-  // Check for deleted routes. Routes that were in the previous FIB
-  // and have now been removed
-  for (const auto& iter : std::as_const(*fib)) {
-    const auto& fibEntry = iter.second;
-    auto prefix = fibEntry->getID();
-    if (updatedFib.find(prefix) == updatedFib.end()) {
-      updated = true;
-    }
-  }
+  // If nothing was added or changed above, updatedFib's keys are a subset of
+  // fib's keys, so a size mismatch means routes were removed.
+  updated = updated || (updatedFib.size() != fib->size());
 
   DCHECK_EQ(
       updatedFib.size(),

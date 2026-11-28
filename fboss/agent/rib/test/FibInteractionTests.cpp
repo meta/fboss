@@ -17,6 +17,7 @@
 #include "fboss/agent/rib/RibToSwitchStateUpdater.h"
 
 #include "fboss/agent/SwSwitchRouteUpdateWrapper.h"
+#include "fboss/agent/Utils.h"
 #include "fboss/agent/state/FibInfo.h"
 #include "fboss/agent/state/FibInfoMap.h"
 #include "fboss/agent/state/ForwardingInformationBase.h"
@@ -431,4 +432,73 @@ TEST(RibToSwitchStateUpdater, Deduplication) {
                     ->exactMatch(prefix);
   ASSERT_TRUE(route3);
   EXPECT_NE(route, route3);
+}
+
+TEST(RibToSwitchStateUpdater, FibSyncDetectsDeletes) {
+  RoutePrefixV6 prefixA{folly::IPAddressV6("2a03:2880:ff:1e::"), 64};
+  RoutePrefixV6 prefixB{folly::IPAddressV6("2a03:2880:ff:1f::"), 64};
+  RoutePrefixV6 prefixC{folly::IPAddressV6("2a03:2880:ff:20::"), 64};
+
+  cfg::SwitchConfig config;
+  config.vlans()->resize(1);
+  *config.vlans()[0].id() = 1;
+  config.interfaces()->resize(1);
+  *config.interfaces()[0].intfID() = 1;
+  *config.interfaces()[0].vlanID() = 1;
+  config.interfaces()[0].routerID() = vrfZero;
+  config.interfaces()[0].mac() = "00:00:00:00:00:11";
+  config.interfaces()[0].ipAddresses()->resize(1);
+  config.interfaces()[0].ipAddresses()[0] = "2401:db00:e003:9100:1006::2c/127";
+
+  auto testHandle = createTestHandle(&config);
+  auto sw = testHandle->getSw();
+  folly::IPAddress reachable("2401:db00:e003:9100:1006::2d");
+  auto route = [](const RoutePrefixV6& prefix, const folly::IPAddress& nhop) {
+    return createUnicastRoute(prefix.network(), prefix.mask(), nhop);
+  };
+  auto toDelete = [](const RoutePrefixV6& prefix) {
+    return std::vector<IpPrefix>{toIpPrefix(prefix.toCidrNetwork())};
+  };
+  auto fib = [&] {
+    return sw->getState()
+        ->getFibsInfoMap()
+        ->getFibContainer(vrfZero)
+        ->getFibV6();
+  };
+  // The config adds routes of its own
+  const auto baseSize = fib()->size();
+
+  programRoutes(
+      sw, ClientID(0), {route(prefixA, reachable), route(prefixB, reachable)});
+  ASSERT_EQ(fib()->size(), baseSize + 2);
+  auto routeB = fib()->exactMatch(prefixB);
+  ASSERT_TRUE(routeB);
+
+  // No change keeps the same FIB node
+  auto previousFib = fib();
+  programRoutes(sw, ClientID(0), {route(prefixA, reachable)});
+  EXPECT_EQ(fib(), previousFib);
+
+  // Delete and add in one update, so the FIB size stays the same
+  programRoutes(
+      sw, ClientID(0), {route(prefixC, reachable)}, toDelete(prefixA));
+  ASSERT_EQ(fib()->size(), baseSize + 2);
+  EXPECT_FALSE(fib()->exactMatch(prefixA));
+  EXPECT_TRUE(fib()->exactMatch(prefixC));
+  EXPECT_EQ(fib()->exactMatch(prefixB), routeB);
+
+  programRoutes(sw, ClientID(0), {}, toDelete(prefixC));
+  ASSERT_EQ(fib()->size(), baseSize + 1);
+  EXPECT_FALSE(fib()->exactMatch(prefixC));
+  EXPECT_EQ(fib()->exactMatch(prefixB), routeB);
+
+  // A next hop inside prefixB forms a loop: B stays in the RIB, unresolved
+  folly::IPAddress insideB("2a03:2880:ff:1f::1");
+  programRoutes(sw, ClientID(0), {route(prefixB, insideB)});
+  auto ribRouteB = sw->getRib()->longestMatch(insideB.asV6(), vrfZero);
+  ASSERT_TRUE(ribRouteB);
+  ASSERT_EQ(ribRouteB->prefix(), prefixB);
+  ASSERT_FALSE(ribRouteB->isResolved());
+  EXPECT_EQ(fib()->size(), baseSize);
+  EXPECT_FALSE(fib()->exactMatch(prefixB));
 }
