@@ -24,6 +24,8 @@ class CmisFirmwareUpgrader {
   // The module type string is provided by user CLI and the mapped module part
   // number string can be compared with modules's register page 1 byte 148-163
   static inline std::map<std::string, std::vector<std::string>> partNoMap{
+      {"eoptolink-2x400g-fr4",
+       {"EOLO-168HG-02-1B", "EOLO-168HG-02-9B", "EOLO-168HG-5H-LB"}},
       {"finisar-200g-fr4", {"FTCC1112E1PLL-FB"}},
       {"finisar-400g-fr4",
        {"FTCD4313E2PCL   ",
@@ -35,10 +37,12 @@ class CmisFirmwareUpgrader {
         "FTCD4313E2PCLFBC",
         "FTCD4313E2PCLFBE"}},
       {"finisar-400g-lr4", {"FTCD4323E2PCL   "}},
+      {"finisar-2x400g-fr4", {"FTCE4717E1PCB-FB"}},
       {"innolight-200g-fr4",
        {"T-FX4FNT-HFB    ", "T-FX4FNT-HFP    ", "T-FX4FNT-HFS    "}},
       {"innolight-400g-fr4",
        {"T-DQ4CNT-NFB    ", "T-DQ4CNT-NF2    ", "T-DQ4CNT-NFM    "}},
+      {"innolight-2x400g-fr4", {"T-OL8CNT-NFM    "}},
       {"intel-200g-fr4", {"SPTSMP3CLCK8    ", "SPTSMP3CLCK9    "}},
       {"intel-400g-fr4", {"SPTSHP3CLCKS    "}},
   };
