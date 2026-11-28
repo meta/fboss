@@ -55,8 +55,6 @@ class FbossServiceUtil {
       int maxWaitSeconds = 300,
       int pollIntervalMs = 1000);
 
-  virtual bool isAgentConfigured(const HostInfo& hostInfo);
-
   // Reload config for a service without restart (for HITLESS changes).
   // Calls sync_reloadConfig() on the primary service (sw_agent in split mode,
   // wedge_agent in monolithic mode).
@@ -65,19 +63,24 @@ class FbossServiceUtil {
       cli::ServiceType service,
       const HostInfo& hostInfo);
 
-  // Returns true if running in split mode (multi_switch flag was set).
-  virtual bool isSplitMode() const;
-
-  // Returns the systemd service name for a given service type.
-  static std::string getServiceName(cli::ServiceType service);
-
   // Human-readable restart kind for a (service, level) pair, e.g. the agent
   // restarts by "warmboot" or "coldboot", bgpd (no warmboot) by "restart".
   static std::string restartTypeName(
       cli::ServiceType service,
       cli::ConfigActionLevel level);
 
+ protected:
+  // One poll of waitForAgentConfigured(); virtual so tests can stand in for
+  // the agent.
+  virtual bool isAgentConfigured(const HostInfo& hostInfo);
+
+  // Returns true if running in split mode (multi_switch flag was set).
+  virtual bool isSplitMode() const;
+
  private:
+  // Returns the systemd service name for a given service type.
+  static std::string getServiceName(cli::ServiceType service);
+
   std::unique_ptr<SystemdInterface> systemd_;
   std::vector<int> switchIndexes_;
   bool multiSwitch_;

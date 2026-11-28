@@ -1566,6 +1566,8 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/session/SystemdInterface.cpp
   fboss/cli/fboss2/utils/InterfaceList.cpp
   fboss/cli/fboss2/utils/InterfaceList.h
+  fboss/cli/fboss2/utils/SessionPortMap.cpp
+  fboss/cli/fboss2/utils/SessionPortMap.h
   fboss/cli/fboss2/CmdListConfig.cpp
 )
 

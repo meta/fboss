@@ -48,7 +48,6 @@
 #include "fboss/cli/fboss2/session/Git.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtils.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
-#include "fboss/cli/fboss2/utils/PortMap.h"
 #include "fboss/lib/CommonFileUtils.h"
 
 #ifndef IS_OSS
@@ -624,28 +623,6 @@ const cfg::AgentConfig& ConfigSession::getAgentConfig() const {
   return *agentConfig_;
 }
 
-utils::PortMap& ConfigSession::getPortMap() {
-  if (!agentConfig_) {
-    loadConfig(cli::ServiceType::AGENT);
-  }
-  return *portMap_;
-}
-
-const utils::PortMap& ConfigSession::getPortMap() const {
-  if (!agentConfig_) {
-    throw std::runtime_error(
-        "Config not loaded yet. Call getPortMap() (non-const) first.");
-  }
-  return *portMap_;
-}
-
-void ConfigSession::rebuildPortMap() {
-  if (!agentConfig_) {
-    loadConfig(cli::ServiceType::AGENT);
-  }
-  portMap_ = std::make_unique<utils::PortMap>(*agentConfig_);
-}
-
 void ConfigSession::saveConfig(
     cli::ServiceType service,
     cli::ConfigActionLevel actionLevel) {
@@ -857,10 +834,6 @@ void ConfigSession::saveMetadata() {
       metadataPath, prettyJson, 0644, folly::SyncType::WITH_SYNC);
 }
 
-std::string ConfigSession::getServiceName(cli::ServiceType service) {
-  return FbossServiceUtil::getServiceName(service);
-}
-
 void ConfigSession::updateRequiredAction(
     cli::ServiceType service,
     cli::ConfigActionLevel actionLevel) {
@@ -1053,7 +1026,6 @@ void ConfigSession::loadConfig(cli::ServiceType service) {
         apache::thrift::SimpleJSONSerializer::deserialize<cfg::SwitchConfig>(
             configJson, *agentConfig_->sw());
       }
-      portMap_ = std::make_unique<utils::PortMap>(*agentConfig_);
       break;
     case cli::ServiceType::BGP:
       bgpConfig_ = std::make_unique<bgp::thrift::BgpConfig>();

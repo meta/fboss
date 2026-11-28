@@ -26,7 +26,7 @@
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtils.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
-#include "fboss/cli/fboss2/utils/PortMap.h"
+#include "fboss/cli/fboss2/utils/SessionPortMap.h"
 
 namespace facebook::fboss {
 
@@ -54,10 +54,10 @@ CmdConfigVlanPortTaggingMode::queryClient(
   }
 
   // Get port logical IDs from port names
-  const auto& portMap = session.getPortMap();
+  const utils::SessionPortMap portMap;
   std::vector<std::pair<std::string, int32_t>> portNamesAndIds;
   for (const auto& portName : ports) {
-    auto portLogicalId = portMap.getPortLogicalId(portName);
+    auto portLogicalId = portMap->getPortLogicalId(portName);
     if (!portLogicalId.has_value()) {
       throw std::invalid_argument(
           fmt::format("Port '{}' not found in configuration", portName));

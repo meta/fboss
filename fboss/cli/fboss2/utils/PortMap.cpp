@@ -16,8 +16,8 @@
 
 namespace facebook::fboss::utils {
 
-PortMap::PortMap(const cfg::AgentConfig& config) {
-  const auto& switchConfig = *config.sw();
+PortMap::PortMap(cfg::AgentConfig& config) {
+  auto& switchConfig = *config.sw();
 
   // Build the mappings in order:
   // 1. Port name <-> logical ID
@@ -30,7 +30,7 @@ PortMap::PortMap(const cfg::AgentConfig& config) {
   buildInterfaceMaps(switchConfig);
 }
 
-void PortMap::buildPortMaps(const cfg::SwitchConfig& switchConfig) {
+void PortMap::buildPortMaps(cfg::SwitchConfig& switchConfig) {
   for (auto& port : *switchConfig.ports()) {
     PortID logicalId(*port.logicalID());
 
@@ -45,7 +45,7 @@ void PortMap::buildPortMaps(const cfg::SwitchConfig& switchConfig) {
 
     portNameToLogicalId_[portName] = logicalId;
     portLogicalIdToName_[logicalId] = portName;
-    portNameToPort_[portName] = const_cast<cfg::Port*>(&port);
+    portNameToPort_[portName] = &port;
   }
 
   VLOG(2) << "Built port maps with " << portNameToLogicalId_.size() << " ports";
@@ -69,7 +69,7 @@ void PortMap::buildVlanMaps(const cfg::SwitchConfig& switchConfig) {
           << " VLAN-port mappings";
 }
 
-void PortMap::buildInterfaceMaps(const cfg::SwitchConfig& switchConfig) {
+void PortMap::buildInterfaceMaps(cfg::SwitchConfig& switchConfig) {
   if (switchConfig.interfaces()->empty()) {
     return;
   }
@@ -81,7 +81,7 @@ void PortMap::buildInterfaceMaps(const cfg::SwitchConfig& switchConfig) {
     InterfaceID intfId(*interface.intfID());
 
     // Store pointer to interface object
-    interfaceIdToInterface_[intfId] = const_cast<cfg::Interface*>(&interface);
+    interfaceIdToInterface_[intfId] = &interface;
 
     // vlanID is a non-optional field but 0 indicates "not set"
     if (*interface.vlanID() != 0) {
@@ -92,15 +92,14 @@ void PortMap::buildInterfaceMaps(const cfg::SwitchConfig& switchConfig) {
   }
 
   // Second pass: map each interface to a port and build name mapping
-  for (const auto& interface : *switchConfig.interfaces()) {
+  for (auto& interface : *switchConfig.interfaces()) {
     mapInterfaceToPort(interface);
 
     // Build interface name mapping
     InterfaceID intfId(*interface.intfID());
     if (interface.name().has_value()) {
       const std::string& intfName = *interface.name();
-      interfaceNameToInterface_[intfName] =
-          const_cast<cfg::Interface*>(&interface);
+      interfaceNameToInterface_[intfName] = &interface;
       VLOG(3) << "Mapped interface name " << intfName << " to interface "
               << intfId;
     }

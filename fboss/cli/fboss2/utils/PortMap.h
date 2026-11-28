@@ -10,7 +10,6 @@
 
 #pragma once
 
-#include <map>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -41,10 +40,13 @@ class PortMap {
   /**
    * Build the port-to-interface mapping from an agent configuration.
    *
+   * The map keeps pointers into config, so config must outlive it and must
+   * not have ports or interfaces added or removed while it is in use.
+   *
    * @param config The agent configuration containing ports, interfaces, and
    * vlanPorts
    */
-  explicit PortMap(const cfg::AgentConfig& config);
+  explicit PortMap(cfg::AgentConfig& config);
 
   /**
    * Get the interface ID for a given port name.
@@ -164,7 +166,7 @@ class PortMap {
   /**
    * Build the port name to logical ID mapping.
    */
-  void buildPortMaps(const cfg::SwitchConfig& switchConfig);
+  void buildPortMaps(cfg::SwitchConfig& switchConfig);
 
   /**
    * Build the VLAN-based mappings.
@@ -174,7 +176,7 @@ class PortMap {
   /**
    * Build the interface mappings.
    */
-  void buildInterfaceMaps(const cfg::SwitchConfig& switchConfig);
+  void buildInterfaceMaps(cfg::SwitchConfig& switchConfig);
 
   /**
    * Map an interface to a port using various strategies.

@@ -25,6 +25,7 @@
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/integration_test/Fboss2IntegrationTest.h"
+#include "fboss/cli/fboss2/utils/SessionPortMap.h"
 
 using namespace facebook::fboss;
 
@@ -85,7 +86,8 @@ class ConfigPfcTest : public Fboss2IntegrationTest {
     // Discard uncommitted edits if the test failed before committing.
     discardSession();
     auto& session = ConfigSession::getInstance();
-    auto* port = session.getPortMap().getPort(*pfcIntfName_);
+    const utils::SessionPortMap portMap;
+    auto* port = portMap->getPort(*pfcIntfName_);
     ASSERT_NE(port, nullptr);
     const auto& originalPorts = *pfcConfigBefore_->ports();
     const auto originalPort = std::find_if(
