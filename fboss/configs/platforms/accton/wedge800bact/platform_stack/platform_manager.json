@@ -712,20 +712,7 @@
           "busName": "INCOMING@2",
           "address": "0x35",
           "kernelDeviceName": "w800_scmcpld",
-          "pmUnitScopedName": "SCM_CPLD",
-          "initRegSettings": [
-            {
-              "__comment__": [
-                "CPLD_OOB_EEPROM_SEL0: Set this bit to 1 to select IOB_FPGA as the master for accessing the EEPROM.",
-                "When CPLD_OOB_EEPROM_SEL0 is 1, the EEPROM is read by the IOB_FPGA, allowing the FPGA to initialize or configure",
-                "system parameters directly. When CPLD_OOB_EEPROM_SEL0 is 0, the OOB 88E6321 switch would access the EEPROM instead."
-              ],
-              "regOffset": 177,
-              "ioBuf": [
-                2
-              ]
-            }
-          ]
+          "pmUnitScopedName": "SCM_CPLD"
         },
         {
           "busName": "SCM_MUX_A@0",
