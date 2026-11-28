@@ -63,6 +63,7 @@ cpp_binary(
         "ConfigQosDefaultPolicyTest.cpp",
         "ConfigQosDefaultQueueConfigTest.cpp",
         "ConfigQosPolicyMapTest.cpp",
+        "ConfigResourceLimitTest.cpp",
         "ConfigSessionClearTest.cpp",
         "ConfigSflowRateTest.cpp",
         "ConfigSflowSampleDestTest.cpp",

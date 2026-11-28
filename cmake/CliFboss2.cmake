@@ -1225,6 +1225,8 @@ add_library(fboss2_config_lib
   fboss/cli/fboss2/commands/config/switch/hostname/CmdConfigHostname.h
   fboss/cli/fboss2/commands/config/switch/icmpv4_unavailable_src_addr/CmdConfigIcmpV4UnavailableSrcAddr.cpp
   fboss/cli/fboss2/commands/config/switch/icmpv4_unavailable_src_addr/CmdConfigIcmpV4UnavailableSrcAddr.h
+  fboss/cli/fboss2/commands/config/switch/resource_limit/CmdConfigResourceLimit.cpp
+  fboss/cli/fboss2/commands/config/switch/resource_limit/CmdConfigResourceLimit.h
   fboss/cli/fboss2/commands/config/acl/AclConfigUtils.cpp
   fboss/cli/fboss2/commands/config/acl/AclConfigUtils.h
   fboss/cli/fboss2/commands/config/acl/CmdConfigAcl.cpp
