@@ -3865,7 +3865,8 @@ void ThriftHandler::getVlanAddresses(
   for (const auto& [_, intfMap] : std::as_const(*interfaces)) {
     for (const auto& iter : std::as_const(*intfMap)) {
       auto intf = iter.second;
-      if (intf->getVlanID() == vlan->getID()) {
+      if (intf->getType() == cfg::InterfaceType::VLAN &&
+          intf->getVlanID() == vlan->getID()) {
         for (auto addrAndMask : intf->getAddressesCopy()) {
           addrs.push_back(converter(addrAndMask.first));
         }
