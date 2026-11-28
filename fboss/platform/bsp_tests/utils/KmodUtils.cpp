@@ -64,18 +64,25 @@ void KmodUtils::loadKmods(const BspKmodsFile& kmods) {
 }
 
 void KmodUtils::unloadKmods(const BspKmodsFile& kmods) {
-  // Unload non-shared kmods first
+  // rmmod like PkgManager: modprobe -r also removes a module's dependencies
+  // and fails while another module still uses one of them.
+  auto loaded = getLoadedKmods(kmods);
+  std::set<std::string> loadedSet(loaded.begin(), loaded.end());
+  auto unload = [&](const std::string& kmod, const char* kind) {
+    if (!loadedSet.contains(kmod)) {
+      return;
+    }
+    auto result = PlatformUtils().execCommand(fmt::format("rmmod {}", kmod));
+    EXPECT_EQ(result.first, 0)
+        << "Failed to unload " << kind << " kmod: " << kmod;
+  };
   for (const auto& kmod : *kmods.bspKmods()) {
-    auto result =
-        PlatformUtils().execCommand(fmt::format("modprobe -r {}", kmod));
-    EXPECT_EQ(result.first, 0) << "Failed to unload BSP kmod: " << kmod;
+    unload(kmod, "BSP");
   }
 
   // Then unload shared kmods
   for (const auto& kmod : *kmods.sharedKmods()) {
-    auto result =
-        PlatformUtils().execCommand(fmt::format("modprobe -r {}", kmod));
-    EXPECT_EQ(result.first, 0) << "Failed to unload shared kmod: " << kmod;
+    unload(kmod, "shared");
   }
 }
 
