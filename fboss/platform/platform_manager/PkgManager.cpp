@@ -17,6 +17,8 @@
 
 #include <fstream>
 
+#include "fboss/platform/helpers/StructuredLogger.h"
+
 DEFINE_bool(
     enable_pkg_mgmnt,
     true,
@@ -109,11 +111,33 @@ void PkgManager::processAll(bool enablePkgMgmnt, bool reloadKmods) const {
   }
   if (enablePkgMgmnt) {
     auto bspKmodsRpmName = getKmodsRpmName();
-    if (!systemInterface_->isRpmInstalled(bspKmodsRpmName)) {
+    auto rpmInstalled = systemInterface_->isRpmInstalled(bspKmodsRpmName);
+    if (!rpmInstalled.has_value() && bspKmodsOnDisk()) {
+      fb303::fbData->setCounter(kProcessRpmFailure, 1);
+      logRpmAlert(
+          "bsp_rpm_query_failed",
+          fmt::format(
+              "Could not query whether {} is installed; "
+              "continuing with the BSP kmods already on disk",
+              bspKmodsRpmName));
+      rpmInstalled = true;
+    }
+    if (!rpmInstalled.value_or(false)) {
       XLOG(INFO) << fmt::format(
           "BSP Kmods {} is not installed", bspKmodsRpmName);
       // Install desired rpm
-      processRpms();
+      try {
+        processRpms();
+      } catch (const std::exception& ex) {
+        if (!bspKmodsOnDisk()) {
+          throw;
+        }
+        logRpmAlert(
+            "bsp_rpm_install_failed",
+            fmt::format(
+                "{}; continuing with the BSP kmods already on disk",
+                ex.what()));
+      }
       // In cases where kmods.json from previous BSP installation is absent
       // (like provisioning, where this is the first run of PM), the kmods might
       // be present in the initramfs OR ramdisk image.
@@ -434,6 +458,17 @@ std::string PkgManager::getKmodsRpmBaseWithKernelName() const {
       "{}-{}",
       *platformConfig_.bspKmodsRpmName(),
       systemInterface_->getHostKernelVersion());
+}
+
+bool PkgManager::bspKmodsOnDisk() const {
+  return platformFsUtils_->getStringFileContent(getBspKmodsFilePath())
+      .has_value();
+}
+
+void PkgManager::logRpmAlert(const std::string& event, const std::string& msg)
+    const {
+  XLOG(ERR) << msg;
+  helpers::StructuredLogger("platform_manager").logAlert(event, msg);
 }
 
 std::string PkgManager::getBspKmodsFilePath() const {

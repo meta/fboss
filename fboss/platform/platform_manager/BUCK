@@ -202,6 +202,7 @@ cpp_library(
         "fbsource//xplat/folly:string",
         "fbsource//xplat/folly/logging:logging",
         "//fb303:service_data",
+        "//fboss/platform/helpers:structured_logger",
         "//thrift/lib/cpp2/protocol:protocol",
     ],
     exported_deps = [

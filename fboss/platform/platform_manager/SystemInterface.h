@@ -44,7 +44,9 @@ class SystemInterface {
       const std::string& rpmBaseName) const;
   virtual int removeRpms(const std::vector<std::string>& installedRpms) const;
   virtual std::set<std::string> lsmod() const;
-  virtual bool isRpmInstalled(const std::string& rpmFullName) const;
+  // nullopt: package DB could not be queried
+  virtual std::optional<bool> isRpmInstalled(
+      const std::string& rpmFullName) const;
   virtual std::string getHostKernelVersion() const;
   int installLocalRpm() const;
 
