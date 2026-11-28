@@ -12,6 +12,7 @@
 #include <folly/json/json.h>
 #include <folly/logging/Init.h>
 #include <folly/logging/xlog.h>
+#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <array>
@@ -55,9 +56,44 @@
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/lib/config/PlatformConfigUtils.h"
 
+DEFINE_bool(
+    list_production_feature,
+    false,
+    "List the production features each test depends on instead of running it");
+
 namespace fs = std::filesystem;
 
 namespace facebook::fboss {
+
+Fboss2IntegrationTest::Fboss2IntegrationTest() {
+  if (FLAGS_list_production_feature) {
+    // Skipping from the constructor keeps gtest from running SetUp() and
+    // TearDown(), so listing never touches the agent.
+    skipForProductionFeatureListing();
+  }
+}
+
+Fboss2IntegrationTest::~Fboss2IntegrationTest() {
+  if (FLAGS_list_production_feature) {
+    // Printed here so the features added by derived constructors are included.
+    std::vector<std::string> names;
+    names.reserve(productionFeatures_.size());
+    for (auto feature : productionFeatures_) {
+      names.push_back(apache::thrift::util::enumNameSafe(feature));
+    }
+    std::cout << "Feature List: " << folly::join(",", names) << std::endl;
+  }
+}
+
+void Fboss2IntegrationTest::skipForProductionFeatureListing() {
+  GTEST_SKIP();
+}
+
+void Fboss2IntegrationTest::addProductionFeatures(
+    std::initializer_list<ProductionFeature> features) {
+  productionFeatures_.insert(
+      productionFeatures_.end(), features.begin(), features.end());
+}
 
 void Fboss2IntegrationTest::SetUp() {
   XLOG(INFO) << "Fboss2IntegrationTest::SetUp - starting CLI test";

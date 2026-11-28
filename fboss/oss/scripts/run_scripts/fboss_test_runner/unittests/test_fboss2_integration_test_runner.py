@@ -4,9 +4,12 @@
 
 """Unit tests for Fboss2IntegrationTestRunner in run_test.py."""
 
+import json
 import os
 import sys
+import tempfile
 import unittest
+from argparse import ArgumentParser
 from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -47,6 +50,10 @@ def _make_mock_args(**overrides):
     # "num_warmboot_iterations", 1))`, and a bare MagicMock attribute would make
     # that comparison raise TypeError.
     mock_args.num_warmboot_iterations = 1
+    mock_args.enable_production_features = None
+    mock_args.list_tests_for_features = None
+    mock_args.production_features = None
+    mock_args.test_config_options = None
     for k, v in overrides.items():
         setattr(mock_args, k, v)
     return mock_args
@@ -617,3 +624,137 @@ class TestAgentsHealthyForSuite(unittest.TestCase):
         mock_run.return_value = MagicMock(stdout="")  # int("") -> ValueError
         with patch.object(runner, "_agents_ready", return_value=True):
             self.assertTrue(runner._agents_healthy_for_suite())
+
+
+class TestFilterTestsProductionFeatures(unittest.TestCase):
+    def setUp(self):
+        self.runner = Fboss2IntegrationTestRunner()
+
+    def test_no_filter_without_flag(self):
+        tests = ["ConfigHostnameTest.SetHostname", "TunnelIpInIpDecapTest.Create"]
+        with patch.object(self.runner, "args", _make_mock_args()):
+            self.assertEqual(self.runner._filter_tests(tests), tests)
+
+    def test_drops_tests_needing_features_the_asic_lacks(self):
+        features = {
+            "ConfigHostnameTest.SetHostname": "",
+            "ConfigPfcTest.Watchdog": "PFC",
+            "TunnelIpInIpDecapTest.Create": "IP_IN_IP_DECAP",
+        }
+
+        def fake_run(cmd, **_):
+            self.assertEqual(cmd[0], "fboss2_integration_test")
+            self.assertIn("--list_production_feature", cmd)
+            test = next(
+                a.split("=", 1)[1] for a in cmd if a.startswith("--gtest_filter=")
+            )
+            return MagicMock(stdout=f"Feature List: {features[test]}\n")
+
+        with tempfile.NamedTemporaryFile("w", suffix=".json") as f:
+            json.dump({"asicToFeatureNames": {"tomahawk6": ["PFC"]}}, f)
+            f.flush()
+            args = _make_mock_args(
+                enable_production_features="tomahawk6", production_features=f.name
+            )
+            with (
+                patch.object(self.runner, "args", args),
+                patch("subprocess.run", side_effect=fake_run),
+                patch.dict(os.environ, {}, clear=False),
+            ):
+                os.environ.pop("FBOSS_DATA", None)
+                kept = self.runner._filter_tests(list(features))
+        self.assertEqual(
+            kept, ["ConfigHostnameTest.SetHostname", "ConfigPfcTest.Watchdog"]
+        )
+
+    def test_argument_is_registered(self):
+        parser = ArgumentParser()
+        self.runner.add_subcommand_arguments(parser)
+        args = parser.parse_args(["--enable-production-features", "tomahawk5"])
+        self.assertEqual(args.enable_production_features, "tomahawk5")
+
+    def _run_filter(self, features_json, test_features, **arg_overrides):
+        def fake_run(cmd, **_):
+            test = next(
+                a.split("=", 1)[1] for a in cmd if a.startswith("--gtest_filter=")
+            )
+            return MagicMock(stdout=f"Feature List: {test_features[test]}\n")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "features.json")
+            with open(path, "w") as f:
+                json.dump(features_json, f)
+            # The hw agent's SDK is what gates features for this suite.
+            with open(os.path.join(tmp, "npu_sdk_metadata.json"), "w") as f:
+                json.dump(
+                    {
+                        "fboss_hw_agent-sai_impl": {
+                            "sdkVersion": {
+                                "asicSdk": "15.4.0.0_odp",
+                                "saiSdk": "15.4.0.0_odp",
+                            }
+                        }
+                    },
+                    f,
+                )
+            args = _make_mock_args(production_features=path, **arg_overrides)
+            with (
+                patch.object(self.runner, "args", args),
+                patch("subprocess.run", side_effect=fake_run),
+                patch.dict(os.environ, {"FBOSS_DATA": tmp}),
+            ):
+                return self.runner._filter_tests(list(test_features))
+
+    def test_sdk_gating_uses_hw_agent_sdk_and_multi_switch_option(self):
+        features_json = {
+            "asicToFeatures": {"tomahawk6": [42, 54, 100]},
+            "asicToFeatureNames": {
+                "tomahawk6": ["PFC", "IP_IN_IP_DECAP", "SRV6_ENCAP"]
+            },
+            "featureSupportSpecs": [
+                {
+                    # Satisfied: SDK is new enough and multi_switch is implied.
+                    "feature": 54,
+                    "supportedFrom": [
+                        {
+                            "asics": ["tomahawk6"],
+                            "sdk": 1,
+                            "minSdkVersion": "15.4.0.0_odp",
+                            "requiredTestConfigOptions": ["multi_switch"],
+                        }
+                    ],
+                },
+                {
+                    # Gated out: needs a newer SDK than the hw agent's.
+                    "feature": 100,
+                    "supportedFrom": [
+                        {
+                            "asics": ["tomahawk6"],
+                            "sdk": 1,
+                            "minSdkVersion": "16.0.0.0_odp",
+                        }
+                    ],
+                },
+            ],
+        }
+        kept = self._run_filter(
+            features_json,
+            {
+                "TunnelIpInIpDecapTest.Create": "IP_IN_IP_DECAP",
+                "ConfigSrv6Test.Encap": "SRV6_ENCAP",
+            },
+            enable_production_features="tomahawk6",
+        )
+        self.assertEqual(kept, ["TunnelIpInIpDecapTest.Create"])
+
+    def test_list_tests_for_features(self):
+        kept = self._run_filter(
+            {"asicToFeatureNames": {}},
+            {
+                "ConfigHostnameTest.SetHostname": "",
+                "ConfigPfcTest.Watchdog": "PFC",
+                "TunnelIpInIpDecapTest.Create": "IP_IN_IP_DECAP",
+            },
+            list_tests_for_features="PFC,COPP",
+        )
+        self.assertEqual(kept, ["ConfigPfcTest.Watchdog"])
