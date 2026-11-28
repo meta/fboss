@@ -80,7 +80,7 @@ class CmdDeleteBgpPolicyRoutingPolicyTermTestFixture
 
   bool sessionFileExists() {
     return std::filesystem::exists(
-        ConfigSession::getInstance().getBgpSessionConfigPath());
+        ConfigSession::getInstance().stagedPath(cli::ServiceType::BGP));
   }
 };
 
@@ -141,7 +141,7 @@ TEST_F(CmdDeleteBgpPolicyRoutingPolicyTermTestFixture, deleteUnknownTermWarns) {
   // proves the no-op delete did not persist anything new.
   ASSERT_TRUE(sessionFileExists());
   std::filesystem::remove(
-      ConfigSession::getInstance().getBgpSessionConfigPath());
+      ConfigSession::getInstance().stagedPath(cli::ServiceType::BGP));
 
   auto result = delTerm("RM100", {"20"});
   EXPECT_THAT(

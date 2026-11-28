@@ -16,7 +16,7 @@ namespace cpp2 facebook.fboss.cli
 // Used to track the highest impact action needed when committing config
 // changes. The levels are generic across services; how a level is carried out
 // for a given service (agent warmboot vs plain bgpd restart, ...) is decided by
-// FbossServiceUtil::restartService() from the (service, level) pair.
+// each service's ConfigDomain::apply().
 enum ConfigActionLevel {
   // Can be applied with reloadConfig() if the service supports it - default
   HITLESS = 0,

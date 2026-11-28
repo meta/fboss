@@ -12,6 +12,7 @@
 #include "fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h"
 #include "fboss/cli/fboss2/commands/delete/interface/CmdDeleteInterface.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
+#include "fboss/cli/fboss2/test/TestableConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
 
@@ -359,7 +360,7 @@ TEST_F(CmdConfigInterfaceLoopbackTestFixture, deleteLoopbackIsHitless) {
   InterfaceDeleteConfig config({"loopback1"});
   cmd.queryClient(localhost(), config);
   EXPECT_EQ(
-      ConfigSession::getInstance().getRequiredAction(cli::ServiceType::AGENT),
+      TestableConfigSession::get().getRequiredAction(cli::ServiceType::AGENT),
       cli::ConfigActionLevel::HITLESS);
 }
 

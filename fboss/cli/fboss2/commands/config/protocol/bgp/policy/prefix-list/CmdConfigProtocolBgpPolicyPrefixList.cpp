@@ -205,8 +205,8 @@ CmdConfigProtocolBgpPolicyPrefixList::queryClient(
       result.message += fmt::format(" for prefix-list {}", args.listName());
     }
     session.saveBgpConfig();
-    result.message +=
-        fmt::format("\nConfig saved to: {}", session.getBgpSessionConfigPath());
+    result.message += fmt::format(
+        "\nConfig saved to: {}", session.stagedPath(cli::ServiceType::BGP));
   } else if (listCreated) {
     // Drop the phantom list so a rejected value is not visible to later
     // lookups in the same process.

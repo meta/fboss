@@ -24,8 +24,8 @@ namespace facebook::fboss::utils {
 namespace fs = std::filesystem;
 
 // Fixture that installs a ConfigSession backed by a small on-disk config so
-// that InterfaceList (which resolves names against
-// ConfigSession::getInstance().getPortMap()) can be unit tested.
+// that InterfaceList (which resolves names against the session's agent
+// config) can be unit tested.
 class InterfaceListTest : public ::testing::Test {
  public:
   void SetUp() override {

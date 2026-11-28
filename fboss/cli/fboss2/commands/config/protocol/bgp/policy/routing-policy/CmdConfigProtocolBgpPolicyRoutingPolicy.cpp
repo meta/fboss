@@ -147,8 +147,8 @@ CmdConfigProtocolBgpPolicyRoutingPolicy::queryClient(
           fmt::format(" for routing-policy {}", args.policyName());
     }
     session.saveBgpConfig();
-    result.message +=
-        fmt::format("\nConfig saved to: {}", session.getBgpSessionConfigPath());
+    result.message += fmt::format(
+        "\nConfig saved to: {}", session.stagedPath(cli::ServiceType::BGP));
   } else if (policyCreated) {
     // Drop the phantom policy so a rejected value is not visible to later
     // lookups in the same process.
