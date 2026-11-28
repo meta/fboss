@@ -73,6 +73,7 @@ enum PlatformType {
   PLATFORM_M4052ACTM = 58,
   PLATFORM_M4340NHP = 59,
   PLATFORM_M4061NHP = 60,
+  PLATFORM_M4052CLSI = 61,
   PLATFORM_UNKNOWN = 1000, # Placeholder for unknown platform type
 }
 
