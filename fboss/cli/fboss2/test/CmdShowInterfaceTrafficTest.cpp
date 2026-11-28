@@ -149,6 +149,9 @@ TEST_F(CmdShowInterfaceTrafficTestFixture, createModel) {
 
   EXPECT_EQ(errorCounters.size(), 1);
   EXPECT_EQ(trafficCounters.size(), 3);
+  for (const auto& counter : trafficCounters) {
+    EXPECT_TRUE(counter.countersAvailable().value());
+  }
 
   EXPECT_EQ(trafficCounters[0].peerIf().value(), "fsw001.p001");
   EXPECT_EQ(trafficCounters[1].peerIf().value(), "fsw002.p001");
@@ -230,21 +233,44 @@ TEST_F(CmdShowInterfaceTrafficTestFixture, createModelFreeFormDescription) {
       "lab-tgen:T=us:U=lab:TGEN=ssw_mimic");
 }
 
-// A box with every front panel port down and no transceivers reports zero for
-// every rate counter, so isInterestingTraffic() filters out every row and the
-// Total is computed over an empty set. Totals must read 0.00%.
-TEST_F(CmdShowInterfaceTrafficTestFixture, printOutputNoInterestingTraffic) {
+TEST_F(CmdShowInterfaceTrafficTestFixture, printOutputNoRateCounters) {
   auto cmd = CmdShowInterfaceTraffic();
   auto model = cmd.createModel(portInfo, {} /* intCounters */, queriedIfs);
 
-  EXPECT_TRUE(model.traffic_counters()->empty());
+  const auto trafficCounters = model.traffic_counters().value();
+  ASSERT_EQ(trafficCounters.size(), 3);
+  for (const auto& counter : trafficCounters) {
+    EXPECT_FALSE(counter.countersAvailable().value());
+  }
 
   std::stringstream ss;
   cmd.printOutput(model, ss);
 
   const std::string output = ss.str();
+  EXPECT_NE(
+      output.find("3 interfaces have no known rate counters"),
+      std::string::npos);
+  EXPECT_NE(output.find("eth1/1/1"), std::string::npos);
   EXPECT_NE(output.find("Total"), std::string::npos);
-  EXPECT_NE(output.find("0.00%"), std::string::npos);
+  // Neither a row nor the total may claim a measured zero.
+  EXPECT_EQ(output.find("0.00"), std::string::npos);
+}
+
+TEST_F(CmdShowInterfaceTrafficTestFixture, downInterfaceOmittedUnlessQueried) {
+  auto cmd = CmdShowInterfaceTraffic();
+  auto ports = portInfo;
+  ports[3].operState() = facebook::fboss::PortOperState::DOWN;
+
+  auto model = cmd.createModel(ports, {} /* intCounters */, queriedIfs);
+  const auto listed = model.traffic_counters().value();
+  ASSERT_EQ(listed.size(), 2);
+  EXPECT_EQ(listed[0].interfaceName().value(), "eth1/1/1");
+  EXPECT_EQ(listed[1].interfaceName().value(), "eth2/1/1");
+
+  auto queried = cmd.createModel(ports, {} /* intCounters */, {"eth3/1/1"});
+  ASSERT_EQ(queried.traffic_counters()->size(), 1);
+  EXPECT_EQ(
+      queried.traffic_counters()->at(0).interfaceName().value(), "eth3/1/1");
 }
 
 // CLI reference wiki hooks: a human description and a non-empty sample model.

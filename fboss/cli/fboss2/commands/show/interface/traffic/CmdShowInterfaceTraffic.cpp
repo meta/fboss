@@ -15,6 +15,7 @@
 
 #include <boost/algorithm/string/split.hpp>
 #include <fmt/color.h>
+#include <folly/logging/xlog.h>
 #include <re2/re2.h>
 
 namespace facebook::fboss {
@@ -37,19 +38,26 @@ CmdShowInterfaceTraffic::RetType CmdShowInterfaceTraffic::queryClient(
         [&counters](
             apache::thrift::Client<facebook::fboss::FbossHwCtrl>& client) {
           std::map<std::string, int64_t> hwAgentCounters;
+          try {
 #ifndef IS_OSS
-          apache::thrift::Client<facebook::thrift::Monitor> monitoringClient{
-              client.getChannelShared()};
-          monitoringClient.sync_getCounters(hwAgentCounters);
+            apache::thrift::Client<facebook::thrift::Monitor> monitoringClient{
+                client.getChannelShared()};
+            monitoringClient.sync_getCounters(hwAgentCounters);
 #else
-          // FbossHwCtrl does not extend FacebookService; the OSS HwAgent
-          // multiplex serves fb303 methods via a FacebookBase2 handler, so
-          // reuse the channel with an FbossCtrl client (which carries
-          // getCounters) to fetch HwAgent counters.
-          apache::thrift::Client<facebook::fboss::FbossCtrl> fb303Client{
-              client.getChannelShared()};
-          fb303Client.sync_getCounters(hwAgentCounters);
+            // FbossHwCtrl does not extend FacebookService; the OSS HwAgent
+            // multiplex serves fb303 methods via a FacebookBase2 handler, so
+            // reuse the channel with an FbossCtrl client (which carries
+            // getCounters) to fetch HwAgent counters.
+            apache::thrift::Client<facebook::fboss::FbossCtrl> fb303Client{
+                client.getChannelShared()};
+            fb303Client.sync_getCounters(hwAgentCounters);
 #endif
+          } catch (const std::exception& ex) {
+            // runOnAllHwAgents swallows what escapes here, leaving every rate
+            // at zero with no hint as to why.
+            XLOG(ERR) << "could not read HwAgent counters: " << ex.what();
+            return;
+          }
           counters.merge(hwAgentCounters);
         };
     utils::runOnAllHwAgents(hostInfo, hwAgentQueryFn);
@@ -111,23 +119,31 @@ CmdShowInterfaceTraffic::RetType CmdShowInterfaceTraffic::createModel(
       // Getting various counters and converting to Mbps
       int64_t portSpeed = folly::copy(portInfo.speedMbps().value());
 
-      long inSpeedBps = intCounters[pname + ".in_bytes.rate.60"] * 8;
+      bool countersAvailable = false;
+      auto rate = [&](std::string_view stat) -> int64_t {
+        auto itr = intCounters.find(fmt::format("{}.{}.rate.60", pname, stat));
+        if (itr == intCounters.end()) {
+          return 0;
+        }
+        countersAvailable = true;
+        return itr->second;
+      };
+
+      long inSpeedBps = rate("in_bytes") * 8;
 
       double inSpeedMbps = (double)inSpeedBps / 1000000;
 
       // Unicast + multicast + broadcast = PPS
-      int64_t inPPS = intCounters[pname + ".in_unicast_pkts.rate.60"] +
-          intCounters[pname + ".in_multicast_pkts.rate.60"] +
-          intCounters[pname + ".in_broadcast_pkts.rate.60"];
+      int64_t inPPS = rate("in_unicast_pkts") + rate("in_multicast_pkts") +
+          rate("in_broadcast_pkts");
 
-      long outSpeedBps = intCounters[pname + ".out_bytes.rate.60"] * 8;
+      long outSpeedBps = rate("out_bytes") * 8;
 
       double outSpeedMbps = (double)outSpeedBps / 1000000;
 
       // Unicast + multicast + broadcast = PPS
-      int64_t outPPS = intCounters[pname + ".out_unicast_pkts.rate.60"] +
-          intCounters[pname + ".out_multicast_pkts.rate.60"] +
-          intCounters[pname + ".out_broadcast_pkts.rate.60"];
+      int64_t outPPS = rate("out_unicast_pkts") + rate("out_multicast_pkts") +
+          rate("out_broadcast_pkts");
 
       trafficCounters.interfaceName() = pname;
       trafficCounters.peerIf() =
@@ -141,15 +157,16 @@ CmdShowInterfaceTraffic::RetType CmdShowInterfaceTraffic::createModel(
           calculateUtilizationPercent(outSpeedMbps, portSpeed);
       trafficCounters.outKpps() = outPPS / 1000;
       trafficCounters.portSpeed() = portSpeed;
+      trafficCounters.countersAvailable() = countersAvailable;
 
-      // The original in fb_toolkit has an option for "show zero".  Since we
-      // can't accept arbitrarily deep parameters right now we will default to
-      // show non-zero and revisit as an option down the road
+      // As in fb_toolkit, only interfaces with errors make the error table;
+      // there is no "show zero" option to turn that off yet.
       if (isNonZeroErrors(errorCounters)) {
         ret.error_counters()->push_back(errorCounters);
       }
 
-      if (isInterestingTraffic(trafficCounters)) {
+      if (operState == facebook::fboss::PortOperState::UP ||
+          queriedSet.count(pname) || isInterestingTraffic(trafficCounters)) {
         ret.traffic_counters()->push_back(trafficCounters);
       }
     }
@@ -225,7 +242,7 @@ bool CmdShowInterfaceTraffic::isNonZeroErrors(cli::TrafficErrorCounters& ec) {
 }
 
 std::vector<double> CmdShowInterfaceTraffic::getTrafficTotals(
-    std::vector<cli::TrafficCounters> trafficCounters) {
+    const std::vector<cli::TrafficCounters>& trafficCounters) {
   double inMbpsT = 0.0;
   double inPctT = 0.0;
   double inKppsT = 0.0;
@@ -234,7 +251,11 @@ std::vector<double> CmdShowInterfaceTraffic::getTrafficTotals(
   double outKppsT = 0.0;
   double totalBW = 0.0;
 
-  for (auto& tc : trafficCounters) {
+  for (const auto& tc : trafficCounters) {
+    // Counting its speed would understate the utilization of the rest.
+    if (!folly::copy(tc.countersAvailable().value())) {
+      continue;
+    }
     inMbpsT += folly::copy(tc.inMbps().value());
     inKppsT += folly::copy(tc.inKpps().value());
     outMbpsT += folly::copy(tc.outMbps().value());
@@ -395,6 +416,15 @@ void CmdShowInterfaceTraffic::printOutput(
       "OutKpps",
   });
 
+  size_t interfacesWithoutCounters = 0;
+  for (const auto& trafficCounter : model.traffic_counters().value()) {
+    if (!folly::copy(trafficCounter.countersAvailable().value())) {
+      ++interfacesWithoutCounters;
+    }
+  }
+  const bool anyCounters =
+      model.traffic_counters()->size() > interfacesWithoutCounters;
+
   for (const auto& trafficCounter : model.traffic_counters().value()) {
     std::vector<std::string> rowColors = getRowColors(
         folly::copy(trafficCounter.inPct().value()),
@@ -404,59 +434,73 @@ void CmdShowInterfaceTraffic::printOutput(
     const std::string& rxColor = rowColors[0];
     const std::string& txColor = rowColors[1];
 
+    const bool haveCounters =
+        folly::copy(trafficCounter.countersAvailable().value());
+    auto rateCell = [&](double value,
+                        const std::string& color,
+                        const std::string& suffix = "") {
+      return haveCounters
+          ? makeColorCell(fmt::format("{:.2f}", value) + suffix, color)
+          : makeColorCell("--", "NONE");
+    };
+
     trafficTable.addRow(
         {makeColorCell(trafficCounter.interfaceName().value(), ifNameColor),
          makeColorCell(trafficCounter.peerIf().value(), ifNameColor),
-         makeColorCell("0:60", ifNameColor),
-         makeColorCell(
-             fmt::format(
-                 "{:.2f}", folly::copy(trafficCounter.inMbps().value())),
-             rxColor),
-         makeColorCell(
-             fmt::format(
-                 "{:.2f}", folly::copy(trafficCounter.inPct().value())) +
-                 "%",
-             rxColor),
-         makeColorCell(
-             fmt::format(
-                 "{:.2f}", folly::copy(trafficCounter.inKpps().value())),
-             rxColor),
-         makeColorCell(
-             fmt::format(
-                 "{:.2f}", folly::copy(trafficCounter.outMbps().value())),
-             txColor),
-         makeColorCell(
-             fmt::format(
-                 "{:.2f}", folly::copy(trafficCounter.outPct().value())) +
-                 "%",
-             txColor),
-         makeColorCell(
-             fmt::format(
-                 "{:.2f}", folly::copy(trafficCounter.outKpps().value())),
-             txColor)});
+         makeColorCell(haveCounters ? "0:60" : "--", ifNameColor),
+         rateCell(folly::copy(trafficCounter.inMbps().value()), rxColor),
+         rateCell(folly::copy(trafficCounter.inPct().value()), rxColor, "%"),
+         rateCell(folly::copy(trafficCounter.inKpps().value()), rxColor),
+         rateCell(folly::copy(trafficCounter.outMbps().value()), txColor),
+         rateCell(folly::copy(trafficCounter.outPct().value()), txColor, "%"),
+         rateCell(folly::copy(trafficCounter.outKpps().value()), txColor)});
   }
 
   std::vector<double> totalTraffic =
       getTrafficTotals(model.traffic_counters().value());
 
+  auto totalCell = [&](double value, const std::string& suffix = "") {
+    return anyCounters
+        ? makeColorCell(fmt::format("{:.2f}", value) + suffix, "INFO")
+        : makeColorCell("--", "INFO");
+  };
+
   trafficTable.addRow({
       makeColorCell("Total", "INFO"),
       makeColorCell("--", "INFO"),
       makeColorCell("--", "INFO"),
-      makeColorCell(fmt::format("{:.2f}", totalTraffic[0]), "INFO"),
-      makeColorCell(fmt::format("{:.2f}", totalTraffic[1]) + "%", "INFO"),
-      makeColorCell(fmt::format("{:.2f}", totalTraffic[2]), "INFO"),
-      makeColorCell(fmt::format("{:.2f}", totalTraffic[3]), "INFO"),
-      makeColorCell(fmt::format("{:.2f}", totalTraffic[4]) + "%", "INFO"),
-      makeColorCell(fmt::format("{:.2f}", totalTraffic[5]), "INFO"),
+      totalCell(totalTraffic[0]),
+      totalCell(totalTraffic[1], "%"),
+      totalCell(totalTraffic[2]),
+      totalCell(totalTraffic[3]),
+      totalCell(totalTraffic[4], "%"),
+      totalCell(totalTraffic[5]),
   });
 
   out << errorTable << std::endl;
+
+  // Emitted here, not with the messages above: the tables stream at the end,
+  // so an earlier write would land above the error table instead.
+  if (interfacesWithoutCounters != 0) {
+    const std::string noCountersMessage = fmt::format(
+        "{} {} no known rate counters.\n",
+        interfacesWithoutCounters,
+        interfacesWithoutCounters == 1 ? "interface has" : "interfaces have");
+    if (printColor) {
+      fmt::print(fg(fmt::color::yellow), "{}", noCountersMessage);
+    } else {
+      out << noCountersMessage;
+    }
+  }
+  if (model.traffic_counters()->empty()) {
+    out << "No interfaces to display\n";
+  }
+
   out << trafficTable << std::endl;
 }
 
 std::string_view CmdShowInterfaceTrafficTraits::description() {
-  return "Displays per-interface traffic rates against the discovered peer: inbound/outbound Mbps, utilization percent, and Kpps over a sampling interval. Use it to gauge link utilization and spot imbalances.";
+  return "Displays per-interface traffic rates against the discovered peer: inbound/outbound Mbps, utilization percent, and Kpps over a sampling interval. Use it to gauge link utilization and spot imbalances. Every interface that is up is listed even when idle; a down interface is listed only when named on the command line or when it still has a rate. Rates the agent never published read as `--`, which is how a link nothing was collected for is told apart from a link carrying nothing.";
 }
 
 CmdShowInterfaceTraffic::RetType CmdShowInterfaceTraffic::sampleModel() {
@@ -472,6 +516,7 @@ CmdShowInterfaceTraffic::RetType CmdShowInterfaceTraffic::sampleModel() {
   counter1.outPct() = 0.11;
   counter1.outKpps() = 29.00;
   counter1.portSpeed() = 400000;
+  counter1.countersAvailable() = true;
   model.traffic_counters()->push_back(counter1);
 
   cli::TrafficCounters counter2;
@@ -484,6 +529,7 @@ CmdShowInterfaceTraffic::RetType CmdShowInterfaceTraffic::sampleModel() {
   counter2.outPct() = 0.00;
   counter2.outKpps() = 3.00;
   counter2.portSpeed() = 400000;
+  counter2.countersAvailable() = true;
   model.traffic_counters()->push_back(counter2);
 
   return model;
