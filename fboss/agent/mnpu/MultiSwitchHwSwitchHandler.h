@@ -38,7 +38,7 @@ class MultiSwitchHwSwitchHandler : public HwSwitchHandler {
       std::optional<cfg::SdkVersion> sdkVersion) const override;
 
   std::pair<fsdb::OperDelta, HwSwitchStateUpdateStatus> stateChanged(
-      const std::vector<fsdb::OperDelta>& deltas,
+      std::vector<fsdb::OperDelta> deltas,
       bool transaction,
       const std::shared_ptr<SwitchState>& oldState,
       const std::shared_ptr<SwitchState>& newState,
@@ -100,7 +100,7 @@ class MultiSwitchHwSwitchHandler : public HwSwitchHandler {
   void fillMultiswitchOperDelta(
       multiswitch::StateOperDelta& stateDelta,
       const std::shared_ptr<SwitchState>& state,
-      const std::vector<fsdb::OperDelta>& deltas,
+      std::vector<fsdb::OperDelta> deltas,
       bool transaction,
       int64_t lastSeqNum,
       const HwWriteBehavior& hwWriteBehavior = HwWriteBehavior::WRITE,
