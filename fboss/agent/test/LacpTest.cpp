@@ -1522,6 +1522,65 @@ TEST_F(LacpTest, lacpDownCounters) {
  * Test LACP transmission failure handling - when transmission fails,
  * the periodic transmission machine should switch to FAST mode for retry
  */
+TEST_F(LacpTest, partnerSwitchingToFastRateSpeedsUpTransmission) {
+  LacpServiceInterceptor serviceInterceptor(lacpEvb());
+
+  PortID testPort(1);
+  ParticipantInfo testInfo;
+  testInfo.systemPriority = 65535;
+  testInfo.systemID = {{0x02, 0x90, 0xfb, 0x5e, 0x1e, 0x8d}};
+  testInfo.key = 903;
+  testInfo.portPriority = 32768;
+  testInfo.port = testPort;
+
+  auto controllerPtr = std::make_shared<LacpController>(
+      testPort,
+      lacpEvb(),
+      testInfo.portPriority,
+      cfg::LacpPortRate::SLOW,
+      cfg::LacpPortActivity::ACTIVE,
+      cfg::switch_config_constants::DEFAULT_LACP_HOLD_TIMER_MULTIPLIER(),
+      AggregatePortID(testInfo.key),
+      testInfo.systemPriority,
+      MacAddress::fromBinary(
+          folly::ByteRange(
+              testInfo.systemID.cbegin(), testInfo.systemID.cend())),
+      1 /* minimum-link count */,
+      std::nullopt,
+      &serviceInterceptor);
+
+  serviceInterceptor.addController(controllerPtr);
+  controllerPtr->startMachines();
+  controllerPtr->portUp();
+
+  auto transmissionPeriodAfterReceiving = [&](LacpState partnerState) {
+    ParticipantInfo partnerInfo;
+    partnerInfo.state = partnerState;
+    controllerPtr->received(
+        LACPDU(partnerInfo, ParticipantInfo::defaultParticipantInfo()));
+
+    std::chrono::seconds period{};
+    lacpEvb()->runInFbossEventBaseThreadAndWait(
+        [&]() { period = controllerPtr->getCurrentTransmissionPeriod(); });
+    return period;
+  };
+
+  const auto slowPartnerState =
+      LacpState::LACP_ACTIVE | LacpState::AGGREGATABLE;
+  EXPECT_EQ(
+      transmissionPeriodAfterReceiving(slowPartnerState),
+      PeriodicTransmissionMachine::LONG_PERIOD);
+  EXPECT_EQ(
+      transmissionPeriodAfterReceiving(
+          slowPartnerState | LacpState::SHORT_TIMEOUT),
+      PeriodicTransmissionMachine::SHORT_PERIOD);
+  EXPECT_EQ(
+      transmissionPeriodAfterReceiving(slowPartnerState),
+      PeriodicTransmissionMachine::LONG_PERIOD);
+
+  controllerPtr->stopMachines();
+}
+
 TEST_F(LacpTest, lacpTransmissionFailureRetry) {
   auto rate = cfg::LacpPortRate::SLOW;
   LacpServiceInterceptor serviceInterceptor(lacpEvb());
