@@ -350,9 +350,9 @@ TEST_F(AgentPacketSendReceiveTest, LldpPacketReceiveSrcPort) {
           LldpManager::SYSTEM_CAPABILITY_ROUTER);
       getAgentEnsemble()->ensureSendPacketOutOfPort(std::move(txPacket), port);
       WITH_RETRIES_N_TIMED(5, 20ms, {
-        ASSERT_EVENTUALLY_TRUE(
-            verifyNumPktsReceived(expectedNumPktsReceived++));
+        ASSERT_EVENTUALLY_TRUE(verifyNumPktsReceived(expectedNumPktsReceived));
       })
+      expectedNumPktsReceived++;
       EXPECT_EQ(port, PortID(getLastPktSrcPort()));
     }
     getAgentEnsemble()->getSw()->getPacketObservers()->unregisterPacketObserver(
@@ -435,9 +435,9 @@ TEST_F(AgentPacketSendReceiveLagTest, LacpPacketReceiveSrcPort) {
           payload);
       getAgentEnsemble()->ensureSendPacketOutOfPort(std::move(txPacket), port);
       WITH_RETRIES_N_TIMED(5, 20ms, {
-        ASSERT_EVENTUALLY_TRUE(
-            verifyNumPktsReceived(expectedNumPktsReceived++));
+        ASSERT_EVENTUALLY_TRUE(verifyNumPktsReceived(expectedNumPktsReceived));
       })
+      expectedNumPktsReceived++;
       EXPECT_EQ(port, PortID(getLastPktSrcPort()));
       EXPECT_EQ(kAggId, getLastPktSrcAggregatePort());
 
