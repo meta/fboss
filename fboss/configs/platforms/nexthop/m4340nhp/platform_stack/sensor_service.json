@@ -912,8 +912,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_1/temp2_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -922,8 +922,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_1/temp3_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -932,8 +932,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_1/temp4_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -942,8 +942,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_1/temp5_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -952,8 +952,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_1/temp6_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -962,8 +962,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_1/temp7_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -972,8 +972,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_1/temp8_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -982,8 +982,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_1/temp9_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1002,8 +1002,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_2/temp2_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1012,8 +1012,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_2/temp3_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1022,8 +1022,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_2/temp4_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1032,8 +1032,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_2/temp5_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1042,8 +1042,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_2/temp6_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1052,8 +1052,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_2/temp7_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1062,8 +1062,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_2/temp8_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1072,8 +1072,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_2/temp9_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1092,8 +1092,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_3/temp2_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1102,8 +1102,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_3/temp3_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1112,8 +1112,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_3/temp4_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1122,8 +1122,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_3/temp5_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1132,8 +1132,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_3/temp6_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1142,8 +1142,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_3/temp7_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1152,8 +1152,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_3/temp8_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
@@ -1162,8 +1162,8 @@
           "sysfsPath": "/run/devmap/sensors/SWITCH_CARD_TEMP_SENSOR_3/temp9_input",
           "type": 3,
           "thresholds": {
-            "maxAlarmVal": 115,
-            "upperCriticalVal": 122
+            "maxAlarmVal": 91,
+            "upperCriticalVal": 101
           },
           "compute": "@/1000.0"
         },
