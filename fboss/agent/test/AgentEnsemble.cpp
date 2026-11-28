@@ -994,7 +994,16 @@ void AgentEnsemble::createAndDumpOverriddenAgentConfig() {
 
 std::optional<VlanID> AgentEnsemble::getVlanIDForTx() const {
   auto intf = firstInterfaceWithPortsForTesting(getProgrammedState());
-  return getSw()->getVlanIDForTx(intf);
+  auto vlanId = getSw()->getVlanIDForTx(intf);
+  if (vlanId.has_value()) {
+    return vlanId;
+  }
+  // PORT RIFs return no VLAN. Tag the programmed default VLAN so
+  // PIPELINE_LOOKUP CPU inject has L3 context, without enabling
+  // CPU_TX_PACKET_REQUIRES_VLAN_TAG.
+  auto settings =
+      utility::getFirstNodeIf(getProgrammedState()->getSwitchSettings());
+  return getDefaultTxVlanIdIf(settings);
 }
 
 std::vector<FirmwareInfo> AgentEnsemble::getAllFirmwareInfo(
