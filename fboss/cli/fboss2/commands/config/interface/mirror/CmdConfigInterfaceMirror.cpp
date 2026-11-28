@@ -13,6 +13,7 @@
 #include <set>
 #include <unordered_set>
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/commands/config/interface/MirrorSamplingUtils.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -111,31 +112,62 @@ CmdConfigInterfaceMirrorTraits::RetType CmdConfigInterfaceMirror::queryClient(
     throw std::invalid_argument("No port found for the specified interface(s)");
   }
 
-  // The agent samples every port with sampleDest MIRROR through a single
-  // ingress mirror (ApplyThriftConfig: "Only one mirror can be configured
-  // across all ports, to sample traffic"). Check the bindings this call would
-  // leave, so rebinding the only sampling port to another mirror still works.
+  // A mirror's egress port is where the mirrored copies are sent. The agent
+  // refuses a mirror whose egress port is also bound to that same mirror, as
+  // ingress or egress (ThriftConfigApplier::createMirror throws "MirrorConfig
+  // <name> doesn't match ingress ... or egress mirror ..."), so that config
+  // would only fail later, at commit time.
+  //
+  // There are two ways to get there:
+  //   1. bind the port first, then `config mirror <name> egress-port <port>`;
+  //      CmdConfigMirror already rejects that.
+  //   2. set the egress port first, then `config interface <port> mirror`;
+  //      this loop rejects that, before anything is staged.
+  //
+  // Only the mirrors named in this call matter. The egress port can be given
+  // by port name or by logicalID, so match either form. If any port in the
+  // call is the egress port, the whole call fails and no port is changed.
+  for (const auto& mirror : *swConfig.mirrors()) {
+    const auto& egressPort = mirror.destination()->egressPort();
+    if (!egressPort.has_value() ||
+        (*mirror.name() != newIngress && *mirror.name() != newEgress)) {
+      continue;
+    }
+    for (size_t i = 0; i < ports.size(); ++i) {
+      bool isDestination = false;
+      switch (egressPort->getType()) {
+        case cfg::MirrorEgressPort::Type::name:
+          isDestination = ports[i]->name().has_value() &&
+              *ports[i]->name() == egressPort->get_name();
+          break;
+        case cfg::MirrorEgressPort::Type::logicalID:
+          isDestination = *ports[i]->logicalID() == egressPort->get_logicalID();
+          break;
+        case cfg::MirrorEgressPort::Type::__EMPTY__:
+          break;
+      }
+      if (isDestination) {
+        throw std::invalid_argument(
+            fmt::format(
+                "Interface {} is the egress port of mirror '{}'; it cannot be "
+                "bound to that mirror",
+                updatedNames[i],
+                *mirror.name()));
+      }
+    }
+  }
+
+  // A new ingress binding must not put sampling ports (sample-dest mirror) on
+  // a second ingress mirror; see checkSingleSamplingMirror(). The check uses
+  // the bindings this call would leave, not the current ones, so moving every
+  // sampling port to another mirror in a single call is allowed. Egress
+  // bindings do not affect sampling, so they are not checked.
   if (newIngress.has_value()) {
-    std::unordered_set<const cfg::Port*> targets(ports.begin(), ports.end());
-    std::set<std::string> samplingMirrors;
-    for (const auto& port : *swConfig.ports()) {
-      if (!port.sampleDest().has_value() ||
-          *port.sampleDest() != cfg::SampleDestination::MIRROR) {
-        continue;
-      }
-      if (targets.contains(&port)) {
-        samplingMirrors.insert(*newIngress);
-      } else if (port.ingressMirror().has_value()) {
-        samplingMirrors.insert(*port.ingressMirror());
-      }
-    }
-    if (samplingMirrors.size() > 1) {
-      throw std::invalid_argument(
-          fmt::format(
-              "Ports with sample-dest mirror must all use the same ingress "
-              "mirror; this would leave them on: {}",
-              folly::join(", ", samplingMirrors)));
-    }
+    checkSingleSamplingMirror(
+        swConfig,
+        std::unordered_set<const cfg::Port*>(ports.begin(), ports.end()),
+        /*targetsSample=*/false,
+        newIngress);
   }
 
   for (cfg::Port* port : ports) {
