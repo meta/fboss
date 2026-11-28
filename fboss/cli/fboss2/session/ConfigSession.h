@@ -16,18 +16,15 @@
 #include <string_view>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
-#include "fboss/cli/fboss2/session/FbossServiceUtil.h"
+#include "fboss/cli/fboss2/session/ConfigDomain.h"
+#include "fboss/cli/fboss2/session/ConfigDomainRegistry.h"
 #include "fboss/cli/fboss2/session/Git.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
-#include "fboss/cli/fboss2/utils/PortMap.h"
 
 namespace facebook::bgp::thrift {
 class BgpConfig;
-}
-
-namespace facebook::fboss::cfg {
-class AgentConfig;
 }
 
 namespace facebook::fboss {
@@ -38,9 +35,10 @@ class ConfigFileManager;
  * ConfigSession manages configuration editing sessions for the fboss2 CLI.
  *
  * OVERVIEW:
- * ConfigSession provides a session-based workflow for editing FBOSS agent
- * configuration. It maintains a session file that can be edited and then
- * atomically committed to the system configuration with Git version control.
+ * ConfigSession provides a session-based workflow for editing the config of
+ * FBOSS services (agent, BGP). It maintains one session file per service
+ * that can be edited and then atomically committed to the system
+ * configuration with Git version control.
  *
  * SINGLETON PATTERN:
  * ConfigSession is typically accessed via getInstance(), which currently
@@ -114,28 +112,18 @@ class ConfigSession {
   // session, re-reading config from disk.
   static void resetInstance();
 
-  // Static path getters - can be called without creating a session instance.
-  // These are useful for checking if session files exist without triggering
-  // session initialization.
-  static std::string getSessionDir();
+  // ~/.fboss2/agent.conf. Static so callers can check for a staged agent
+  // config without creating a session instance.
   static std::string getSessionConfigPathStatic();
-  static std::string getSessionMetadataPathStatic();
-  // ~/.fboss2/bgp_config.json — staged BGP edits (used by `config session
-  // clear` without instantiating a session).
-  static std::string getBgpSessionConfigPathStatic();
 
   // All per-session staged files under ~/.fboss2 that `config session clear`
   // should remove: every config domain's staged file plus the session
   // metadata. Static so callers can clear a session without getInstance()
-  // (which would create one). A new config domain adds one entry here rather
-  // than a new block in the clear command.
+  // (which would create one).
   static std::vector<std::string> stagedSessionFilePaths();
 
   // Get the path to the session config file (~/.fboss2/agent.conf)
   std::string getSessionConfigPath() const;
-
-  // Get the legacy default agent config path under the system config directory.
-  std::string getSystemConfigPath() const;
 
   // Get the validated COOP config path reported by a running service.
   // Discovery is lazy and falls back to the last committed path for recovery.
@@ -158,32 +146,22 @@ class ConfigSession {
     std::map<cli::ServiceType, std::vector<std::string>> serviceNames;
   };
 
-  // Describes one config "domain" managed by a session. The service's current
-  // path is intentionally absent: it is resolved only after an operation has
-  // determined that this domain is needed.
-  struct ConfigDomain {
-    cli::ServiceType service; // AGENT / BGP -- feeds applyServiceActions()
-    std::string name; // "Agent" / "BGP" (diff section headers, logs)
-    std::string sessionPath; // staged edits (~/.fboss2/...)
-    std::string gitRelPath; // path within the /etc/coop git repo
-    std::string desiredPath; // CLI-owned, git-tracked config
-    // Minimum action used when a rollback changes this domain: HITLESS reloads
-    // the agent; SERVICE_RESTART restarts bgpd. rollback() promotes this to the
-    // highest level recorded by the commits being undone (see
-    // rolledBackActionLevels()).
-    cli::ConfigActionLevel rollbackActionLevel;
-  };
+  // The config domains this session manages (agent, BGP), in a stable
+  // order (agent first). Public so `config session diff` can share the same
+  // list.
+  std::vector<ConfigDomainInfo> configDomains() const;
 
-  // The config domains this session manages (agent + BGP), in a stable order
-  // (agent first). Public so `config session diff` can share the same list.
-  std::vector<ConfigDomain> configDomains() const;
+  // What applying this level means for the service, e.g. "warmboot" for the
+  // agent or "restart" for bgpd.
+  std::string actionName(cli::ServiceType service, cli::ConfigActionLevel level)
+      const;
 
   // Staged content for a domain, or nullopt if no session edit is staged.
   // Throws if the session file exists but cannot be read. Public so `config
   // session diff` shares the same "is it staged + its content" primitive that
   // commit()/rollback() use.
   std::optional<std::string> readStagedContent(
-      const ConfigDomain& domain) const;
+      const ConfigDomainInfo& domain) const;
 
   // Atomically commit the session to /etc/coop/cli/agent.conf and create a git
   // commit. For HITLESS changes, also calls reloadConfig() on the agent.
@@ -218,17 +196,8 @@ class ConfigSession {
   cfg::AgentConfig& getAgentConfig();
   const cfg::AgentConfig& getAgentConfig() const;
 
-  // Get the PortMap for port-to-interface lookups
-  utils::PortMap& getPortMap();
-  const utils::PortMap& getPortMap() const;
-
-  // Regenerate the cached PortMap from the current in-memory agentConfig_.
-  // Call this after mutating the config (e.g. adding a port) so that
-  // subsequent getPortMap() lookups reflect the change.
-  void rebuildPortMap();
-
-  // Serialize the given service's typed config (AGENT -> agentConfig_,
-  // BGP -> bgpConfig_) to that domain's staged session file, and record the
+  // Serialize the given service's typed config to that domain's staged
+  // session file, and record the
   // command + bump the service's required action level (if the new level is
   // higher than the current one). One generic entry point for every service.
   void saveConfig(cli::ServiceType service, cli::ConfigActionLevel actionLevel);
@@ -268,10 +237,6 @@ class ConfigSession {
 
   // ~/.fboss2/bgp_config.json (staged BGP edits)
   std::string getBgpSessionConfigPath() const;
-  // /etc/coop/bgpcpp/bgpcpp.conf (CLI-owned, Git-versioned desired config)
-  std::string getBgpSystemConfigPath() const;
-  // Whether a BGP session is staged (~/.fboss2/bgp_config.json exists)
-  bool bgpSessionExists() const;
 
   // Get the Git instance for this config session
   // Used to access the Git repository for history, rollback, etc.
@@ -292,24 +257,23 @@ class ConfigSession {
   // Reset the required action level to HITLESS (called after successful commit)
   void resetRequiredAction(cli::ServiceType service);
 
-  // Get the systemd service name for a service type
-  static std::string getServiceName(cli::ServiceType service);
-
   // Get the list of commands executed in this session
   const std::vector<std::string>& getCommands() const;
 
  protected:
-  // Constructor for testing with custom paths
+  // Constructor for testing with custom paths and caller-supplied config
+  // domains.
   ConfigSession(
       std::string sessionConfigDir,
       std::string systemConfigDir,
-      SessionInit init = SessionInit::CreateIfAbsent);
+      ConfigDomainRegistry domains,
+      SessionInit init);
 
-  // Constructor for testing with custom paths and mock FbossServiceUtil
+  // As above, but does not initialize the session.
   ConfigSession(
       std::string sessionConfigDir,
       std::string systemConfigDir,
-      std::unique_ptr<FbossServiceUtil> fbossServiceUtil);
+      ConfigDomainRegistry domains);
 
   // Set the singleton instance (for testing only)
   static void setInstance(std::unique_ptr<ConfigSession> instance);
@@ -324,17 +288,12 @@ class ConfigSession {
   virtual std::string queryLocalServiceConfigPath(
       cli::ServiceType service) const;
 
-  // Apply actions (restart or reload) to all services based on their action
-  // levels. For the restart levels, restarts the service. For HITLESS, reloads
-  // the config.
+  // Apply each service's action through its config domain: a restart for the
+  // restart levels, a reload for HITLESS.
   // Returns a map of service type to list of actual systemd service names.
   std::map<cli::ServiceType, std::vector<std::string>> applyServiceActions(
       const std::map<cli::ServiceType, cli::ConfigActionLevel>& actions,
       const HostInfo& hostInfo);
-
- protected:
-  // Service orchestration for systemd operations
-  std::unique_ptr<FbossServiceUtil> fbossServiceUtil_;
 
  private:
   std::string sessionConfigDir_; // Typically ~/.fboss2
@@ -346,26 +305,18 @@ class ConfigSession {
   // Git instance for version control operations
   std::unique_ptr<Git> git_;
 
-  // Lazy-initialized configuration and port map. agentConfig_ is null until
-  // loadConfig(AGENT) populates it (null == "not loaded"), which is why it is
-  // a pointer -- that also keeps the heavy generated type out of this header.
-  std::unique_ptr<cfg::AgentConfig> agentConfig_;
-  std::unique_ptr<utils::PortMap> portMap_;
+  // The per-service configs. Each domain holds its own typed copy, which is
+  // loaded on first access.
+  ConfigDomainRegistry domains_;
 
-  // Typed view of the entire BGP config, mirroring agentConfig_: null until
-  // loadConfig(BGP) populates it.
-  std::unique_ptr<bgp::thrift::BgpConfig> bgpConfig_;
-
-  // /etc/coop/bgpcpp (directory holding the bgpd daemon's config)
-  std::string getBgpSystemConfigDir() const;
   // ==================== Per-domain primitives ====================
   // Shared building blocks used by commit()/rollback() so both the agent and
-  // BGP domains go through identical logic (see ConfigDomain /
-  // configDomains()). readStagedContent() is declared public above.
+  // BGP domains go through identical logic (see configDomains()).
+  // readStagedContent() is declared public above.
 
   // Remove a domain's staged session file and drop its in-memory cache so the
   // next access re-seeds from disk. Called after a successful commit.
-  void clearStagedDomain(const ConfigDomain& domain);
+  void clearStagedDomain(const ConfigDomainInfo& domain);
   // Compare two serialized configs for a domain by deserializing each into its
   // typed thrift struct (cfg::AgentConfig / bgp::thrift::BgpConfig) and using
   // struct equality. This is a SEMANTIC comparison, so formatting-only
@@ -373,14 +324,10 @@ class ConfigSession {
   // raw-seeded file vs a round-tripped one) do not count as a change. Falls
   // back to a byte comparison when either side is empty or fails to parse.
   bool domainContentEqual(
-      const ConfigDomain& domain,
+      const ConfigDomainInfo& domain,
       std::string_view a,
       std::string_view b) const;
 
-  // git relative path of the bgpd config tracked in the /etc/coop repo.
-  static constexpr auto kBgpGitRelPath = "bgpcpp/bgpcpp.conf";
-  // git relative path of the agent config tracked in the /etc/coop repo.
-  static constexpr auto kAgentGitRelPath = "cli/agent.conf";
   // git relative path of the CLI metadata tracked in the /etc/coop repo.
   static constexpr auto kMetadataGitRelPath = "cli/cli_metadata.json";
   // Like Git::fileAtRevision but returns "" instead of throwing when the path
@@ -413,6 +360,11 @@ class ConfigSession {
   // session was in progress.
   std::string base_;
 
+  // Per-user session paths under ~/.fboss2, usable without an instance;
+  // stagedSessionFilePaths() is the public way to reach them.
+  static std::string getSessionDir();
+  static std::string getSessionMetadataPathStatic();
+
   // Path to the system metadata file (in the Git repo)
   std::string getSystemMetadataPath() const;
 
@@ -423,22 +375,15 @@ class ConfigSession {
   void loadMetadata();
   void saveMetadata();
 
-  // Agent actions require the running agent's multi-switch state; actions for
-  // other services do not.
-  virtual void ensureFbossServiceUtil(
-      const HostInfo& hostInfo,
-      bool needsAgentState);
-
   // Initialize shared session state without loading either service config.
   void initializeSession(SessionInit init);
   // Load one service's typed config, resolving its current path only when no
   // staged config exists.
   void loadConfig(cli::ServiceType service);
 
-  ConfigDomain getConfigDomain(cli::ServiceType service) const;
-  ConfigFileManager fileManagerFor(const ConfigDomain& domain) const;
+  ConfigFileManager fileManagerFor(const ConfigDomainInfo& domain) const;
   void ensureDomainBaseline(
-      const ConfigDomain& domain,
+      const ConfigDomainInfo& domain,
       const std::string& currentContent);
 
   std::string validateCurrentConfigPath(
@@ -449,8 +394,6 @@ class ConfigSession {
 
   // Initialize the Git repository if needed
   void initializeGit();
-
-  bool fbossServiceUtilHasAgentState_{false};
 };
 
 } // namespace facebook::fboss

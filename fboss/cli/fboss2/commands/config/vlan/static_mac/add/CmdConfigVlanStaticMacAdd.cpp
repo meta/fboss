@@ -24,7 +24,7 @@
 #include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
-#include "fboss/cli/fboss2/utils/PortMap.h"
+#include "fboss/cli/fboss2/utils/SessionPortMap.h"
 
 namespace facebook::fboss {
 
@@ -44,8 +44,8 @@ CmdConfigVlanStaticMacAddTraits::RetType CmdConfigVlanStaticMacAdd::queryClient(
   }
 
   // Get port logical ID from port name
-  const auto& portMap = ConfigSession::getInstance().getPortMap();
-  auto portLogicalId = portMap.getPortLogicalId(macAndPort.getPortName());
+  const utils::SessionPortMap portMap;
+  auto portLogicalId = portMap->getPortLogicalId(macAndPort.getPortName());
   if (!portLogicalId.has_value()) {
     throw std::invalid_argument(
         fmt::format(

@@ -34,8 +34,6 @@ namespace facebook::fboss {
 
 namespace {
 
-using ConfigDomain = ConfigSession::ConfigDomain;
-
 // Read a file, returning empty content (not an error) when it doesn't exist.
 std::string readFileOrEmpty(const std::string& path) {
   std::string content;
@@ -50,7 +48,7 @@ std::string readFileOrEmpty(const std::string& path) {
 // genuinely invalid revision from a domain simply absent there.
 std::pair<std::string, std::string> getRevisionContent(
     const std::string& revision,
-    const ConfigDomain& domain,
+    const ConfigDomainInfo& domain,
     const std::string& validationPath,
     ConfigSession& session,
     Git& git) {
@@ -170,10 +168,10 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
   // difference is how the base content+label is obtained, so share the loop.
   auto diffStagedDomains =
       [&](const std::function<std::pair<std::string, std::string>(
-              const ConfigDomain&)>& getBase) {
+              const ConfigDomainInfo&)>& getBase) {
         // Read each domain's staged content once via the shared primitive
         // (nullopt == not staged), so we neither re-stat nor re-read files.
-        std::vector<std::pair<ConfigDomain, std::string>> staged;
+        std::vector<std::pair<ConfigDomainInfo, std::string>> staged;
         for (const auto& d : domains) {
           if (auto content = session.readStagedContent(d)) {
             staged.emplace_back(d, std::move(*content));
@@ -197,7 +195,7 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
     if (!session.hasActiveSession()) {
       return "No config session exists. Make a config change first.";
     }
-    return diffStagedDomains([&](const ConfigDomain& d) {
+    return diffStagedDomains([&](const ConfigDomainInfo& d) {
       return std::make_pair(
           readFileOrEmpty(session.getCurrentConfigPath(d.service)),
           std::string("current live config"));
@@ -209,7 +207,7 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
     if (!session.hasActiveSession()) {
       return "No config session exists. Make a config change first.";
     }
-    return diffStagedDomains([&](const ConfigDomain& d) {
+    return diffStagedDomains([&](const ConfigDomainInfo& d) {
       return getRevisionContent(revisions[0], d, validationPath, session, git);
     });
   }

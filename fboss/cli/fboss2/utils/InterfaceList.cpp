@@ -23,8 +23,8 @@
 #include <vector>
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/types.h"
-#include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/PortMap.h"
+#include "fboss/cli/fboss2/utils/SessionPortMap.h"
 
 namespace facebook::fboss::utils {
 
@@ -78,8 +78,8 @@ std::string loopbackVlanName(int32_t index) {
 
 InterfaceList::InterfaceList(std::vector<std::string> names, bool allowMissing)
     : names_(std::move(names)) {
-  // Get the PortMap from the session
-  auto& portMap = ConfigSession::getInstance().getPortMap();
+  const SessionPortMap sessionPortMap;
+  const PortMap& portMap = *sessionPortMap;
 
   // Resolve names to Intf objects
   std::vector<std::string> notFound;

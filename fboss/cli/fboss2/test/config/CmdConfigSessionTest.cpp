@@ -15,10 +15,12 @@
 #include <fstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include "fboss/cli/fboss2/test/TestableConfigSession.h"
-#include "fboss/cli/fboss2/test/config/MockFbossServiceUtil.h"
+#include "fboss/cli/fboss2/test/config/MockServiceControllers.h"
 #include "fboss/cli/fboss2/test/config/MockSystemdInterface.h"
+#include "fboss/cli/fboss2/utils/SessionPortMap.h"
 
 namespace fs = std::filesystem;
 
@@ -52,7 +54,7 @@ class ConfigSessionTestFixture : public CmdConfigTestBase {
     return std::make_unique<TestableConfigSession>(
         (getTestHomeDir() / ".fboss2").string(),
         (getTestEtcDir() / "coop").string(),
-        std::make_unique<::testing::StrictMock<MockFbossServiceUtil>>());
+        std::make_unique<::testing::StrictMock<MockAgentServiceController>>());
   }
 
   void useClassicBgpSystemd(TestableConfigSession& session) {
@@ -67,10 +69,10 @@ class ConfigSessionTestFixture : public CmdConfigTestBase {
   }
 
   std::string commitDescription(const std::string& description) {
-    auto mock = std::make_unique<::testing::StrictMock<MockFbossServiceUtil>>();
+    auto mock =
+        std::make_unique<::testing::StrictMock<MockAgentServiceController>>();
     auto* mockPtr = mock.get();
-    EXPECT_CALL(*mockPtr, reloadConfig(cli::ServiceType::AGENT, ::testing::_))
-        .Times(1);
+    EXPECT_CALL(*mockPtr, reloadConfig(::testing::_)).Times(1);
     TestableConfigSession session(
         (getTestHomeDir() / ".fboss2").string(),
         (getTestEtcDir() / "coop").string(),
@@ -90,7 +92,6 @@ TEST_F(ConfigSessionTestFixture, sessionInitialization) {
   // Initially, session directory should not exist
   fs::path sessionDir = getTestHomeDir() / ".fboss2";
   fs::path sessionConfig = sessionDir / "agent.conf";
-  fs::path cliConfigPath = getTestEtcDir() / "coop" / "cli" / "agent.conf";
   EXPECT_FALSE(fs::exists(sessionDir));
 
   // Construction creates shared metadata but does not load either service.
@@ -101,12 +102,18 @@ TEST_F(ConfigSessionTestFixture, sessionInitialization) {
   EXPECT_FALSE(session.sessionExists());
   EXPECT_FALSE(fs::exists(sessionConfig));
 
-  // The first agent access materializes only the agent session.
+  // Loading the agent config does not stage it: a command that fails after
+  // loading must not leave a session behind.
   session.getAgentConfig();
+  EXPECT_FALSE(session.sessionExists());
+  EXPECT_FALSE(session.hasActiveSession());
+  EXPECT_FALSE(fs::exists(sessionConfig));
+
+  // The first save materializes the agent session, and only that one.
+  session.saveConfig();
   EXPECT_TRUE(session.sessionExists());
-  std::string systemContent = readFile(cliConfigPath);
-  std::string sessionContent = readFile(sessionConfig);
-  EXPECT_EQ(systemContent, sessionContent);
+  EXPECT_TRUE(fs::exists(sessionConfig));
+  EXPECT_FALSE(fs::exists(sessionDir / "bgp_config.json"));
 }
 
 TEST_F(
@@ -1501,33 +1508,58 @@ TEST_F(ConfigSessionTestFixture, threeWayMergeScenarios) {
   }
 }
 
-// Test that rebuildPortMap() regenerates the cached PortMap from the current
-// in-memory agentConfig_, so a newly added port becomes visible.
-TEST_F(ConfigSessionTestFixture, rebuildPortMap) {
+// A SessionPortMap is a snapshot of the session's agent config: one built
+// before a port is added does not see it, one built afterwards does.
+TEST_F(ConfigSessionTestFixture, sessionPortMapIsBuiltFromSessionConfig) {
   fs::path sessionDir = getTestHomeDir() / ".fboss2";
 
-  TestableConfigSession session(
-      sessionDir.string(), (getTestEtcDir() / "coop").string());
-
-  const std::string newName = "eth1/1/3";
-
-  // Add a new port to the in-memory config.
-  auto& config = session.getAgentConfig();
+  TestableConfigSession::setInstance(
+      std::make_unique<TestableConfigSession>(
+          sessionDir.string(), (getTestEtcDir() / "coop").string()));
+  auto& config = ConfigSession::getInstance().getAgentConfig();
   auto& ports = *config.sw()->ports();
+  ASSERT_FALSE(ports.empty());
+  const std::string existingName = *ports[0].name();
+  const std::string newName = "eth1/1/3";
+  // Reserve first so the push_back below cannot move the ports the first map
+  // points at.
+  ports.reserve(ports.size() + 1);
+
+  const utils::SessionPortMap before;
+  EXPECT_NE(before->getPort(existingName), nullptr);
+  EXPECT_EQ(before->getPort(newName), nullptr);
+
   cfg::Port newPort;
   newPort.logicalID() = 3;
   newPort.name() = newName;
   ports.push_back(newPort);
 
-  // The cached PortMap still reflects the config as loaded from disk, so the
-  // new port is not visible yet.
-  EXPECT_EQ(session.getPortMap().getPort(newName), nullptr);
-
-  // After rebuilding, the new port is resolvable.
-  session.rebuildPortMap();
-  auto* port = session.getPortMap().getPort(newName);
+  EXPECT_EQ(before->getPort(newName), nullptr);
+  const utils::SessionPortMap after;
+  auto* port = after->getPort(newName);
   ASSERT_NE(port, nullptr);
   EXPECT_EQ(*port->name(), newName);
+}
+
+// An agent config with an unnamed port still loads, so commands that need no
+// port lookup work on it; it is refused once a command builds a port map.
+TEST_F(ConfigSessionTestFixture, unnamedPortIsRefusedByPortMapNotByLoad) {
+  fs::path sessionDir = getTestHomeDir() / ".fboss2";
+  fs::path agentConfigPath = getTestEtcDir() / "coop" / "agent.conf";
+  ASSERT_TRUE(
+      folly::writeFile(
+          std::string(
+              R"({"sw": {"ports": [{"logicalID": 1, "state": 2, "speed": 100000}]}})"),
+          agentConfigPath.c_str()));
+
+  TestableConfigSession::setInstance(
+      std::make_unique<TestableConfigSession>(
+          sessionDir.string(), (getTestEtcDir() / "coop").string()));
+  auto& config = ConfigSession::getInstance().getAgentConfig();
+  ASSERT_EQ(config.sw()->ports()->size(), 1);
+  EXPECT_FALSE((*config.sw()->ports())[0].name().has_value());
+
+  EXPECT_THROW(utils::SessionPortMap(), std::runtime_error);
 }
 
 // Constructing a session no longer stages the agent config by itself.
@@ -1754,6 +1786,49 @@ TEST_F(ConfigSessionTestFixture, lazyBgpSessionStartsFromCurrentHead) {
   EXPECT_FALSE(fs::exists(sessionDir2 / "agent.conf"));
 }
 
+// A rebase that merges the BGP domain reloads the in-memory BGP config at
+// once: the next read sees the other session's change without a reload.
+TEST_F(ConfigSessionTestFixture, rebaseReloadsMergedBgpConfig) {
+  const std::string coop = (getTestEtcDir() / "coop").string();
+  // A common base for the three-way merge: a first commit of the BGP config.
+  {
+    TestableConfigSession seed(
+        (getTestHomeDir() / ".fboss2_seed").string(), coop);
+    useClassicBgpSystemd(seed);
+    seed.getBgpConfig().router_id() = "0.0.0.0";
+    seed.getBgpConfig().hold_time() = 30;
+    seed.setCommandLine("config protocol bgp global hold-time 30");
+    seed.saveBgpConfig();
+    ASSERT_FALSE(seed.commit(localhost()).commitSha.empty());
+  }
+  TestableConfigSession session1(
+      (getTestHomeDir() / ".fboss2_user1").string(), coop);
+  TestableConfigSession session2(
+      (getTestHomeDir() / ".fboss2_user2").string(), coop);
+  useClassicBgpSystemd(session1);
+  useClassicBgpSystemd(session2);
+
+  // Both sessions load the BGP config from the same base.
+  session1.getBgpConfig();
+  session2.getBgpConfig();
+
+  session1.getBgpConfig().router_id() = "1.1.1.1";
+  session1.setCommandLine("config protocol bgp global router-id 1.1.1.1");
+  session1.saveBgpConfig();
+  ASSERT_FALSE(session1.commit(localhost()).commitSha.empty());
+
+  session2.getBgpConfig().hold_time() = 99;
+  session2.setCommandLine("config protocol bgp global hold-time 99");
+  session2.saveBgpConfig();
+  EXPECT_THROW(session2.commit(localhost()), std::runtime_error);
+
+  session2.rebase();
+  // The const accessor does not load: it throws unless rebase() already did.
+  const auto& merged = std::as_const(session2).getBgpConfig();
+  EXPECT_EQ(*merged.router_id(), "1.1.1.1");
+  EXPECT_EQ(*merged.hold_time(), 99);
+}
+
 // Rolling back to an earlier commit must restore the BGP system config and
 // restart bgpd (not just the agent config).
 TEST_F(ConfigSessionTestFixture, rollbackBgpConfig) {
@@ -1955,8 +2030,9 @@ TEST_F(ConfigSessionTestFixture, noArgRollbackReachesBaseline) {
 TEST_F(ConfigSessionTestFixture, rollbackUsesRecordedActionLevel) {
   fs::path sessionDir = getTestHomeDir() / ".fboss2";
 
-  auto makeSession = [&](MockFbossServiceUtil*& mockOut) {
-    auto mock = std::make_unique<::testing::StrictMock<MockFbossServiceUtil>>();
+  auto makeSession = [&](MockAgentServiceController*& mockOut) {
+    auto mock =
+        std::make_unique<::testing::StrictMock<MockAgentServiceController>>();
     mockOut = mock.get();
     return std::make_unique<TestableConfigSession>(
         sessionDir.string(),
@@ -1967,10 +2043,9 @@ TEST_F(ConfigSessionTestFixture, rollbackUsesRecordedActionLevel) {
   std::string firstCommitSha;
   // First commit: a HITLESS change (e.g. a description edit).
   {
-    MockFbossServiceUtil* mock = nullptr;
+    MockAgentServiceController* mock = nullptr;
     auto session = makeSession(mock);
-    EXPECT_CALL(*mock, reloadConfig(cli::ServiceType::AGENT, ::testing::_))
-        .Times(1);
+    EXPECT_CALL(*mock, reloadConfig(::testing::_)).Times(1);
     session->setCommandLine(
         "config interface eth1/1/1 description First version");
     (*session->getAgentConfig().sw()->ports())[0].description() =
@@ -1984,12 +2059,9 @@ TEST_F(ConfigSessionTestFixture, rollbackUsesRecordedActionLevel) {
   // Second commit: a change that requires an agent warmboot, like
   // `config interface eth1/1/1 switchport access vlan 3000` does.
   {
-    MockFbossServiceUtil* mock = nullptr;
+    MockAgentServiceController* mock = nullptr;
     auto session = makeSession(mock);
-    EXPECT_CALL(
-        *mock,
-        restartService(
-            cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART))
+    EXPECT_CALL(*mock, restart(cli::ConfigActionLevel::SERVICE_RESTART))
         .Times(1);
     EXPECT_CALL(*mock, isAgentConfigured(::testing::_))
         .WillOnce(::testing::Return(true));
@@ -2006,12 +2078,9 @@ TEST_F(ConfigSessionTestFixture, rollbackUsesRecordedActionLevel) {
   // must warmboot-restart the agent. reloadConfig() must NOT be called (the
   // StrictMock enforces this).
   {
-    MockFbossServiceUtil* mock = nullptr;
+    MockAgentServiceController* mock = nullptr;
     auto session = makeSession(mock);
-    EXPECT_CALL(
-        *mock,
-        restartService(
-            cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART))
+    EXPECT_CALL(*mock, restart(cli::ConfigActionLevel::SERVICE_RESTART))
         .Times(1);
     EXPECT_CALL(*mock, isAgentConfigured(::testing::_))
         .WillOnce(::testing::Return(true));
@@ -2025,13 +2094,10 @@ TEST_F(ConfigSessionTestFixture, rollbackUsesRecordedActionLevel) {
   // applied.
   std::string headBeforeSecondRollback;
   {
-    MockFbossServiceUtil* mock = nullptr;
+    MockAgentServiceController* mock = nullptr;
     auto session = makeSession(mock);
     headBeforeSecondRollback = session->getGit().getHead();
-    EXPECT_CALL(
-        *mock,
-        restartService(
-            cli::ServiceType::AGENT, cli::ConfigActionLevel::SERVICE_RESTART))
+    EXPECT_CALL(*mock, restart(cli::ConfigActionLevel::SERVICE_RESTART))
         .Times(1);
     EXPECT_CALL(*mock, isAgentConfigured(::testing::_))
         .WillOnce(::testing::Return(true));

@@ -16,7 +16,6 @@
 #include <folly/String.h>
 #include <vector>
 #include "fboss/cli/fboss2/session/ConfigSession.h"
-#include "fboss/cli/fboss2/session/FbossServiceUtil.h"
 
 namespace facebook::fboss {
 
@@ -55,9 +54,7 @@ CmdConfigSessionCommitTraits::RetType CmdConfigSessionCommit::queryClient(
         for (const auto& serviceName : serviceNamesList) {
           restartedServices.push_back(
               fmt::format(
-                  "{} ({})",
-                  serviceName,
-                  FbossServiceUtil::restartTypeName(service, level)));
+                  "{} ({})", serviceName, session.actionName(service, level)));
         }
         break;
       case cli::ConfigActionLevel::HITLESS:
