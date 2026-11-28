@@ -60,6 +60,19 @@ namespace facebook::fboss {
 
 namespace {
 
+bool isRouterAdvertisementChanged(
+    const Interface& oldIntf,
+    const Interface& newIntf) {
+  return oldIntf.getNdpConfig()->toThrift() !=
+      newIntf.getNdpConfig()->toThrift() ||
+      oldIntf.getAddresses()->toThrift() !=
+      newIntf.getAddresses()->toThrift() ||
+      oldIntf.getMtu() != newIntf.getMtu() ||
+      oldIntf.getMac() != newIntf.getMac() ||
+      oldIntf.getType() != newIntf.getType() ||
+      oldIntf.getVlanIDHelper() != newIntf.getVlanIDHelper();
+}
+
 // True for a Neighbor Discovery (RFC 4861), SEcure Neighbor Discovery (SEND,
 // RFC 3971) or Multicast Listener Discovery (MLD, RFC 2710 / RFC 3810) message
 // behind IPv6 extension headers, or a chain ending in ICMPv6 too short to hold
@@ -173,7 +186,7 @@ void IPv6Handler::stateUpdated(const StateDelta& delta) {
       intfAdded(delta.newState().get(), entry.getNew().get());
     } else if (!entry.getNew()) {
       intfDeleted(entry.getOld().get());
-    } else {
+    } else if (isRouterAdvertisementChanged(*entry.getOld(), *entry.getNew())) {
       // TODO: We could add an intfChanged() method to re-use the existing
       // IPv6RouteAdvertiser object.
       intfDeleted(entry.getOld().get());
