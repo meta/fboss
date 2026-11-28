@@ -308,6 +308,118 @@
             "upperCriticalVal": 95
           },
           "compute": "@/1000.0"
+        },
+        {
+          "name": "SVI_VR_VIN",
+          "sysfsPath": "/run/devmap/sensors/SVI_VR/in1_input",
+          "type": 1,
+          "thresholds": {
+            "maxAlarmVal": 13.2,
+            "minAlarmVal": 10.8,
+            "upperCriticalVal": 13.8,
+            "lowerCriticalVal": 10.2
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "SVI_VR_POS1V1_VDDCR_VOUT",
+          "sysfsPath": "/run/devmap/sensors/SVI_VR/in3_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.55,
+            "lowerCriticalVal": 0.6
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "SVI_VR_POS1V0_VDDSOC_VOUT",
+          "sysfsPath": "/run/devmap/sensors/SVI_VR/in4_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.3,
+            "lowerCriticalVal": 0.6
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "SVI_VR_POS0V75_S0_VOUT",
+          "sysfsPath": "/run/devmap/sensors/SVI_VR/in5_input",
+          "type": 1,
+          "thresholds": {
+            "upperCriticalVal": 1.2,
+            "lowerCriticalVal": 0.6
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "SVI_VR_POS1V1_VDDCR_IOUT",
+          "sysfsPath": "/run/devmap/sensors/SVI_VR/curr4_input",
+          "type": 2,
+          "thresholds": {
+            "maxAlarmVal": 144,
+            "upperCriticalVal": 160
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "SVI_VR_POS1V0_VDDSOC_IOUT",
+          "sysfsPath": "/run/devmap/sensors/SVI_VR/curr5_input",
+          "type": 2,
+          "thresholds": {
+            "maxAlarmVal": 33.75,
+            "upperCriticalVal": 37.5
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "SVI_VR_POS0V75_S0_IOUT",
+          "sysfsPath": "/run/devmap/sensors/SVI_VR/curr6_input",
+          "type": 2,
+          "thresholds": {
+            "maxAlarmVal": 27,
+            "upperCriticalVal": 30
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "SVI_VR_POS1V1_VDDCR_TEMP",
+          "sysfsPath": "/run/devmap/sensors/SVI_VR/temp1_input",
+          "type": 3,
+          "thresholds": {
+            "maxAlarmVal": 120,
+            "upperCriticalVal": 130
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "SVI_VR_POS1V0_VDDSOC_TEMP",
+          "sysfsPath": "/run/devmap/sensors/SVI_VR/temp2_input",
+          "type": 3,
+          "thresholds": {
+            "maxAlarmVal": 120,
+            "upperCriticalVal": 130
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "SVI_VR_POS0V75_S0_TEMP",
+          "sysfsPath": "/run/devmap/sensors/SVI_VR/temp3_input",
+          "type": 3,
+          "thresholds": {
+            "maxAlarmVal": 120,
+            "upperCriticalVal": 130
+          },
+          "compute": "@/1000.0"
+        },
+        {
+          "name": "SVI_VR_CTRL_TEMP",
+          "sysfsPath": "/run/devmap/sensors/SVI_VR/temp4_input",
+          "type": 3,
+          "thresholds": {
+            "maxAlarmVal": 120,
+            "upperCriticalVal": 130
+          },
+          "compute": "@/1000.0"
         }
       ]
     },

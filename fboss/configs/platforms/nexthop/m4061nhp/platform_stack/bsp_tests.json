@@ -31,6 +31,27 @@
         ]
       }
     },
+    "SCM.SVI_VR": {
+      "i2cTestData": {
+        "i2cGetData": [
+          {
+            "reg": "0x98",
+            "expected": "0x33"
+          }
+        ]
+      },
+      "hwmonTestData": {
+        "expectedFeatures": [
+          "vin",
+          "vout1",
+          "vout2",
+          "vout3",
+          "iout1",
+          "iout2",
+          "iout3"
+        ]
+      }
+    },
     "SMB.DPM_1": {
       "i2cTestData": {
         "i2cGetData": [
