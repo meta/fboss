@@ -1742,6 +1742,18 @@ TYPED_TEST(ThriftTestAllSwitchTypes, getVlanAddresses) {
   }
 }
 
+TEST(ThriftHandlerWithPortInterfaces, getVlanAddressesSkipsPortInterfaces) {
+  auto config = testConfigAWithPortInterfaces();
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->initialConfigApplied(std::chrono::steady_clock::now());
+  ThriftHandler handler(sw);
+
+  std::vector<facebook::network::thrift::Address> addrs;
+  handler.getVlanAddresses(addrs, *config.defaultVlan());
+  EXPECT_TRUE(addrs.empty());
+}
+
 TYPED_TEST(ThriftTestAllSwitchTypes, getAllInterfaces) {
   ThriftHandler handler(this->sw_);
   std::map<int32_t, InterfaceDetail> intfs;
