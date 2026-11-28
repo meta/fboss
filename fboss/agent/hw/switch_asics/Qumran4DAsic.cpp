@@ -7,13 +7,42 @@ namespace facebook::fboss {
 namespace {
 constexpr auto kCpuPortSpeed = 10000;
 constexpr auto kCpuPortNumVoqs = 8;
+
+// Standard single-FAP Q4D CPU ports: one per datapath (two per core) plus a
+// third on core 0, as {CPU system port, {core, port index}}. Used when the
+// platform mapping does not supply its own, as on config-driven platforms.
+const HwAsic::CpuPortCoreAndPortIndex& defaultCpuPortsCoreAndPortIdx() {
+  static const HwAsic::CpuPortCoreAndPortIndex kCpuPortsCoreAndPortIdx = {
+      {0, {0, 0}},
+      {1, {0, 1}},
+      {2, {0, 2}},
+      {3, {1, 0}},
+      {4, {1, 1}},
+      {5, {2, 0}},
+      {6, {2, 1}},
+      {7, {3, 0}},
+      {8, {3, 1}},
+      {9, {4, 0}},
+      {10, {4, 1}},
+      {11, {5, 0}},
+      {12, {5, 1}},
+      {13, {6, 0}},
+      {14, {6, 1}},
+      {15, {7, 0}},
+      {16, {7, 1}},
+  };
+  return kCpuPortsCoreAndPortIdx;
+}
 } // namespace
 
 std::vector<HwAsic::InternalSystemPortConfig>
 Qumran4DAsic::getInternalSystemPortConfig(
-    const CpuPortCoreAndPortIndex& cpuPortsCoreAndPortIdx) const {
+    const CpuPortCoreAndPortIndex& platformCpuPortsCoreAndPortIdx) const {
   CHECK(getSwitchId()) << " Switch Id must be set before sys port info";
 
+  const auto& cpuPortsCoreAndPortIdx = platformCpuPortsCoreAndPortIdx.empty()
+      ? defaultCpuPortsCoreAndPortIdx()
+      : platformCpuPortsCoreAndPortIdx;
   const uint32_t switchId = static_cast<uint32_t>(*getSwitchId());
   std::vector<InternalSystemPortConfig> sysPortConfig;
   sysPortConfig.reserve(cpuPortsCoreAndPortIdx.size());
