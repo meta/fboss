@@ -232,8 +232,8 @@ bool ConfigValidator::isValidLedCtrlBlockConfig(
     XLOG(ERR) << "ledPerPort must be a value greater than 0";
     return false;
   }
-  if (*ledCtrlBlockConfig.ledPerPort() > 4) {
-    XLOG(ERR) << "ledPerPort must be a value less than or equal to 4";
+  if (*ledCtrlBlockConfig.ledPerPort() > 8) {
+    XLOG(ERR) << "ledPerPort must be a value less than or equal to 8";
     return false;
   }
   if (*ledCtrlBlockConfig.lanesPerPort() <= 0) {
