@@ -280,8 +280,11 @@ void ReceiveMachine::current(LACPDU lacpdu) {
 
   bool ntt = updateNTT(lacpdu);
 
-  bool activityChanged = (lacpdu.actorInfo.state & LacpState::LACP_ACTIVE) !=
-      (partnerInfo_.state & LacpState::LACP_ACTIVE);
+  auto partnerStateChanged = [&](LacpState flag) {
+    return (lacpdu.actorInfo.state & flag) != (partnerInfo_.state & flag);
+  };
+  bool transmissionRateChanged = partnerStateChanged(LacpState::LACP_ACTIVE) ||
+      partnerStateChanged(LacpState::SHORT_TIMEOUT);
 
   recordPDU(lacpdu);
 
@@ -293,7 +296,7 @@ void ReceiveMachine::current(LACPDU lacpdu) {
     controller_.ntt();
   }
 
-  if (activityChanged) {
+  if (transmissionRateChanged) {
     controller_.startPeriodicTransmissionMachine();
   }
 
