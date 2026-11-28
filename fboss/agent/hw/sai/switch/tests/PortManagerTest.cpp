@@ -843,6 +843,58 @@ TEST_F(PortManagerTest, collectStatsAfterPortDisable) {
   checkCounterExport(swPort->getName(), ExpectExport::NO_EXPORT);
 }
 
+class PortManagerAccumulatedStatsTest : public PortManagerTest {
+ protected:
+  // Seeds the software-accumulated counters, then admin-disables the port.
+  std::shared_ptr<Port> addPortAndDisable() {
+    std::shared_ptr<Port> swPort = makePort(p0);
+    saiManagerTable->portManager().addPort(swPort);
+    saiManagerTable->portManager().updateStats(swPort->getID());
+    auto* portStat = const_cast<HwPortFb303Stats*>(
+        saiManagerTable->portManager().getLastPortStat(swPort->getID()));
+    CHECK(portStat);
+    auto stats = portStat->portStats();
+    stats.inDiscards_() = 1000;
+    stats.fecCorrectableErrors() = 20;
+    portStat->updateStats(stats, std::chrono::seconds{*stats.timestamp_()});
+    auto disabledPort = swPort->clone();
+    disabledPort->setAdminState(cfg::PortState::DISABLED);
+    saiManagerTable->portManager().changePort(swPort, disabledPort);
+    return disabledPort;
+  }
+
+  void enable(const std::shared_ptr<Port>& disabledPort) {
+    auto enabledPort = disabledPort->clone();
+    enabledPort->setAdminState(cfg::PortState::ENABLED);
+    saiManagerTable->portManager().changePort(disabledPort, enabledPort);
+  }
+
+  const HwPortStats& lastStats(PortID port) {
+    auto* portStat = saiManagerTable->portManager().getLastPortStat(port);
+    CHECK(portStat);
+    return portStat->portStats();
+  }
+};
+
+TEST_F(PortManagerAccumulatedStatsTest, preservedAcrossDisableEnable) {
+  auto port = addPortAndDisable();
+  enable(port);
+  EXPECT_EQ(*lastStats(port->getID()).inDiscards_(), 1000);
+  EXPECT_EQ(*lastStats(port->getID()).fecCorrectableErrors(), 20);
+  saiManagerTable->portManager().updateStats(port->getID());
+  EXPECT_EQ(*lastStats(port->getID()).inDiscards_(), 1000);
+  EXPECT_EQ(*lastStats(port->getID()).fecCorrectableErrors(), 20);
+}
+
+TEST_F(PortManagerAccumulatedStatsTest, clearWhileDisabled) {
+  auto port = addPortAndDisable();
+  saiManagerTable->portManager().clearStats(port->getID());
+  saiManagerTable->portManager().clearInterfacePhyCounters(port->getID());
+  enable(port);
+  EXPECT_EQ(*lastStats(port->getID()).inDiscards_(), 0);
+  EXPECT_EQ(*lastStats(port->getID()).fecCorrectableErrors(), 0);
+}
+
 TEST_F(PortManagerTest, subsumedPorts) {
   // Port P0 has a port ID 0 and only be configured with all speeds.
   checkSubsumedPorts(p0, cfg::PortSpeed::XG, {});

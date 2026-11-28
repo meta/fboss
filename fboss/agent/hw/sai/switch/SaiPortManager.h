@@ -628,6 +628,10 @@ class SaiPortManager {
   // retain removed port handle so it does not invoke remove port api.
   Handles removedHandles_;
   Stats portStats_;
+  // Last stats of admin-disabled ports, used to seed portStats_ on re-enable so
+  // software-accumulated counters (inDiscards_, clear-on-read FEC/PFC duration)
+  // stay monotonic like the HW-cumulative ones.
+  std::unordered_map<PortID, HwPortStats> disabledPortStats_;
   std::map<PortID, PrbsStatsTable> portAsicPrbsStats_;
 
   std::optional<SaiPortTraits::Attributes::PtpMode> getPtpMode() const;

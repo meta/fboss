@@ -1995,6 +1995,7 @@ void SaiPortManager::removePort(const std::shared_ptr<Port>& swPort) {
   addRemovedHandle(itr->first);
   handles_.erase(itr);
   portStats_.erase(swId);
+  disabledPortStats_.erase(swId);
   port2SupportedStats_.erase(swId);
   port2PortType_.erase(swId);
   port2ClmEnabled_.erase(swId);
@@ -3363,9 +3364,19 @@ void SaiPortManager::clearStats(PortID port) {
     auto now = duration_cast<seconds>(system_clock::now().time_since_epoch());
     portStatItr->second->updateStats(curPortStats, now);
   }
+  auto savedItr = disabledPortStats_.find(port);
+  if (savedItr != disabledPortStats_.end()) {
+    savedItr->second.inDiscards_() = 0;
+  }
 }
 
 void SaiPortManager::clearInterfacePhyCounters(const PortID& portId) {
+  auto savedItr = disabledPortStats_.find(portId);
+  if (savedItr != disabledPortStats_.end()) {
+    savedItr->second.fecCorrectableErrors() = 0;
+    savedItr->second.fecUncorrectableErrors() = 0;
+    savedItr->second.fecCorrectedSymbols_() = 0;
+  }
   auto portStatItr = portStats_.find(portId);
   if (portStatItr == portStats_.end()) {
     return;
