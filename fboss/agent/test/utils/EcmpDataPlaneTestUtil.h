@@ -7,6 +7,7 @@
 #include "fboss/agent/types.h"
 
 #include "fboss/agent/test/EcmpSetupHelper.h"
+#include "fboss/agent/test/utils/LoadBalancerTestUtils.h"
 
 namespace facebook::fboss {
 class TestEnsembleIf;
@@ -46,6 +47,9 @@ class HwEcmpDataPlaneTestUtil {
       const std::vector<PortDescriptor>& portDescs,
       const std::vector<NextHopWeight>& weights,
       uint8_t deviation);
+  bool isTrafficSprayed(
+      const std::vector<PortDescriptor>& portDescs,
+      const MemberShareBounds& bounds);
 
   void programLoadBalancer(const cfg::LoadBalancer& lb);
 
@@ -57,12 +61,17 @@ class HwEcmpDataPlaneTestUtil {
     programLoadBalancer(lb);
   }
 
+  /*
+   * When sprayBounds is set, each member is checked against a share of the
+   * total rather than against every other member. See MemberShareBounds.
+   */
   void pumpTrafficPortAndVerifyLoadBalanced(
       unsigned int ecmpWidth,
       bool loopThroughFrontPanel,
       const std::vector<NextHopWeight>& weights,
       int deviation,
-      bool loadBalanceExpected);
+      bool loadBalanceExpected,
+      const std::optional<MemberShareBounds>& sprayBounds = std::nullopt);
 
  protected:
   static constexpr uint64_t kDefaultPacketCount{10000};
