@@ -65,6 +65,30 @@ class FbossServiceUtil {
       cli::ServiceType service,
       const HostInfo& hostInfo);
 
+  // Asks a service to validate a candidate config (the contents of its config
+  // file) without applying it, through its validateConfig() RPC. level is how
+  // the config will be applied: the service accepts changes it can only make
+  // with a restart if level is disruptive enough for them.
+  //
+  // Throws std::runtime_error listing every reason the service gives if it
+  // rejects the config. Also throws if the service reports that it could not
+  // validate the config (e.g. it is still starting) and level would apply it
+  // to the running service, which would fail the same way; if level restarts
+  // the service, that only logs a warning, because the restart does not need
+  // the running service and may be what fixes it. A transport error after the
+  // request was sent (e.g. the service died validating it) propagates as is.
+  //
+  // Otherwise best effort: a service that refuses the connection, or one that
+  // predates the RPC, only logs a warning, because the commit may be the very
+  // thing that brings the service back and any real problem still surfaces
+  // when the config is applied. Services without such an RPC (bgpd today) are
+  // skipped.
+  virtual void validateConfig(
+      cli::ServiceType service,
+      const std::string& config,
+      cli::ConfigActionLevel level,
+      const HostInfo& hostInfo);
+
   // Returns true if running in split mode (multi_switch flag was set).
   virtual bool isSplitMode() const;
 
