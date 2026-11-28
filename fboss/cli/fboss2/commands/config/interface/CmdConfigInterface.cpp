@@ -17,7 +17,6 @@
 #include <fmt/format.h>
 #include <folly/Conv.h>
 #include <folly/String.h>
-#include <thrift/lib/cpp/util/EnumUtils.h>
 #include <thrift/lib/cpp2/FieldRef.h>
 #include <algorithm>
 #include <cctype>
@@ -47,6 +46,7 @@
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
 #include "fboss/cli/fboss2/utils/LookupClassUtils.h"
+#include "fboss/cli/fboss2/utils/SessionPortMap.h"
 #include "fboss/lib/config/agent/PortConfigUtils.h"
 #include "fboss/qsfp_service/if/gen-cpp2/QsfpService.h"
 
@@ -585,12 +585,12 @@ bool applyInterfaceName(
         "Cannot set the same name on multiple interfaces");
   }
 
-  auto& portMap = ConfigSession::getInstance().getPortMap();
-  if (portMap.hasPort(value)) {
+  const utils::SessionPortMap portMap;
+  if (portMap->hasPort(value)) {
     throw std::invalid_argument(
         fmt::format("'{}' is already in use as a port name", value));
   }
-  cfg::Interface* existing = portMap.getInterfaceByName(value);
+  cfg::Interface* existing = portMap->getInterfaceByName(value);
   if (existing && (targets.empty() || existing != targets[0])) {
     throw std::invalid_argument(
         fmt::format(
@@ -603,9 +603,6 @@ bool applyInterfaceName(
     return false;
   }
   targets[0]->name() = value;
-  // Refresh the name-based lookup maps so the rest of the session sees the
-  // new name.
-  ConfigSession::getInstance().rebuildPortMap();
   return true;
 }
 
@@ -686,7 +683,6 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
       createMissingLoopbackInterfaces(interfaces);
   if (!createdLoopbacks.empty()) {
     changed = true;
-    ConfigSession::getInstance().rebuildPortMap();
     results.push_back(
         fmt::format(
             "created loopback interface(s): {}",
@@ -715,7 +711,7 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
   // Loopback creation above re-resolves for the same reason.
   const std::optional<std::string> profileValue = findProfileValue(attributes);
 
-  utils::InterfaceList resolved(std::vector<std::string>{});
+  std::optional<utils::InterfaceList> resolved;
   // The commit action level required by this command, escalated by attribute
   // handlers as needed. Starts HITLESS (reloadConfig); a profile change that
   // removes a port escalates it to DISRUPTIVE_SERVICE_RESTART, because applying
@@ -727,14 +723,13 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
     results.push_back(
         applyProfile(hostInfo, interfaces, *profileValue, &actionLevel));
     changed = true;
-    ConfigSession::getInstance().rebuildPortMap();
   }
   const bool reresolve = profileValue.has_value() || !createdLoopbacks.empty();
   if (reresolve) {
-    resolved = utils::InterfaceList(interfaces.getNames());
+    resolved.emplace(interfaces.getNames());
   }
   const utils::InterfaceList& effectiveInterfaces =
-      reresolve ? resolved : interfaces;
+      resolved ? *resolved : interfaces;
 
   for (const auto& [attr, value] : attributes) {
     if (attr == "profile") {
