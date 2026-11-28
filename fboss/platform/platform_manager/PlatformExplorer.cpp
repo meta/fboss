@@ -867,6 +867,8 @@ void PlatformExplorer::createDeviceSymLink(
       if (rtmName.starts_with("rtm_ctrl")) {
         targetPath = devicePathResolver_.resolvePciSubDevSysfsPath(devicePath);
       }
+    } else if (linkParentPath.string() == "/run/devmap/cable-cartridges") {
+      targetPath = devicePathResolver_.resolvePciSubDevSysfsPath(devicePath);
     } else {
       throw std::runtime_error(
           fmt::format("Symbolic link {} is not supported.", linkPath));

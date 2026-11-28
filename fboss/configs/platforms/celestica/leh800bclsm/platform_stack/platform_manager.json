@@ -418,6 +418,20 @@
               "isEeprom": true
             },
             {
+              "busName": "MCB_IOB_I2C_MASTER_8",
+              "address": "0x27",
+              "kernelDeviceName": "cc_slot_pca9534",
+              "pmUnitScopedName": "CABLE_CARTRIDGE_0",
+              "__comment__": "cc_slot_id_0 corresponds to CC#C, cc_slot_id_1 corresponds to CC#D"
+            },
+            {
+              "busName": "MCB_IOB_I2C_MASTER_21",
+              "address": "0x27",
+              "kernelDeviceName": "cc_slot_pca9534",
+              "pmUnitScopedName": "CABLE_CARTRIDGE_1",
+              "__comment__": "cc_slot_id_0 corresponds to CC#A, cc_slot_id_1 corresponds to CC#B"
+            },
+            {
               "busName": "MCB_IOB_I2C_MASTER_13",
               "address": "0x4d",
               "kernelDeviceName": "lm75b",
@@ -858,6 +872,20 @@
           "kernelDeviceName": "24c64",
           "pmUnitScopedName": "CHASSIS_EEPROM",
           "isEeprom": true
+        },
+        {
+          "busName": "MCB_IOB_I2C_MASTER_8",
+          "address": "0x27",
+          "kernelDeviceName": "cc_slot_pca9534",
+          "pmUnitScopedName": "CABLE_CARTRIDGE_0",
+          "__comment__": "cc_slot_id_0 corresponds to CC#C, cc_slot_id_1 corresponds to CC#D"
+        },
+        {
+          "busName": "MCB_IOB_I2C_MASTER_21",
+          "address": "0x27",
+          "kernelDeviceName": "cc_slot_pca9534",
+          "pmUnitScopedName": "CABLE_CARTRIDGE_1",
+          "__comment__": "cc_slot_id_0 corresponds to CC#A, cc_slot_id_1 corresponds to CC#B"
         },
         {
           "busName": "MCB_IOB_I2C_MASTER_13",
@@ -1970,6 +1998,8 @@
     "/run/devmap/flashes/MCB_SPI_MASTER_5_DEVICE_1": "/[MCB_SPI_MASTER_5_DEVICE_1]",
     "/run/devmap/flashes/MCB_SPI_MASTER_6_DEVICE_1": "/[MCB_SPI_MASTER_6_DEVICE_1]",
     "/run/devmap/flashes/MCB_SPI_MASTER_7_DEVICE_1": "/[MCB_SPI_MASTER_7_DEVICE_1]",
+    "/run/devmap/cable-cartridges/cc_0": "/[CABLE_CARTRIDGE_0]",
+    "/run/devmap/cable-cartridges/cc_1": "/[CABLE_CARTRIDGE_1]",
     "/run/devmap/mdio-busses/mdio_bus_ctrl_l_1": "/[RTM_L_MDIO_BUS_1]",
     "/run/devmap/mdio-busses/mdio_bus_ctrl_l_2": "/[RTM_L_MDIO_BUS_2]",
     "/run/devmap/mdio-busses/mdio_bus_ctrl_l_3": "/[RTM_L_MDIO_BUS_3]",
