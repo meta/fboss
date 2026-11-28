@@ -1522,46 +1522,6 @@
           "compute": "@/1000"
         },
         {
-          "name": "SMB_U72_G202X_TEMP_5",
-          "sysfsPath": "/run/devmap/sensors/SMB_CPLD/temp5_input",
-          "type": 3,
-          "thresholds": {
-            "upperCriticalVal": 125,
-            "maxAlarmVal": 105
-          },
-          "compute": "@/1000"
-        },
-        {
-          "name": "SMB_U72_G202X_TEMP_6",
-          "sysfsPath": "/run/devmap/sensors/SMB_CPLD/temp6_input",
-          "type": 3,
-          "thresholds": {
-            "upperCriticalVal": 125,
-            "maxAlarmVal": 105
-          },
-          "compute": "@/1000"
-        },
-        {
-          "name": "SMB_U72_G202X_TEMP_7",
-          "sysfsPath": "/run/devmap/sensors/SMB_CPLD/temp7_input",
-          "type": 3,
-          "thresholds": {
-            "upperCriticalVal": 125,
-            "maxAlarmVal": 105
-          },
-          "compute": "@/1000"
-        },
-        {
-          "name": "SMB_U72_G202X_TEMP_8",
-          "sysfsPath": "/run/devmap/sensors/SMB_CPLD/temp8_input",
-          "type": 3,
-          "thresholds": {
-            "upperCriticalVal": 125,
-            "maxAlarmVal": 105
-          },
-          "compute": "@/1000"
-        },
-        {
           "name": "SMB_U16_G202X_C_VDDC_VOUT",
           "sysfsPath": "/run/devmap/sensors/SMB_VRM1/in2_input",
           "type": 1,
@@ -1825,11 +1785,7 @@
         "SMB_U72_G202X_TEMP_1",
         "SMB_U72_G202X_TEMP_2",
         "SMB_U72_G202X_TEMP_3",
-        "SMB_U72_G202X_TEMP_4",
-        "SMB_U72_G202X_TEMP_5",
-        "SMB_U72_G202X_TEMP_6",
-        "SMB_U72_G202X_TEMP_7",
-        "SMB_U72_G202X_TEMP_8"
+        "SMB_U72_G202X_TEMP_4"
       ]
     }
   ]
