@@ -104,6 +104,7 @@ class DiagShell {
 
  private:
   std::unique_ptr<Repl> makeRepl() const;
+  void syncBcmShell();
   std::string getClientInformationStr(
       std::unique_ptr<ClientInformation> clientInfo) const;
   void logToScuba(
