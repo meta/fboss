@@ -1432,6 +1432,39 @@ TEST_F(
   counters.checkDelta("PrimaryInterface.router_advertisements.sum", 0);
 }
 
+TEST_F(NdpTest, InterfaceNdpEntryChangeDoesNotSendRouterAdvertisement) {
+  auto config = createSwitchConfig(seconds(3600), seconds(0));
+  auto handle = createTestHandle(&config);
+  auto sw = handle->getSw();
+  sw->initialConfigApplied(std::chrono::steady_clock::now());
+  EXPECT_MANY_SWITCHED_PKTS(sw, "router advertisement", [](const TxPacket*) {});
+  waitForBackgroundThread(sw);
+
+  const InterfaceID intfID(5);
+  const IPAddressV6 neighborIP("2401:db00:2110:3004::b");
+  CounterCache counters(sw);
+
+  sw->updateStateBlocking(
+      "Add NDP neighbor under interface",
+      [intfID, neighborIP](const std::shared_ptr<SwitchState> state) {
+        auto newState = state->clone();
+        auto ndpTable = std::make_shared<NdpTable>();
+        ndpTable->addEntry(
+            neighborIP,
+            MacAddress("02:05:73:f9:46:fb"),
+            PortDescriptor(PortID(1)),
+            intfID);
+        auto newIntf =
+            state->getInterfaces()->getNode(intfID)->modify(&newState);
+        newIntf->setNdpTable(std::move(ndpTable));
+        return newState;
+      });
+  waitForBackgroundThread(sw);
+
+  counters.update();
+  counters.checkDelta("PrimaryInterface.router_advertisements.sum", 0);
+}
+
 TEST_F(NdpTest, receiveNeighborAdvertisementUnsolicited) {
   auto handle = this->setupTestHandle();
   auto sw = handle->getSw();
