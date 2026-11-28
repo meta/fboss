@@ -21,6 +21,9 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
+#include <initializer_list>
+#include <map>
 
 namespace facebook::fboss {
 using utils::Table;
@@ -145,6 +148,15 @@ void appendWindowedQueueCounters(
   }
 }
 
+// Sums packet counters, treating counters the hardware does not report
+// (STAT_UNINITIALIZED) as zero.
+int64_t sumPktCounters(std::initializer_list<int64_t> counters) {
+  int64_t total = 0;
+  for (auto counter : counters) {
+    total += std::max<int64_t>(counter, 0);
+  }
+  return total;
+}
 } // namespace
 
 std::string getAdminStateStr(PortAdminState adminState) {
@@ -690,6 +702,8 @@ RetType CmdShowPort::createModel(
             folly::copy(portHwStatsEntry.inCongestionDiscards_().value());
         cliPortStats.queueOutBytes() =
             portHwStatsEntry.queueOutBytes_().value();
+        cliPortStats.queueOutPackets() =
+            portHwStatsEntry.queueOutPackets_().value();
         for (const auto& queue : portInfo.portQueues().value()) {
           const auto queueId = folly::copy(queue.id().value());
           const auto queueName = queue.name().value().empty()
@@ -778,6 +792,14 @@ RetType CmdShowPort::createModel(
         windowedStats.outPausePackets().from_optional(
             getWindowedCounter(fb303Counters, portName + ".out_pause_frames"));
         cliPortStats.windowedStats() = std::move(windowedStats);
+        cliPortStats.ingressPkts() = sumPktCounters(
+            {folly::copy(portHwStatsEntry.inUnicastPkts_().value()),
+             folly::copy(portHwStatsEntry.inMulticastPkts_().value()),
+             folly::copy(portHwStatsEntry.inBroadcastPkts_().value())});
+        cliPortStats.egressPkts() = sumPktCounters(
+            {folly::copy(portHwStatsEntry.outUnicastPkts_().value()),
+             folly::copy(portHwStatsEntry.outMulticastPkts_().value()),
+             folly::copy(portHwStatsEntry.outBroadcastPkts_().value())});
         cliPortStats.cbfcCfUpdateTx().from_optional(
             portHwStatsEntry.cbfcCfUpdateTx_().to_optional());
         cliPortStats.cbfcCfUpdateRx().from_optional(
@@ -887,6 +909,22 @@ void CmdShowPort::printOutput(const RetType& model, std::ostream& out) {
               "Unicast queues: \t\t {}",
               folly::to<std::string>(
                   folly::copy(portInfo.numUnicastQueues().value()))));
+      const auto appendQueueCounters = [&](const std::map<int16_t, int64_t>&
+                                               queueCounters) {
+        for (const auto& [queueId, value] : queueCounters) {
+          const auto iter = portInfo.queueIdToName()->find(queueId);
+          std::string queueName;
+          if (iter != portInfo.queueIdToName()->end()) {
+            queueName = folly::to<std::string>("(", iter->second, ")");
+          }
+          // print either if the queue is valid or queue has non zero traffic
+          if (value || !queueName.empty()) {
+            detailedOutput.emplace_back(
+                fmt::format(
+                    "\tQueue {} {:12}    \t\t {}", queueId, queueName, value));
+          }
+        }
+      };
       detailedOutput.emplace_back("    Cumulative hardware counters");
       detailedOutput.emplace_back(
           fmt::format(
@@ -896,23 +934,16 @@ void CmdShowPort::printOutput(const RetType& model, std::ostream& out) {
           fmt::format(
               "    Egress (bytes)                \t\t {}",
               formatHwCounter(portHwStats.egressBytes().value())));
-      for (const auto& queueBytes : portHwStats.queueOutBytes().value()) {
-        const auto iter =
-            portInfo.queueIdToName().value().find(queueBytes.first);
-        std::string queueName;
-        if (iter != portInfo.queueIdToName().value().end()) {
-          queueName = folly::to<std::string>("(", iter->second, ")");
-        }
-        // print either if the queue is valid or queue has non zero traffic
-        if (queueBytes.second || !queueName.empty()) {
-          detailedOutput.emplace_back(
-              fmt::format(
-                  "\tQueue {} {:12}    \t\t {}",
-                  queueBytes.first,
-                  queueName,
-                  queueBytes.second));
-        }
-      }
+      appendQueueCounters(portHwStats.queueOutBytes().value());
+      detailedOutput.emplace_back(
+          fmt::format(
+              "    Ingress (pkts)                \t\t {}",
+              formatHwCounter(portHwStats.ingressPkts().value())));
+      detailedOutput.emplace_back(
+          fmt::format(
+              "    Egress (pkts)                 \t\t {}",
+              formatHwCounter(portHwStats.egressPkts().value())));
+      appendQueueCounters(portHwStats.queueOutPackets().value());
       detailedOutput.emplace_back(
           fmt::format(
               "    Received Unicast (pkts)       \t\t {}",
@@ -965,24 +996,7 @@ void CmdShowPort::printOutput(const RetType& model, std::ostream& out) {
           fmt::format(
               "    Out Congestion Discards (pkts)\t\t {}",
               formatHwCounter(portHwStats.outCongestionDiscardPkts().value())));
-      for (const auto& queueDiscardPackets :
-           portHwStats.queueOutDiscardPackets().value()) {
-        const auto iter =
-            portInfo.queueIdToName().value().find(queueDiscardPackets.first);
-        std::string queueName;
-        if (iter != portInfo.queueIdToName().value().end()) {
-          queueName = folly::to<std::string>("(", iter->second, ")");
-        }
-        // print either if the queue is valid or queue has non zero traffic
-        if (queueDiscardPackets.second || !queueName.empty()) {
-          detailedOutput.emplace_back(
-              fmt::format(
-                  "\tQueue {} {:12}    \t\t {}",
-                  queueDiscardPackets.first,
-                  queueName,
-                  queueDiscardPackets.second));
-        }
-      }
+      appendQueueCounters(portHwStats.queueOutDiscardPackets().value());
       detailedOutput.emplace_back(
           fmt::format(
               "    In Congestion Discards (pkts)\t\t {}",
