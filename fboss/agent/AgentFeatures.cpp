@@ -508,6 +508,12 @@ DEFINE_bool(
     false,
     "Enable sending and receiving port drain state in LLDP packets");
 
+DEFINE_int32(
+    lldp_tx_ports_per_slot,
+    1,
+    "Max ports to send LLDP on back to back. Sends are spread evenly over "
+    "the LLDP interval. 0 or a negative value sends on all ports at once.");
+
 DEFINE_bool(enable_agent_drain, false, "Enable drain in wedge agent");
 
 DEFINE_bool(
