@@ -133,6 +133,15 @@ folly::coro::Task<void> SplitAgentThriftClient::serviceLoopWrapper() {
   setState(State::CONNECTED);
   try {
     co_await serveStream();
+    // A normal stream end must also go to DISCONNECTED, so that the retry runs.
+    if (!isCancelled()) {
+      XLOG(INFO) << "Server ended stream for " << clientId();
+      bool wasConnected = isConnectedToServer();
+      setState(State::DISCONNECTED);
+      if (wasConnected) {
+        disconnected();
+      }
+    }
   } catch (const folly::OperationCancelled&) {
     XLOG(DBG2) << "Server cancelled stream for " << clientId();
     bool wasConnected = isConnectedToServer();
