@@ -54,6 +54,7 @@
 #include "fboss/cli/fboss2/utils/CmdInitUtils.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/lib/config/PlatformConfigUtils.h"
+#include "fboss/qsfp_service/if/gen-cpp2/QsfpService.h"
 
 namespace fs = std::filesystem;
 
@@ -624,6 +625,34 @@ Fboss2IntegrationTest::fetchPresentPorts() const {
     present[id] = PresentPort{*info.name(), *info.profileID()};
   }
   return present;
+}
+
+Fboss2IntegrationTest::OpticsProfiles
+Fboss2IntegrationTest::fetchOpticsProfiles() const {
+  OpticsProfiles optics;
+  try {
+    HostInfo hostInfo("localhost");
+    auto client =
+        utils::createClient<apache::thrift::Client<QsfpService>>(hostInfo);
+    client->sync_getAllPortSupportedProfiles(optics, /*checkOptics=*/true);
+  } catch (const std::exception& ex) {
+    XLOG(WARN) << "qsfp_service unavailable, candidates will not be filtered "
+                  "by optics: "
+               << ex.what();
+  }
+  return optics;
+}
+
+bool Fboss2IntegrationTest::opticsAllow(
+    const OpticsProfiles& optics,
+    const std::string& portName,
+    cfg::PortProfileID profile) {
+  auto it = optics.find(portName);
+  if (it == optics.end() || it->second.empty()) {
+    return true;
+  }
+  return std::find(it->second.begin(), it->second.end(), profile) !=
+      it->second.end();
 }
 
 std::set<std::string> Fboss2IntegrationTest::supportedProfileNames(

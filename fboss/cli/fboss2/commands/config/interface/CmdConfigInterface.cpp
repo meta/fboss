@@ -15,8 +15,10 @@
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <folly/Conv.h>
 #include <folly/String.h>
+#include <folly/logging/xlog.h>
 #include <thrift/lib/cpp/util/EnumUtils.h>
 #include <thrift/lib/cpp2/FieldRef.h>
 #include <algorithm>
@@ -26,6 +28,7 @@
 #include <iostream>
 #include <map>
 #include <optional>
+#include <ranges>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -189,7 +192,8 @@ std::string applyProfileImpl(
     const utility::PortProfileSupportMap& qsfpSupportedProfiles,
     const utils::InterfaceList& interfaces,
     const std::string& value,
-    cli::ConfigActionLevel* actionLevel) {
+    cli::ConfigActionLevel* actionLevel,
+    std::vector<std::string>* warnings) {
   // Parse once (throws std::invalid_argument on a bad string) and thread the
   // enum through the rest of the flow.
   const cfg::PortProfileID requestedProfile = parsePortProfile(value);
@@ -222,10 +226,37 @@ std::string applyProfileImpl(
 
   utility::PortProfileChangeResult result;
   try {
-    result = utility::applyPortProfileChanges(
-        swConfig, platformMapping, requests, qsfpSupportedProfiles);
+    result =
+        utility::applyPortProfileChanges(swConfig, platformMapping, requests);
   } catch (const FbossError& error) {
     throw std::invalid_argument(error.what());
+  }
+
+  // The agent applies any platform-supported profile from its config whatever
+  // the transceiver, so a transceiver mismatch only warns here.
+  if (warnings != nullptr) {
+    for (const auto& request : result.requestedPorts) {
+      const auto qsfpProfiles = qsfpSupportedProfiles.find(request.portName);
+      if (qsfpProfiles == qsfpSupportedProfiles.end() ||
+          qsfpProfiles->second.empty() ||
+          std::find(
+              qsfpProfiles->second.begin(),
+              qsfpProfiles->second.end(),
+              requestedProfile) != qsfpProfiles->second.end()) {
+        continue;
+      }
+      const auto supportedNames =
+          qsfpProfiles->second | std::views::transform([](auto profileID) {
+            return apache::thrift::util::enumNameSafe(profileID);
+          });
+      warnings->push_back(
+          fmt::format(
+              "Warning: profile '{}' is not supported by the transceiver on "
+              "port {}. Supported profiles: [{}]",
+              apache::thrift::util::enumNameSafe(requestedProfile),
+              request.portName,
+              fmt::join(supportedNames, ", ")));
+    }
   }
 
   const auto profileSpeed = result.requestedPorts.empty()
@@ -275,7 +306,8 @@ std::string applyProfile(
     const HostInfo& hostInfo,
     const utils::InterfaceList& interfaces,
     const std::string& value,
-    cli::ConfigActionLevel* actionLevel = nullptr) {
+    cli::ConfigActionLevel* actionLevel = nullptr,
+    std::vector<std::string>* warnings = nullptr) {
   cfg::PlatformMapping platformMappingConfig;
   auto agentClient =
       utils::createClient<apache::thrift::Client<FbossCtrl>>(hostInfo);
@@ -286,9 +318,14 @@ std::string applyProfile(
     auto qsfpClient =
         utils::createClient<apache::thrift::Client<QsfpService>>(hostInfo);
     qsfpClient->sync_getAllPortSupportedProfiles(qsfpSupportedProfiles, true);
-  } catch (const std::exception&) {
-    // QsfpService unavailable; applyPortProfileChanges falls back to platform
-    // mapping support.
+  } catch (const std::exception& ex) {
+    XLOG(WARN) << "Unable to query qsfp_service for supported profiles: "
+               << ex.what();
+    if (warnings != nullptr) {
+      warnings->emplace_back(
+          "Warning: qsfp_service is unreachable, so the profile was not "
+          "checked against the transceiver");
+    }
   }
 
   const PlatformMapping platformMapping(platformMappingConfig);
@@ -298,7 +335,8 @@ std::string applyProfile(
       qsfpSupportedProfiles,
       interfaces,
       value,
-      actionLevel);
+      actionLevel,
+      warnings);
 }
 
 // Creates the virtual loopback interface for `index`, plus its backing VLAN
@@ -723,9 +761,10 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
   // (LookupClassRouteUpdater dereferences the removed port's now-absent
   // interface). See T281221621.
   cli::ConfigActionLevel actionLevel = cli::ConfigActionLevel::HITLESS;
+  std::vector<std::string> warnings;
   if (profileValue.has_value()) {
-    results.push_back(
-        applyProfile(hostInfo, interfaces, *profileValue, &actionLevel));
+    results.push_back(applyProfile(
+        hostInfo, interfaces, *profileValue, &actionLevel, &warnings));
     changed = true;
     ConfigSession::getInstance().rebuildPortMap();
   }
@@ -871,10 +910,12 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
         cli::ServiceType::AGENT, actionLevel);
   }
 
-  std::string interfaceList = folly::join(", ", interfaces.getNames());
-  std::string attrList = folly::join(", ", results);
   return fmt::format(
-      "Successfully configured interface(s) {}: {}", interfaceList, attrList);
+      "Successfully configured interface(s) {}: {}{}{}",
+      folly::join(", ", interfaces.getNames()),
+      folly::join(", ", results),
+      warnings.empty() ? "" : "\n",
+      folly::join("\n", warnings));
 }
 
 void CmdConfigInterface::printOutput(const RetType& logMsg) {
