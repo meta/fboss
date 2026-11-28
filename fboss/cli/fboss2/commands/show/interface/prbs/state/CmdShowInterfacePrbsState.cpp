@@ -12,7 +12,9 @@
 #include "fboss/lib/phy/gen-cpp2/phy_types.h"
 
 #include <fboss/agent/if/gen-cpp2/ctrl_types.h>
+#include <fmt/format.h>
 #include <cstdint>
+#include <optional>
 #include "fboss/agent/if/gen-cpp2/common_types.h"
 #include "thrift/lib/cpp/util/EnumUtils.h"
 
@@ -23,12 +25,13 @@ namespace {
 CmdShowInterfacePrbsStateTraits::RetType createModel(
     const HostInfo& hostInfo,
     const std::vector<std::string>& queriedIfs,
+    bool ifsExplicitlyQueried,
     const std::vector<phy::PortComponent>& components,
     const std::map<
         phy::PortComponent,
         std::map<std::string, prbs::InterfacePrbsState>>& allPrbsStates);
 
-prbs::InterfacePrbsState getPrbsState(
+std::optional<prbs::InterfacePrbsState> getPrbsState(
     const std::map<
         phy::PortComponent,
         std::map<std::string, prbs::InterfacePrbsState>>& allPrbsStates,
@@ -59,10 +62,19 @@ CmdShowInterfacePrbsStateTraits::RetType CmdShowInterfacePrbsState::queryClient(
     for (const auto& port : portEntries_) {
       allIfs.push_back(port.second.name().value());
     }
-    return createModel(hostInfo, allIfs, queriedPrbsComponents, allPrbsStates);
+    return createModel(
+        hostInfo,
+        allIfs,
+        false /* ifsExplicitlyQueried */,
+        queriedPrbsComponents,
+        allPrbsStates);
   } else {
     return createModel(
-        hostInfo, queriedIfs, queriedPrbsComponents, allPrbsStates);
+        hostInfo,
+        queriedIfs,
+        true /* ifsExplicitlyQueried */,
+        queriedPrbsComponents,
+        allPrbsStates);
   }
 }
 
@@ -124,6 +136,7 @@ namespace {
 CmdShowInterfacePrbsStateTraits::RetType createModel(
     const HostInfo& /* hostInfo */,
     const std::vector<std::string>& queriedIfs,
+    bool ifsExplicitlyQueried,
     const std::vector<phy::PortComponent>& components,
     const std::map<
         phy::PortComponent,
@@ -132,20 +145,30 @@ CmdShowInterfacePrbsStateTraits::RetType createModel(
   for (const auto& intf : queriedIfs) {
     cli::PrbsStateInterfaceEntry intfEntry;
     for (const auto& component : components) {
+      // Each service reports only the ports that support PRBS on that
+      // component (e.g. no recycle/eventor ports, no transceiver components
+      // on empty cages), so a missing entry means "not applicable".
+      auto prbsState = getPrbsState(allPrbsStates, intf, component);
+      if (!prbsState) {
+        continue;
+      }
       cli::PrbsStateComponentEntry entry;
       entry.interfaceName() = intf;
       entry.component() = component;
-      entry.prbsState() = getPrbsState(allPrbsStates, intf, component);
+      entry.prbsState() = *prbsState;
       intfEntry.componentEntries()->push_back(entry);
     }
     if (intfEntry.componentEntries()->size()) {
       model.interfaceEntries()->push_back(intfEntry);
+    } else if (ifsExplicitlyQueried) {
+      throw std::runtime_error(
+          fmt::format("Could not find interface in PRBS states: {}", intf));
     }
   }
   return model;
 }
 
-prbs::InterfacePrbsState getPrbsState(
+std::optional<prbs::InterfacePrbsState> getPrbsState(
     const std::map<
         phy::PortComponent,
         std::map<std::string, prbs::InterfacePrbsState>>& allPrbsStates,
@@ -157,11 +180,10 @@ prbs::InterfacePrbsState getPrbsState(
         "Could not find component in PRBS states: " +
         std::to_string((int)component));
   }
-  auto componentPrbsStates = allPrbsStatesItr->second;
+  const auto& componentPrbsStates = allPrbsStatesItr->second;
   auto componentPrbsStatesItr = componentPrbsStates.find(interface);
   if (componentPrbsStatesItr == componentPrbsStates.end()) {
-    throw std::runtime_error(
-        "Could not find interface in PRBS states: " + interface);
+    return std::nullopt;
   }
   return componentPrbsStatesItr->second;
 }
