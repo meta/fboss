@@ -18,7 +18,9 @@
 
 #include <folly/Benchmark.h>
 #include <folly/logging/xlog.h>
-#include <gtest/gtest.h>
+#include <gtest/gtest.h> // NOLINT(misc-include-cleaner)
+
+#include <algorithm>
 
 namespace facebook::fboss {
 
@@ -82,11 +84,14 @@ BENCHMARK(HwFlowletStatsCollectionAtScale) {
   CHECK(maxArsGroups.has_value()) << "ASIC reports no ARS group ceiling";
   const int numArsEcmpGroups = maxArsGroups.value();
 
-  std::vector<PortID> ports = portsToUse(*ensemble, numPortsToCollectStats);
+  const auto memberCandidates =
+      ensemble->masterLogicalInterfaceOrHyperPortIds();
   std::vector<PortDescriptor> portDescs;
-  portDescs.reserve(ports.size());
-  for (const auto& port : ports) {
-    portDescs.emplace_back(port);
+  for (const auto& port : portsToUse(*ensemble, numPortsToCollectStats)) {
+    if (std::find(memberCandidates.begin(), memberCandidates.end(), port) !=
+        memberCandidates.end()) {
+      portDescs.emplace_back(port);
+    }
   }
 
   utility::EcmpSetupTargetedPorts6 ecmpHelper(
