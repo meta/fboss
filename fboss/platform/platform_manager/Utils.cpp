@@ -334,40 +334,57 @@ std::vector<XcvrCtrlConfig> Utils::createXcvrCtrlConfigs(
 std::vector<LedCtrlConfig> Utils::createLedCtrlConfigs(
     const PciDeviceConfig& pciDeviceConfig) {
   std::vector<LedCtrlConfig> ledCtrlConfigs;
-  const auto ledCtrlBlockConfigs = pciDeviceConfig.ledCtrlBlockConfigs();
-  for (const auto& ledCtrlBlockConfig : *ledCtrlBlockConfigs) {
-    int endPort =
-        *ledCtrlBlockConfig.startPort() + *ledCtrlBlockConfig.numPorts();
-    for (int port = *ledCtrlBlockConfig.startPort(); port < endPort; ++port) {
-      for (int led = 1; led <= ledCtrlBlockConfig.ledPerPort(); ++led) {
-        LedCtrlConfig ledCtrlConfig;
-        ledCtrlConfig.fpgaIpBlockConfig()->pmUnitScopedName() = fmt::format(
-            "{}_PORT_{}_LED_{}",
-            *ledCtrlBlockConfig.pmUnitScopedNamePrefix(),
-            port,
-            led);
-        ledCtrlConfig.fpgaIpBlockConfig()->deviceName() =
-            *ledCtrlBlockConfig.deviceName();
-        ledCtrlConfig.fpgaIpBlockConfig()->csrOffset() =
-            Utils().computeHexExpression(
-                *ledCtrlBlockConfig.csrOffsetCalc(),
-                port,
-                *ledCtrlBlockConfig.startPort(),
-                led);
-        ledCtrlConfig.portNumber() = port;
-        ledCtrlConfig.ledId() = led;
-        if (!ledCtrlBlockConfig.iobufOffsetCalc()->empty()) {
-          ledCtrlConfig.fpgaIpBlockConfig()->iobufOffset() =
+
+  auto processBlocks = [&](const auto& blockConfigs, bool isElsfp) {
+    if (blockConfigs->empty()) {
+      return;
+    }
+    for (const auto& ledCtrlBlockConfig : *blockConfigs) {
+      int endPort =
+          *ledCtrlBlockConfig.startPort() + *ledCtrlBlockConfig.numPorts();
+      for (int port = *ledCtrlBlockConfig.startPort(); port < endPort; ++port) {
+        for (int led = 1; led <= *ledCtrlBlockConfig.ledPerPort(); ++led) {
+          LedCtrlConfig ledCtrlConfig;
+          ledCtrlConfig.fpgaIpBlockConfig()->pmUnitScopedName() = isElsfp
+              ? fmt::format(
+                    "{}_{}", *ledCtrlBlockConfig.pmUnitScopedNamePrefix(), port)
+              : fmt::format(
+                    "{}_PORT_{}_LED_{}",
+                    *ledCtrlBlockConfig.pmUnitScopedNamePrefix(),
+                    port,
+                    led);
+          ledCtrlConfig.fpgaIpBlockConfig()->deviceName() =
+              *ledCtrlBlockConfig.deviceName();
+          ledCtrlConfig.fpgaIpBlockConfig()->csrOffset() =
               Utils().computeHexExpression(
-                  *ledCtrlBlockConfig.iobufOffsetCalc(),
+                  *ledCtrlBlockConfig.csrOffsetCalc(),
                   port,
                   *ledCtrlBlockConfig.startPort(),
                   led);
+          if (isElsfp) {
+            ledCtrlConfig.portNumber() = -1;
+            ledCtrlConfig.ledId() = port;
+          } else {
+            ledCtrlConfig.portNumber() = port;
+            ledCtrlConfig.ledId() = led;
+          }
+          if (!ledCtrlBlockConfig.iobufOffsetCalc()->empty()) {
+            ledCtrlConfig.fpgaIpBlockConfig()->iobufOffset() =
+                Utils().computeHexExpression(
+                    *ledCtrlBlockConfig.iobufOffsetCalc(),
+                    port,
+                    *ledCtrlBlockConfig.startPort(),
+                    led);
+          }
+          ledCtrlConfigs.push_back(ledCtrlConfig);
         }
-        ledCtrlConfigs.push_back(ledCtrlConfig);
       }
     }
-  }
+  };
+
+  processBlocks(pciDeviceConfig.ledCtrlBlockConfigs(), false);
+  processBlocks(pciDeviceConfig.elsfpLedCtrlBlockConfigs(), true);
+
   return ledCtrlConfigs;
 }
 
