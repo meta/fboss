@@ -289,6 +289,7 @@ bool Tomahawk4Asic::isSupported(Feature feature) const {
     case HwAsic::Feature::PCS_ERROR_COUNTERS:
     case HwAsic::Feature::MIRROR_SESSION_POLICER:
     case HwAsic::Feature::ACL_DST_IPV6_WORD_WITH_MASK:
+    case HwAsic::Feature::PORT_SERDES_CREATED_WITH_PORT:
       return false;
   }
   return false;
