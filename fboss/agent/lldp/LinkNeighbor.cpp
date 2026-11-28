@@ -99,11 +99,11 @@ std::string LinkNeighbor::humanReadableNetAddr(const std::string& data) {
     if (data.size() < 1) {
       return folly::humanify(data);
     }
-    ByteRange buf{StringPiece(data)};
+    ByteRange address{StringPiece(data).subpiece(1)};
     if (data[0] == IANA_IPV4) {
-      return IPAddressV4::fromBinary(buf).str();
+      return IPAddressV4::fromBinary(address).str();
     } else if (data[0] == IANA_IPV6) {
-      return IPAddressV6::fromBinary(buf).str();
+      return IPAddressV6::fromBinary(address).str();
     }
   } catch (...) {
     // fall through

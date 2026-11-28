@@ -119,6 +119,20 @@ TEST(LinkNeighbor, badTlvLength) {
   EXPECT_FALSE(ret);
 }
 
+TEST(LinkNeighbor, humanReadableNetworkAddressIds) {
+  const std::string ianaIpv4Address("\x01\x0a\x00\x00\x01", 5);
+  const std::string ianaIpv6Address(
+      "\x02\x20\x01\x0d\xb8\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01",
+      17);
+
+  LinkNeighbor info;
+  info.setChassisId(ianaIpv4Address, lldp::LldpChassisIdType::NET_ADDRESS);
+  info.setPortId(ianaIpv6Address, lldp::LldpPortIdType::NET_ADDRESS);
+
+  EXPECT_EQ("10.0.0.1", info.humanReadableChassisId());
+  EXPECT_EQ("2001:db8::1", info.humanReadablePortId());
+}
+
 const uint8_t basicCdpPacket[] = {
     0x01, 0x00, 0x0c, 0xcc, 0xcc, 0xcc, 0x2c, 0x54, 0x2d, 0xf5, 0x89, 0x3e,
     0x01, 0x27, 0xaa, 0xaa, 0x03, 0x00, 0x00, 0x0c, 0x20, 0x00, 0x02, 0xb4,
