@@ -25,6 +25,9 @@ thrift_add_library(
   LANGUAGE cpp2
   SERVICES
     FanService
+  OPTIONS
+    json
+    reflection
   DEPENDS
     fboss_cpp2
 )
