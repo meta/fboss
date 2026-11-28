@@ -453,6 +453,11 @@ std::string serializeAgentConfig(
   return apache::thrift::SimpleJSONSerializer::serialize<std::string>(config);
 }
 
+const std::vector<std::string> kUniversalIgnoredPaths{
+    "defaultCommandLineArgs.platform_descriptor_config_path",
+    "platform.portIdToPortAssignment",
+    "sw.sdkVersion"};
+
 std::map<std::string, std::string> expectedHwTestCommandLineArgs() {
   return {
       {"check_wb_handles", "true"},
@@ -1420,7 +1425,7 @@ TEST(AgentConfigComparisonTest, ReportsByteMatch) {
   const auto result = compareAgentConfigContents(config, config);
 
   EXPECT_EQ(result.status, AgentConfigComparisonStatus::BYTE_MATCH);
-  EXPECT_EQ(result.ignoredPaths, std::vector<std::string>{"sw.sdkVersion"});
+  EXPECT_EQ(result.ignoredPaths, kUniversalIgnoredPaths);
   EXPECT_TRUE(result.semanticDifferences.empty());
 }
 
@@ -1472,10 +1477,28 @@ TEST(AgentConfigComparisonTest, AppliesUniversalIgnoredPaths) {
   const auto result = compareAgentConfigContents(generated, reference);
 
   EXPECT_EQ(result.status, AgentConfigComparisonStatus::SEMANTIC_MATCH);
-  EXPECT_EQ(result.ignoredPaths, std::vector<std::string>{"sw.sdkVersion"});
+  EXPECT_EQ(result.ignoredPaths, kUniversalIgnoredPaths);
   EXPECT_EQ(
       result.semanticDifferences,
       std::vector<std::string>{".sw.sdkVersion: ignored by comparison policy"});
+}
+
+TEST(AgentConfigComparisonTest, IgnoresPlatformDescriptorRegistryPaths) {
+  cfg::AgentConfig generatedConfig;
+  generatedConfig.defaultCommandLineArgs()["platform_descriptor_config_path"] =
+      "/tmp/platform_descriptors/";
+  generatedConfig.platform()->portIdToPortAssignment() =
+      makePortAssignments(1, kPortName);
+  const auto generated =
+      apache::thrift::SimpleJSONSerializer::serialize<std::string>(
+          generatedConfig);
+  const auto reference =
+      apache::thrift::SimpleJSONSerializer::serialize<std::string>(
+          cfg::AgentConfig{});
+
+  EXPECT_EQ(
+      compareAgentConfigContents(generated, reference).status,
+      AgentConfigComparisonStatus::SEMANTIC_MATCH);
 }
 
 TEST(AgentConfigComparisonTest, AppliesAdditionalIgnoredPaths) {
@@ -1490,7 +1513,10 @@ TEST(AgentConfigComparisonTest, AppliesAdditionalIgnoredPaths) {
 
   EXPECT_EQ(result.status, AgentConfigComparisonStatus::SEMANTIC_MATCH);
   const std::vector<std::string> expectedIgnoredPaths{
-      "defaultCommandLineArgs.test_argument", "sw.sdkVersion"};
+      "defaultCommandLineArgs.platform_descriptor_config_path",
+      "defaultCommandLineArgs.test_argument",
+      "platform.portIdToPortAssignment",
+      "sw.sdkVersion"};
   EXPECT_EQ(result.ignoredPaths, expectedIgnoredPaths);
 }
 

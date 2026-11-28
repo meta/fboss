@@ -26,7 +26,13 @@
 namespace facebook::fboss::configgen {
 namespace {
 
-const std::set<std::string> kUniversalIgnoredPaths{"sw.sdkVersion"};
+// Generated configs always enable the platform descriptor registry, so they
+// set platform_descriptor_config_path and carry port assignments that
+// hand-maintained reference configs omit.
+const std::set<std::string> kUniversalIgnoredPaths{
+    "defaultCommandLineArgs.platform_descriptor_config_path",
+    "platform.portIdToPortAssignment",
+    "sw.sdkVersion"};
 
 std::string frame(std::string_view type, std::string_view value) {
   return std::string(type) + std::to_string(value.size()) + ":" +
