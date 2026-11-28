@@ -8,6 +8,8 @@
 #include <sysexits.h>
 #include <unistd.h>
 
+#include <limits>
+
 /*
  * CLI:
  * nic_util --nic_read_reg --reg_addr <register-address> [--verbose]
@@ -42,7 +44,8 @@ DEFINE_bool(
     false,
     "Write register from NIC i210 PHY, use with --phy_reg_addr, --phy_page and phy_reg_val");
 DEFINE_uint32(phy_reg_val, 0, "NIC i210 PHY register value");
-DEFINE_uint32(phy_page, -1, "NIC i210 PHY Page id");
+constexpr uint32_t kPhyPageUnset = std::numeric_limits<uint32_t>::max();
+DEFINE_uint32(phy_page, kPhyPageUnset, "NIC i210 PHY Page id");
 
 /*
  * CLI:
@@ -208,7 +211,7 @@ bool nicPhyReadReg(
   ptr += kMdiControlRegister;
 
   // If phy_page is specified then first set the page id in phy register 22
-  if (phyPage >= 0) {
+  if (phyPage != kPhyPageUnset) {
     // OP (27..26): 1 (MDIO write)
     // PhyReg (20..16): 22 (page id)
     // DataVal (15..0): phyPage
@@ -264,7 +267,7 @@ bool nicPhyWriteReg(
   ptr += kMdiControlRegister;
 
   // If phy_page is specified then first set the page id in phy register 22
-  if (phyPage >= 0) {
+  if (phyPage != kPhyPageUnset) {
     // OP (27..26): 1 (MDIO write)
     // PhyReg (20..16): 22 (page id)
     // DataVal (15..0): phyPage
@@ -562,7 +565,7 @@ int main(int argc, char* argv[]) {
   // CLI: nic_util --nic_phy_read_reg --phy_reg_addr <register-address>
   //              [--phy_page <phy-page-id>]
   if (FLAGS_nic_phy_read_reg) {
-    if (FLAGS_phy_page >= 0) {
+    if (FLAGS_phy_page != kPhyPageUnset) {
       printf(
           "Calling nicPhyReadReg with address 0x%x (page %d)\n",
           FLAGS_phy_reg_addr,
@@ -576,7 +579,7 @@ int main(int argc, char* argv[]) {
   // CLI: nic_util --nic_phy_write_reg --phy_reg_addr <register-address>
   //               --phy_reg_val <data-value> [--phy_page <phy-page-id>]
   if (FLAGS_nic_phy_write_reg) {
-    if (FLAGS_phy_page >= 0) {
+    if (FLAGS_phy_page != kPhyPageUnset) {
       printf(
           "Calling nicPhyWriteReg with address 0x%x value 0x%x (page %d)\n",
           FLAGS_phy_reg_addr,
