@@ -1,0 +1,11 @@
+[Unit]
+Description=FBOSS root filesystem headroom guard
+Before=platform_manager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/fboss_disk_guard.sh
+
+[Install]
+WantedBy=multi-user.target
