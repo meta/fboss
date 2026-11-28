@@ -991,8 +991,12 @@ TEST(AgentConfigGenTest, UsesExplicitAsicConfigFile) {
   constexpr std::string_view kVendorAsicYaml = "ASIC_CONFIG: vendor\n";
   writeTestFile(overrideConfig, kVendorAsicYaml);
 
-  const auto inputs =
-      resolveAgentConfigInputs(fbossRoot, kPlatform, kProfile, overrideConfig);
+  const auto inputs = resolveAgentConfigInputs(
+      fbossRoot,
+      kPlatform,
+      kProfile,
+      overrideConfig,
+      cfg::AsicConfigType::YAML_CONFIG);
   const auto platformConfig = generatePlatformConfig(inputs);
 
   EXPECT_EQ(
@@ -1060,6 +1064,20 @@ TEST(AgentConfigGenTest, UsesExplicitAsicConfigTypeWithoutMetadata) {
           ->yamlConfig()
           .value(),
       kVendorAsicYaml);
+}
+
+TEST(AgentConfigGenTest, RejectsExplicitAsicConfigFileWithoutType) {
+  folly::test::TemporaryDirectory temporaryDirectory;
+  const auto fbossRoot = fs::path(temporaryDirectory.path().string()) / "fboss";
+  const auto platformDirectory = createTestPlatform(fbossRoot, "test_vendor");
+
+  EXPECT_THROW(
+      resolveAgentConfigInputs(
+          fbossRoot,
+          kPlatform,
+          kProfile,
+          platformDirectory / "asic_config" / "generated" / "hw_test.yml"),
+      FbossError);
 }
 
 TEST(AgentConfigGenTest, RejectsExplicitAsicConfigTypeWithoutFile) {
@@ -1983,6 +2001,78 @@ TEST(AgentConfigGenTest, RejectsInternalInputForOpenSourceManifest) {
       std::vector<fs::path>{
           platformDirectory / "forwarding_stack" / "generated" / "agent" /
           "facebook" / "hw_test.conf"});
+}
+
+TEST(AgentConfigGenTest, GeneratesManifestOutputsFromAsicConfigOverride) {
+  folly::test::TemporaryDirectory sourceDirectory;
+  const auto fbossRoot = fs::path(sourceDirectory.path().string()) / "fboss";
+  constexpr std::string_view kManifestPlatform = "wedge800bact";
+  const auto platformDirectory =
+      createTestPlatform(fbossRoot, "test_vendor", kManifestPlatform);
+  fs::remove_all(platformDirectory / "asic_config");
+  constexpr std::string_view kRelativeYaml = "ASIC_CONFIG: relative\n";
+  constexpr std::string_view kAbsoluteYaml = "ASIC_CONFIG: absolute\n";
+  writeTestFile(fbossRoot / "lib" / "relative.yml", kRelativeYaml);
+  const auto absoluteConfig =
+      fs::path(sourceDirectory.path().string()) / "absolute.yml";
+  writeTestFile(absoluteConfig, kAbsoluteYaml);
+  writeConfigGenerationTarget(
+      platformDirectory,
+      R"({"serviceToOptions":{"AGENT":[{"profile":"HW_TEST","asicConfigOverride":{"asicConfigFile":"lib/relative.yml","asicConfigType":"YAML_CONFIG"}},{"profile":"BENCHMARK","asicConfigOverride":{"asicConfigFile":")" +
+          absoluteConfig.string() +
+          R"(","asicConfigType":"YAML_CONFIG","relativeToFbossRoot":false}}]}})");
+
+  const auto generatedPaths = generateConfigsFromManifest(
+      fbossRoot, ServiceType::AGENT, generateAgentConfigForManifest);
+
+  const auto readYamlConfig = [](const fs::path& path) {
+    cfg::AgentConfig config;
+    apache::thrift::SimpleJSONSerializer::deserialize(readFile(path), config);
+    return config.platform()
+        ->chip()
+        ->asicConfig()
+        ->common()
+        ->yamlConfig()
+        .value();
+  };
+  ASSERT_EQ(generatedPaths.size(), 2);
+  EXPECT_EQ(readYamlConfig(generatedPaths.at(0)), kRelativeYaml);
+  EXPECT_EQ(readYamlConfig(generatedPaths.at(1)), kAbsoluteYaml);
+}
+
+TEST(AgentConfigGenTest, RejectsMissingAsicConfigOverride) {
+  folly::test::TemporaryDirectory sourceDirectory;
+  const auto fbossRoot = fs::path(sourceDirectory.path().string()) / "fboss";
+  constexpr std::string_view kManifestPlatform = "wedge800bact";
+  const auto platformDirectory =
+      createTestPlatform(fbossRoot, "test_vendor", kManifestPlatform);
+  writeConfigGenerationTarget(
+      platformDirectory,
+      R"({"serviceToOptions":{"AGENT":[{"profile":"HW_TEST","asicConfigOverride":{"asicConfigFile":"lib/missing.yml","asicConfigType":"YAML_CONFIG"}}]}})");
+
+  EXPECT_THROW(
+      generateConfigsFromManifest(
+          fbossRoot, ServiceType::AGENT, generateAgentConfigForManifest),
+      FbossError);
+}
+
+TEST(
+    AgentConfigGenTest,
+    RejectsInternalAsicConfigOverrideForOpenSourceManifest) {
+  folly::test::TemporaryDirectory sourceDirectory;
+  const auto fbossRoot = fs::path(sourceDirectory.path().string()) / "fboss";
+  constexpr std::string_view kManifestPlatform = "wedge800bact";
+  const auto platformDirectory =
+      createTestPlatform(fbossRoot, "test_vendor", kManifestPlatform);
+  writeTestFile(fbossRoot / "lib" / "facebook" / "internal.yml", kAsicYaml);
+  writeConfigGenerationTarget(
+      platformDirectory,
+      R"({"serviceToOptions":{"AGENT":[{"profile":"HW_TEST","asicConfigOverride":{"asicConfigFile":"lib/facebook/internal.yml","asicConfigType":"YAML_CONFIG"}}]}})");
+
+  EXPECT_THROW(
+      generateConfigsFromManifest(
+          fbossRoot, ServiceType::AGENT, generateAgentConfigForManifest),
+      FbossError);
 }
 
 TEST(AgentConfigGenTest, DoesNotPartiallyWriteManifestOutputs) {

@@ -47,6 +47,23 @@ TEST(ConfigGenerationSpecUtilsTest, ParsesEnumNamesIntoTypedConfig) {
   EXPECT_EQ(*option.platformMappingVariant(), "test_fixture");
 }
 
+TEST(ConfigGenerationSpecUtilsTest, ParsesAsicConfigOverride) {
+  const auto spec = parseConfigGenerationSpec(
+      R"({"serviceToOptions":{"AGENT":[{"profile":"HW_TEST","asicConfigOverride":{"asicConfigFile":"lib/asic.json","asicConfigType":"JSON_CONFIG"}}]}})");
+
+  AsicConfigOverrideOption expected;
+  expected.asicConfigFile() = "lib/asic.json";
+  expected.asicConfigType() = cfg::AsicConfigType::JSON_CONFIG;
+  expected.relativeToFbossRoot() = true;
+  EXPECT_EQ(
+      spec.serviceToOptions()
+          ->at(ServiceType::AGENT)
+          .at(0)
+          .asicConfigOverride()
+          .value(),
+      expected);
+}
+
 TEST(ConfigGenerationSpecUtilsTest, LoadsPlatformFromOwningDirectory) {
   folly::test::TemporaryDirectory temporaryDirectory;
   const fs::path platformDirectory =
@@ -104,6 +121,13 @@ TEST(ConfigGenerationSpecUtilsTest, RejectsInvalidConfigs) {
       R"({"serviceToOptions":{"NOT_A_SERVICE":[{"profile":"DEFAULT"}]}})",
       R"({"serviceToOptions":{"AGENT":[{"profile":"NOT_A_PROFILE"}]}})",
       R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT","platformMappingVariant":""}]}})",
+      R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT","asicConfigOverride":{"asicConfigFile":"","asicConfigType":"JSON_CONFIG"}}]}})",
+      R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT","asicConfigOverride":{"asicConfigFile":"lib/asic.json"}}]}})",
+      R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT","asicConfigOverride":{"asicConfigFile":"lib/asic.json","asicConfigType":"NONE"}}]}})",
+      R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT","asicConfigVariant":"default","asicConfigOverride":{"asicConfigFile":"lib/asic.json","asicConfigType":"JSON_CONFIG"}}]}})",
+      R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT","asicConfigOverride":{"asicConfigFile":"/tmp/asic.json","asicConfigType":"JSON_CONFIG"}}]}})",
+      R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT","asicConfigOverride":{"asicConfigFile":"../asic.json","asicConfigType":"JSON_CONFIG"}}]}})",
+      R"({"serviceToOptions":{"AGENT":[{"profile":"DEFAULT","asicConfigOverride":{"asicConfigFile":"lib/asic.json","asicConfigType":"JSON_CONFIG","relativeToFbossRoot":false}}]}})",
   };
 
   for (const auto config : invalidConfigs) {

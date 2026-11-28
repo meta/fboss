@@ -1,15 +1,12 @@
-add_library(config_generation_cpp2)
-thrift_generate(
+thrift_add_library(
   config_generation_cpp2
   fboss/configs/platforms/generic/forwarding_stack/config_generation.thrift
   LANGUAGE cpp2
   OPTIONS
     json
-  INCLUDE_DIRECTORIES
-    ${PROJECT_SOURCE_DIR}
-    ${THRIFT_INCLUDE_DIR}
+  DEPENDS
+    asic_config_v2_cpp2
 )
-target_include_directories(config_generation_cpp2 PUBLIC ${PROJECT_BINARY_DIR})
 
 add_library(feature_default_command_args_cpp2)
 thrift_generate(

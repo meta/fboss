@@ -136,7 +136,10 @@ GeneratedAsicConfigFile resolveGeneratedAsicConfig(
   if (asicConfigType && !asicConfigFile) {
     throw FbossError("ASIC config type requires an ASIC config file override");
   }
-  if (asicConfigFile && asicConfigType) {
+  if (asicConfigFile && !asicConfigType) {
+    throw FbossError("ASIC config file override requires an ASIC config type");
+  }
+  if (asicConfigFile) {
     if (!fs::is_regular_file(*asicConfigFile)) {
       throw FbossError(
           "ASIC config override does not exist: ", asicConfigFile->string());
@@ -205,17 +208,6 @@ GeneratedAsicConfigFile resolveGeneratedAsicConfig(
         *configTypeName,
         "' in ",
         metadataPath.string());
-  }
-
-  if (asicConfigFile) {
-    if (!fs::is_regular_file(*asicConfigFile)) {
-      throw FbossError(
-          "ASIC config override does not exist: ", asicConfigFile->string());
-    }
-    return {
-        .path = *asicConfigFile,
-        .configType = configType,
-        .internalInputs = std::move(internalInputs)};
   }
 
   auto fileName = variantName;
@@ -911,8 +903,8 @@ std::string generateAgentConfigForManifest(
       request.platform,
       request.profile,
       request.fbossRoot,
-      std::nullopt,
-      std::nullopt,
+      request.asicConfigFile,
+      request.asicConfigType,
       request.asicConfigVariant
           ? std::optional<std::string_view>(*request.asicConfigVariant)
           : std::nullopt,

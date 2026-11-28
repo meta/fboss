@@ -36,6 +36,9 @@ struct ConfigGenerationRequest {
   std::optional<std::string> asicConfigVariant;
   std::optional<std::string> linkTopologyVariant;
   std::optional<std::string> platformMappingVariant;
+  // Resolved from the option's asicConfigOverride. Both are set or neither.
+  std::optional<std::filesystem::path> asicConfigFile;
+  std::optional<cfg::AsicConfigType> asicConfigType;
   ServiceType service;
   std::string serviceName;
   std::filesystem::path platformDirectory;

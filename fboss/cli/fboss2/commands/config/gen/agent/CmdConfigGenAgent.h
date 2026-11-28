@@ -53,10 +53,12 @@ struct CmdConfigGenAgentTraits : public WriteCommandTraits {
       {kConfigGenAgentAsicConfigVariant,
        "ASIC configuration variant; defaults to --profile"},
       {kConfigGenAgentAsicConfigFile,
-       "ASIC configuration file overriding the generated profile artifact"},
+       "ASIC configuration file overriding the generated profile artifact; "
+       "requires --asic-config-type"},
       {kConfigGenAgentAsicConfigType,
        "Type of --asic-config-file: key_value, json, or yaml; json accepts "
-       "raw vendor JSON or a materialized common.jsonConfig wrapper"},
+       "raw vendor JSON or a materialized common.jsonConfig wrapper; requires "
+       "--asic-config-file"},
       {kConfigGenAgentReferenceConfigFile,
        "Agent configuration to compare with the generated output"},
       {kConfigGenAgentOutputDirectory,

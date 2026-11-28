@@ -40,6 +40,23 @@ int64_t parseEnumName(const folly::dynamic& value, std::string_view field) {
   return thriftEnumToInt(parseThriftEnumName<Enum>(value.asString(), field));
 }
 
+void normalizeOptionEnumNames(folly::dynamic& option) {
+  if (const auto profileIt = option.find("profile");
+      profileIt != option.items().end()) {
+    profileIt->second =
+        parseEnumName<ConfigProfileType>(profileIt->second, "profile");
+  }
+  const auto overrideIt = option.find("asicConfigOverride");
+  if (overrideIt == option.items().end() || !overrideIt->second.isObject()) {
+    return;
+  }
+  if (const auto typeIt = overrideIt->second.find("asicConfigType");
+      typeIt != overrideIt->second.items().end()) {
+    typeIt->second =
+        parseEnumName<cfg::AsicConfigType>(typeIt->second, "asicConfigType");
+  }
+}
+
 // SimpleJSON encodes enums as integers. Keep checked-in declarations readable
 // by accepting only enum names at their boundary, then convert those names
 // before deserializing into the strongly typed Thrift model.
@@ -59,13 +76,8 @@ std::string normalizeConfigEnumNames(std::string_view contents) {
     auto options = rawOptions;
     if (options.isArray()) {
       for (auto& option : options) {
-        if (!option.isObject()) {
-          continue;
-        }
-        if (const auto profileIt = option.find("profile");
-            profileIt != option.items().end()) {
-          profileIt->second =
-              parseEnumName<ConfigProfileType>(profileIt->second, "profile");
+        if (option.isObject()) {
+          normalizeOptionEnumNames(option);
         }
       }
     }
@@ -73,6 +85,43 @@ std::string normalizeConfigEnumNames(std::string_view contents) {
   }
   servicesIt->second = std::move(normalizedServices);
   return folly::toJson(config);
+}
+
+void validateAsicConfigOverride(
+    const AsicConfigOverrideOption& asicConfigOverride,
+    bool hasAsicConfigVariant) {
+  if (hasAsicConfigVariant) {
+    throw FbossError(
+        "Config option asicConfigOverride cannot be combined with asicConfigVariant");
+  }
+  const fs::path path{*asicConfigOverride.asicConfigFile()};
+  if (path.empty()) {
+    throw FbossError(
+        "Config option asicConfigOverride.asicConfigFile is empty");
+  }
+  if (*asicConfigOverride.asicConfigType() == cfg::AsicConfigType::NONE) {
+    throw FbossError(
+        "Config option asicConfigOverride.asicConfigType is required");
+  }
+  validateThriftEnum(
+      *asicConfigOverride.asicConfigType(),
+      "Config option asicConfigOverride.asicConfigType");
+  if (!*asicConfigOverride.relativeToFbossRoot()) {
+    if (!path.is_absolute()) {
+      throw FbossError(
+          "Config option asicConfigOverride.asicConfigFile must be absolute "
+          "when relativeToFbossRoot is false: ",
+          path.string());
+    }
+    return;
+  }
+  if (path.is_absolute() ||
+      std::find(path.begin(), path.end(), fs::path("..")) != path.end()) {
+    throw FbossError(
+        "Config option asicConfigOverride.asicConfigFile must be relative to "
+        "the FBOSS root: ",
+        path.string());
+  }
 }
 
 void validateSpec(const ConfigGenerationSpec& spec) {
@@ -111,6 +160,10 @@ void validateSpec(const ConfigGenerationSpec& spec) {
       if (platformMappingVariant && platformMappingVariant->empty()) {
         throw FbossError(
             "Config option platformMappingVariant must not be empty");
+      }
+      if (const auto& asicConfigOverride = option.asicConfigOverride()) {
+        validateAsicConfigOverride(
+            *asicConfigOverride, asicConfigVariant.has_value());
       }
       if (!uniqueOptions.emplace(profile, variant).second) {
         throw FbossError(

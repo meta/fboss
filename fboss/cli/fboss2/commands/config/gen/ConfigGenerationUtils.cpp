@@ -102,6 +102,18 @@ fs::path getServiceOutputDirectory(
   return platformDirectory / "forwarding_stack" / "generated" / serviceName;
 }
 
+fs::path resolveAsicConfigOverridePath(
+    const fs::path& fbossRoot,
+    const AsicConfigOverrideOption& asicConfigOverride) {
+  const fs::path file{*asicConfigOverride.asicConfigFile()};
+  auto path =
+      *asicConfigOverride.relativeToFbossRoot() ? fbossRoot / file : file;
+  if (!fs::is_regular_file(path)) {
+    throw FbossError("ASIC config override does not exist: ", path.string());
+  }
+  return path;
+}
+
 std::string getOutputFileName(
     std::string_view profile,
     const std::optional<std::string>& variant) {
@@ -167,6 +179,13 @@ ConfigGenerationPlan createConfigGenerationPlan(
         platformMappingVariant = *option.platformMappingVariant();
       }
       validatePathComponent(platformMappingVariant, "platformMappingVariant");
+      std::optional<fs::path> asicConfigFile;
+      std::optional<cfg::AsicConfigType> asicConfigType;
+      if (const auto& asicConfigOverride = option.asicConfigOverride()) {
+        asicConfigFile =
+            resolveAsicConfigOverridePath(fbossRoot, *asicConfigOverride);
+        asicConfigType = *asicConfigOverride->asicConfigType();
+      }
 
       auto outputDirectory =
           getServiceOutputDirectory(platformDirectory, plan.serviceName);
@@ -190,6 +209,8 @@ ConfigGenerationPlan createConfigGenerationPlan(
           .asicConfigVariant = std::move(asicConfigVariant),
           .linkTopologyVariant = std::move(linkTopologyVariant),
           .platformMappingVariant = std::move(platformMappingVariant),
+          .asicConfigFile = std::move(asicConfigFile),
+          .asicConfigType = asicConfigType,
           .service = service,
           .serviceName = plan.serviceName,
           .platformDirectory = platformDirectory,

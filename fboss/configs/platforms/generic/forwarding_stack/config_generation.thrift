@@ -8,6 +8,8 @@
  *
  */
 
+include "fboss/agent/hw/config/asic_config_v2.thrift"
+
 package "facebook.com/fboss/configs/platforms/generic/forwarding_stack"
 
 namespace cpp2 facebook.fboss.configgen
@@ -26,6 +28,20 @@ enum ConfigProfileType {
   BENCHMARK = 3,
   // Configuration used by FBOSS link tests.
   LINK_TEST = 4,
+}
+
+// Uses an existing ASIC config file instead of a generated ASIC-v3 config.
+struct AsicConfigOverrideOption {
+  // Path to the ASIC config file. Relative to the FBOSS root by default.
+  // Checked-in manifests must use relative paths; absolute paths are for
+  // local manifests that refer to files outside the FBOSS root.
+  1: string asicConfigFile;
+
+  // Format of asicConfigFile. Required.
+  2: asic_config_v2.AsicConfigType asicConfigType;
+
+  // Whether asicConfigFile is relative to the FBOSS root.
+  3: bool relativeToFbossRoot = true;
 }
 
 struct ConfigOption {
@@ -48,6 +64,10 @@ struct ConfigOption {
   // Selects a directory under variants/ whose generated platform mapping
   // artifacts should be used for this output.
   5: optional string platformMappingVariant;
+
+  // Uses an existing ASIC config file for this output. Cannot be combined with
+  // asicConfigVariant.
+  6: optional AsicConfigOverrideOption asicConfigOverride;
 }
 
 struct ConfigGenerationSpec {
