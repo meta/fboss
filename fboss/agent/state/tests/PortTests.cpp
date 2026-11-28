@@ -10,11 +10,12 @@
 #include "fboss/agent/ApplyThriftConfig.h"
 #include "fboss/agent/FbossError.h"
 #include "fboss/agent/SwitchIdScopeResolver.h"
-#include "fboss/agent/gen-cpp2/switch_config_constants.h"
+#include "fboss/agent/gen-cpp2/switch_config_constants.h" // NOLINT(misc-include-cleaner)
 #include "fboss/agent/hw/mock/MockPlatform.h"
 #include "fboss/agent/state/DeltaFunctions.h"
-#include "fboss/agent/state/NodeMapDelta.h"
+#include "fboss/agent/state/NodeMapDelta.h" // NOLINT(misc-include-cleaner)
 #include "fboss/agent/state/Port.h"
+#include "fboss/agent/state/PortDescriptor.h"
 #include "fboss/agent/state/PortMap.h"
 #include "fboss/agent/state/PortQueue.h"
 #include "fboss/agent/state/StateDelta.h"
@@ -949,6 +950,30 @@ TEST(Port, verifyInterfaceIDsForNonVoqSwitches) {
       EXPECT_EQ(expectedIntfID, port.second->getInterfaceID());
     }
   }
+}
+
+// A port with no interface must be reported as such rather than CHECK-failing
+// in Port::getInterfaceID(). The RX path relies on this to drop the packet.
+TEST(Port, getInterfaceIDForPortWithNoInterface) {
+  auto platform = createMockPlatform();
+  auto stateV0 = make_shared<SwitchState>();
+  auto config = testConfigA();
+
+  auto state = publishAndApplyConfig(stateV0, &config, platform.get());
+  ASSERT_NE(nullptr, state);
+
+  auto portID = PortID(*config.ports()[0].logicalID());
+  ASSERT_EQ(1u, state->getPorts()->getNodeIf(portID)->getInterfaceIDs().size());
+
+  state->publish();
+  state->getPorts()->getNodeIf(portID)->modify(&state)->setInterfaceIDs({});
+  ASSERT_TRUE(state->getPorts()->getNodeIf(portID)->getInterfaceIDs().empty());
+
+  EXPECT_EQ(
+      std::nullopt, state->getInterfaceIDForPortIf(PortDescriptor(portID)));
+  // NOLINTNEXTLINE(modernize-type-traits): gtest EXPECT_THROW internals
+  EXPECT_THROW(
+      state->getInterfaceIDForPort(PortDescriptor(portID)), FbossError);
 }
 
 TEST(Port, verifyInterfaceIDsForVoqSwitches) {
