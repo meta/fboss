@@ -2075,7 +2075,7 @@
           "sysfsPath": "/run/devmap/sensors/SMB_L_ASIC_VDDCORE/curr3_input",
           "type": 2,
           "thresholds": {
-            "maxAlarmVal": 1100
+            "maxAlarmVal": 1276
           },
           "compute": "@/1000.0"
         },
@@ -6188,7 +6188,7 @@
           "sysfsPath": "/run/devmap/sensors/SMB_R_ASIC_VDDCORE/curr3_input",
           "type": 2,
           "thresholds": {
-            "maxAlarmVal": 1100
+            "maxAlarmVal": 1276
           },
           "compute": "@/1000.0"
         },
