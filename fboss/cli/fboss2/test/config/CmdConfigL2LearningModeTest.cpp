@@ -8,13 +8,12 @@
  *
  */
 
-#include <boost/filesystem/operations.hpp>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <filesystem>
-#include <fstream>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/l2/learning_mode/CmdConfigL2LearningMode.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -91,7 +90,7 @@ TEST_F(CmdConfigL2LearningModeTestFixture, setLearningModeToSoftware) {
   EXPECT_THAT(result, HasSubstr("software"));
 
   // Verify the config was updated
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto mode = *config.sw()->switchSettings()->l2LearningMode();
   EXPECT_EQ(mode, cfg::L2LearningMode::SOFTWARE);
 }
@@ -110,7 +109,7 @@ TEST_F(CmdConfigL2LearningModeTestFixture, setLearningModeToHardware) {
   EXPECT_THAT(result, HasSubstr("hardware"));
 
   // Verify the config was updated
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto mode = *config.sw()->switchSettings()->l2LearningMode();
   EXPECT_EQ(mode, cfg::L2LearningMode::HARDWARE);
 }
@@ -125,7 +124,7 @@ TEST_F(CmdConfigL2LearningModeTestFixture, setLearningModeToDisabled) {
   EXPECT_THAT(result, HasSubstr("disabled"));
 
   // Verify the config was updated
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto mode = *config.sw()->switchSettings()->l2LearningMode();
   EXPECT_EQ(mode, cfg::L2LearningMode::DISABLED);
 }

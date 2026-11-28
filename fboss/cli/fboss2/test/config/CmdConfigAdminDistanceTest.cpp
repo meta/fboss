@@ -11,7 +11,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/switch/admin_distance/CmdConfigAdminDistance.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -100,7 +102,7 @@ TEST_F(CmdConfigAdminDistanceTestFixture, updateExistingClient) {
   auto result = cmd.queryClient(hostInfo, arg);
   EXPECT_THAT(result, HasSubstr("30"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   const auto& map = *config.sw()->clientIdToAdminDistance();
   EXPECT_EQ(map.at(0), 30);
 
@@ -123,7 +125,7 @@ TEST_F(CmdConfigAdminDistanceTestFixture, addNewClient) {
   auto result = cmd.queryClient(hostInfo, arg);
   EXPECT_THAT(result, HasSubstr("800"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   const auto& map = *config.sw()->clientIdToAdminDistance();
   EXPECT_EQ(map.at(800), 2);
   // All original entries preserved; new key added.

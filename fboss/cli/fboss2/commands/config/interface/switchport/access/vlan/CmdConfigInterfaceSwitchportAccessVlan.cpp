@@ -14,8 +14,10 @@
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -35,7 +37,7 @@ CmdConfigInterfaceSwitchportAccessVlan::queryClient(
 
   // Create the VLAN (and its barebone interface) on the fly if it doesn't
   // exist yet.
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   bool vlanCreated =
       VlanManager::createVlan(*config.sw(), VlanID(vlanId)).first;
 

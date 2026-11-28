@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/traffic_counter/CmdConfigTrafficCounter.h"
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -16,6 +17,7 @@
 #include <folly/String.h>
 #include <algorithm>
 #include <iostream>
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -85,7 +87,7 @@ CmdConfigTrafficCounterTraits::RetType CmdConfigTrafficCounter::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& trafficCounter) {
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
 
   const auto& name = trafficCounter.getName();

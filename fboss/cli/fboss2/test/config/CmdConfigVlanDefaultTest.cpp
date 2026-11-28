@@ -12,7 +12,9 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/vlan/CmdConfigVlanDefault.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -105,7 +107,8 @@ TEST_F(CmdConfigVlanDefaultTestFixture, setDefaultVlanAlreadySet) {
 
 TEST_F(CmdConfigVlanDefaultTestFixture, setDefaultVlanSuccess) {
   setupTestableConfigSession(cmdPrefix_, "default 300");
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
 
   auto result =
       CmdConfigVlanDefault().queryClient(localhost(), VlanId({"300"}));
@@ -131,7 +134,8 @@ TEST_F(CmdConfigVlanDefaultTestFixture, setDefaultVlanSuccess) {
 
 TEST_F(CmdConfigVlanDefaultTestFixture, setDefaultVlanUpdatesOnlyOneEntry) {
   setupTestableConfigSession(cmdPrefix_, "default 300");
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
 
   CmdConfigVlanDefault().queryClient(localhost(), VlanId({"300"}));
 
@@ -153,7 +157,8 @@ TEST_F(CmdConfigVlanDefaultTestFixture, setDefaultVlanUpdatesOnlyOneEntry) {
 
 TEST_F(CmdConfigVlanDefaultTestFixture, changeDefaultVlanMultipleTimes) {
   setupTestableConfigSession(cmdPrefix_, "default 200");
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
 
   auto r1 = CmdConfigVlanDefault().queryClient(localhost(), VlanId({"200"}));
   EXPECT_THAT(r1, HasSubstr("Successfully set default VLAN to 200"));
@@ -189,7 +194,8 @@ TEST_F(CmdConfigVlanDefaultTestFixture, changeDefaultVlanMultipleTimes) {
 // doesn't exist either, the command must create a new VLAN entry.
 TEST_F(CmdConfigVlanDefaultNoMatchFixture, createsNewVlanWhenNeitherExists) {
   setupTestableConfigSession(cmdPrefix_, "default 300");
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
 
   auto result =
       CmdConfigVlanDefault().queryClient(localhost(), VlanId({"300"}));
@@ -208,7 +214,8 @@ TEST_F(CmdConfigVlanDefaultNoMatchFixture, createsNewVlanWhenNeitherExists) {
 // exists, that existing entry must be reused (not duplicated).
 TEST_F(CmdConfigVlanDefaultTargetExistsFixture, reusesExistingTargetVlan) {
   setupTestableConfigSession(cmdPrefix_, "default 300");
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
 
   auto result =
       CmdConfigVlanDefault().queryClient(localhost(), VlanId({"300"}));
@@ -230,7 +237,8 @@ TEST_F(CmdConfigVlanDefaultTargetExistsFixture, reusesExistingTargetVlan) {
 // the system constant and still complete successfully.
 TEST_F(CmdConfigVlanDefaultNoFieldFixture, succeedsWithNoDefaultVlanField) {
   setupTestableConfigSession(cmdPrefix_, "default 300");
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
 
   auto result =
       CmdConfigVlanDefault().queryClient(localhost(), VlanId({"300"}));

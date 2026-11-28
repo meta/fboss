@@ -14,10 +14,12 @@
 #include <string>
 
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
 #include "fboss/cli/fboss2/commands/delete/vlan/CmdDeleteVlan.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -74,7 +76,7 @@ class CmdDeleteVlanTestFixture : public CmdConfigTestBase {
   const std::string cmdPrefix_ = "delete vlan";
 
   cfg::SwitchConfig& swConfig() {
-    return *ConfigSession::getInstance().getAgentConfig().sw();
+    return *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   }
 };
 

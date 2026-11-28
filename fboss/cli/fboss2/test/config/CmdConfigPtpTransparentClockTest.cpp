@@ -11,6 +11,8 @@
 #include "fboss/cli/fboss2/commands/config/ptp/transparent_clock/CmdConfigPtpTransparentClock.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -64,7 +66,7 @@ TEST_F(CmdConfigPtpTransparentClockTestFixture, disableWhenEnabled) {
   auto result = cmd.queryClient(hostInfo, arg);
   EXPECT_THAT(result, HasSubstr("Successfully disabled"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_FALSE(*config.sw()->switchSettings()->ptpTcEnable());
 }
 
@@ -81,7 +83,7 @@ TEST_F(CmdConfigPtpTransparentClockTestFixture, enableWhenDisabled) {
   auto result = cmd.queryClient(hostInfo, enableArg);
   EXPECT_THAT(result, HasSubstr("Successfully enabled"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_TRUE(*config.sw()->switchSettings()->ptpTcEnable());
 }
 
@@ -95,7 +97,7 @@ TEST_F(CmdConfigPtpTransparentClockTestFixture, alreadyEnabled) {
   auto result = cmd.queryClient(hostInfo, arg);
   EXPECT_THAT(result, HasSubstr("already enabled"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_TRUE(*config.sw()->switchSettings()->ptpTcEnable());
 }
 
@@ -112,7 +114,7 @@ TEST_F(CmdConfigPtpTransparentClockTestFixture, alreadyDisabled) {
   auto result = cmd.queryClient(hostInfo, disableArg);
   EXPECT_THAT(result, HasSubstr("already disabled"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_FALSE(*config.sw()->switchSettings()->ptpTcEnable());
 }
 

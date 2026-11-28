@@ -16,8 +16,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/config/interface/dhcp/relay/CmdConfigInterfaceDhcpRelay.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
@@ -108,7 +110,7 @@ CmdDeleteInterfaceDhcpRelay::queryClient(
   }
 
   auto& session = ConfigSession::getInstance();
-  cfg::SwitchConfig& swConfig = *session.getAgentConfig().sw();
+  cfg::SwitchConfig& swConfig = *session.config<AgentConfigDomain>().sw();
 
   // Phase 1: when an expected address was given, verify it matches what is
   // configured on every target interface before clearing anything.
@@ -166,7 +168,7 @@ CmdDeleteInterfaceDhcpRelay::queryClient(
         folly::join(", ", interfaces.getNames()));
   }
 
-  session.saveConfig();
+  session.save<AgentConfigDomain>();
 
   std::vector<std::string> attrNames;
   for (const auto& [attr, expected] : relayAttrs.getAttributes()) {

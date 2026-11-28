@@ -1,6 +1,7 @@
 // (c) Meta Platforms, Inc. and affiliates. Confidential and proprietary.
 
 #include "fboss/cli/fboss2/test/integration_test/Fboss2IntegrationTest.h"
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 
 #include <CLI/App.hpp>
 #include <CLI/Error.hpp>
@@ -49,6 +50,7 @@
 #include "fboss/cli/fboss2/CmdGlobalOptions.h"
 #include "fboss/cli/fboss2/CmdLocalOptions.h"
 #include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdClientUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/CmdInitUtils.h"
@@ -827,7 +829,7 @@ int Fboss2IntegrationTest::ensureUnderlayIntfId(
             kTestVlanMax));
   }
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
   auto [created, vlan] = VlanManager::createVlan(swConfig, VlanID(vid));
   // Pointer into swConfig.vlans() — do not hold across further mutations.
   (void)vlan;
@@ -839,7 +841,7 @@ int Fboss2IntegrationTest::ensureUnderlayIntfId(
       if (created) {
         XLOG(INFO) << "Created VLAN " << vid << " with interface "
                    << *intf.intfID() << " for tunnel underlay";
-        session.saveConfig();
+        session.save<AgentConfigDomain>();
       }
       return *intf.intfID();
     }
@@ -851,7 +853,7 @@ int Fboss2IntegrationTest::ensureUnderlayIntfId(
 
 std::string Fboss2IntegrationTest::findIpv6OnIntf(int intfId) const {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
   for (const auto& intf : *swConfig.interfaces()) {
     if (*intf.intfID() != intfId) {
       continue;

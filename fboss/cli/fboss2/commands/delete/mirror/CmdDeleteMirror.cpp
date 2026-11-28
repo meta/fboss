@@ -12,7 +12,9 @@
 #include <vector>
 
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -85,7 +87,7 @@ CmdDeleteMirrorTraits::RetType CmdDeleteMirror::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& mirror) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
   auto& mirrors = *swConfig.mirrors();
 
   auto it = std::find_if(

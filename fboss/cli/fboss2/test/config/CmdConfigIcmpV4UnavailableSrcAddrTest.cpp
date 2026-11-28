@@ -11,7 +11,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/switch/icmpv4_unavailable_src_addr/CmdConfigIcmpV4UnavailableSrcAddr.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -103,7 +105,7 @@ TEST_F(CmdConfigIcmpV4UnavailableSrcAddrTestFixture, setAddress) {
   EXPECT_THAT(result, HasSubstr("Successfully set"));
   EXPECT_THAT(result, HasSubstr("192.168.1.1"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->icmpV4UnavailableSrcAddress(), "192.168.1.1");
 }
 
@@ -119,7 +121,7 @@ TEST_F(CmdConfigIcmpV4UnavailableSrcAddrTestFixture, alreadySet) {
   EXPECT_THAT(result, Not(HasSubstr("Successfully set")));
 
   // No-op must leave config value unchanged
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->icmpV4UnavailableSrcAddress(), "10.0.0.1");
 }
 
@@ -139,7 +141,7 @@ TEST_F(
   EXPECT_THAT(result, HasSubstr("Successfully"));
   EXPECT_THAT(result, HasSubstr("192.0.0.8"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->icmpV4UnavailableSrcAddress(), "192.0.0.8");
 }
 

@@ -10,7 +10,9 @@
 #include <iostream>
 
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -32,7 +34,8 @@ CmdDeleteSflowCollectorTraits::RetType CmdDeleteSflowCollector::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& collector) {
   auto& session = ConfigSession::getInstance();
-  auto& collectors = *session.getAgentConfig().sw()->sFlowCollectors();
+  auto& collectors =
+      *session.config<AgentConfigDomain>().sw()->sFlowCollectors();
 
   auto firstMatch = std::find_if(
       collectors.begin(), collectors.end(), [&](const auto& configured) {

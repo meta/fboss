@@ -14,8 +14,10 @@
 #include <filesystem>
 #include <fstream>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/vlan/CmdConfigVlan.h"
 #include "fboss/cli/fboss2/commands/config/vlan/port/tagging_mode/CmdConfigVlanPortTaggingMode.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/session/Git.h"
 #include "fboss/cli/fboss2/test/CmdHandlerTestBase.h"
@@ -251,7 +253,7 @@ TEST_F(CmdConfigVlanPortTaggingModeTestFixture, setTaggingModeTaggedSuccess) {
   EXPECT_THAT(result, HasSubstr("VLAN 100"));
 
   // Verify the emitTags was updated in config
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   bool found = false;
   for (const auto& vlanPort : *swConfig.vlanPorts()) {
@@ -281,7 +283,7 @@ TEST_F(CmdConfigVlanPortTaggingModeTestFixture, setTaggingModeUntaggedSuccess) {
   EXPECT_THAT(result, HasSubstr("untagged"));
 
   // Verify the emitTags was updated in config
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   for (const auto& vlanPort : *swConfig.vlanPorts()) {
     if (*vlanPort.vlanID() == 100 && *vlanPort.logicalPort() == 1) {
@@ -340,7 +342,7 @@ TEST_F(CmdConfigVlanPortTaggingModeTestFixture, setTaggingModeMultiplePorts) {
   EXPECT_THAT(result, HasSubstr("VLAN 100"));
 
   // Verify both ports were updated
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   int updatedCount = 0;
   for (const auto& vlanPort : *swConfig.vlanPorts()) {
@@ -369,7 +371,7 @@ TEST_F(
   EXPECT_THAT(result, HasSubstr("VLAN 100"));
 
   // Verify the emitPriorityTags was updated in config
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   bool found = false;
   for (const auto& vlanPort : *swConfig.vlanPorts()) {

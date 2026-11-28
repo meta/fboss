@@ -21,8 +21,10 @@
 #include <string>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/config/qos/QosPolicyUtils.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -303,7 +305,7 @@ CmdDeleteQosPolicyMapTraits::RetType CmdDeleteQosPolicyMap::queryClient(
     const QosPolicyName& policyName,
     const ObjectArgType& entry) {
   auto& session = ConfigSession::getInstance();
-  auto& agentConfig = session.getAgentConfig();
+  auto& agentConfig = session.config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
 
   const std::string name = policyName.getName();
@@ -322,7 +324,7 @@ CmdDeleteQosPolicyMapTraits::RetType CmdDeleteQosPolicyMap::queryClient(
   bool changed = false;
   const auto logMsg = deleteQosPolicyMapEntry(qosMap, name, entry, changed);
   if (changed) {
-    session.saveConfig();
+    session.save<AgentConfigDomain>();
   }
   return logMsg;
 }

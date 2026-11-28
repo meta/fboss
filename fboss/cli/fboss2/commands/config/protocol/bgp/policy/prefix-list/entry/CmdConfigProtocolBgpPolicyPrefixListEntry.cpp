@@ -24,6 +24,7 @@
 #include <vector>
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliAttrHandlers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/BgpPrefixListCliUtils.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -346,7 +347,7 @@ CmdConfigProtocolBgpPolicyPrefixListEntry::queryClient(
   }
 
   auto& session = ConfigSession::getInstance();
-  auto& cfg = session.getBgpConfig();
+  auto& cfg = session.config<BgpConfigDomain>();
   const bool listCreated = !bgpcli::prefixListExists(cfg, listArgs.listName());
   auto& list = bgpcli::findOrCreatePrefixList(cfg, listArgs.listName());
   const bool entryCreated =
@@ -374,9 +375,9 @@ CmdConfigProtocolBgpPolicyPrefixListEntry::queryClient(
           listArgs.listName(),
           args.basePrefix());
     }
-    session.saveBgpConfig();
-    result.message +=
-        fmt::format("\nConfig saved to: {}", session.getBgpSessionConfigPath());
+    session.save<BgpConfigDomain>();
+    result.message += fmt::format(
+        "\nConfig saved to: {}", session.stagedPath(cli::ServiceType::BGP));
   } else {
     // A rejected value must not leave a phantom entry (or a phantom list
     // implicitly created for it) visible to later lookups in this process.

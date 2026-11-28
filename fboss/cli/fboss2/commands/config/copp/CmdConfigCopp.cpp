@@ -25,9 +25,11 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/QueueConfigUtils.h"
 #include "fboss/cli/fboss2/commands/config/copp/CoppUtils.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -217,7 +219,8 @@ CmdConfigCoppQueueTraits::RetType CmdConfigCoppQueue::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
-  auto msg = applyCpuQueueConfig(*session.getAgentConfig().sw(), args);
+  auto msg =
+      applyCpuQueueConfig(*session.config<AgentConfigDomain>().sw(), args);
   // cpuQueues edits are processed hitlessly by
   // SaiHostifManager::processHostifDelta -> changeCpuQueue -> QueueManager.
   session.saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
@@ -232,7 +235,7 @@ CmdConfigCoppReasonTraits::RetType CmdConfigCoppReason::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
-  auto msg = applyReasonConfig(*session.getAgentConfig().sw(), args);
+  auto msg = applyReasonConfig(*session.config<AgentConfigDomain>().sw(), args);
   // rxReason -> queue mapping edits are processed hitlessly by
   // SaiHostifManager::processHostifDelta (trap-group update path).
   session.saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
@@ -249,7 +252,7 @@ CmdConfigCoppTrafficPolicy::queryClient(
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
   auto msg = traffic_policy::applyAction(
-      *session.getAgentConfig().sw(),
+      *session.config<AgentConfigDomain>().sw(),
       traffic_policy::PolicyKind::Cpu,
       args.getMatcherName(),
       args.getActionTokens());

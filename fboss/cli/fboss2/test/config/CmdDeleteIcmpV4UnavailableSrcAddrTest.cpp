@@ -3,7 +3,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/switch/icmpv4_unavailable_src_addr/CmdDeleteIcmpV4UnavailableSrcAddr.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -53,7 +55,8 @@ class CmdDeleteIcmpV4UnavailableSrcAddrAbsentTestFixture
 };
 
 TEST_F(CmdDeleteIcmpV4UnavailableSrcAddrTestFixture, deleteWhenSet) {
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   ASSERT_TRUE(swConfig.icmpV4UnavailableSrcAddress().has_value());
 
   CmdDeleteIcmpV4UnavailableSrcAddr cmd;
@@ -71,7 +74,8 @@ TEST_F(
     CmdDeleteIcmpV4UnavailableSrcAddrAbsentTestFixture,
     deleteWhenAbsentIsNoop) {
   const auto sessionBefore = sessionConfigText();
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   ASSERT_FALSE(swConfig.icmpV4UnavailableSrcAddress().has_value());
 
   CmdDeleteIcmpV4UnavailableSrcAddr cmd;

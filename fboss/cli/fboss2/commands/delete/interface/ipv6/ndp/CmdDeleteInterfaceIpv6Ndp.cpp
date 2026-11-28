@@ -25,6 +25,7 @@
 
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/config/interface/ipv6/ndp/CmdConfigInterfaceIpv6Ndp.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
 
@@ -135,7 +136,7 @@ CmdDeleteInterfaceIpv6NdpTraits::RetType CmdDeleteInterfaceIpv6Ndp::queryClient(
         folly::join(", ", interfaces.getNames()));
   }
 
-  ConfigSession::getInstance().saveConfig();
+  ConfigSession::getInstance().save<AgentConfigDomain>();
 
   return fmt::format(
       "Successfully reset interface(s) {}: {}",

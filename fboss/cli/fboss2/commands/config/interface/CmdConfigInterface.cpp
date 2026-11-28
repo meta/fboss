@@ -9,6 +9,7 @@
  */
 
 #include "fboss/cli/fboss2/commands/config/interface/CmdConfigInterface.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/utils/ArgCompletion.h"
 
 #include "fboss/agent/types.h"
@@ -17,7 +18,6 @@
 #include <fmt/format.h>
 #include <folly/Conv.h>
 #include <folly/String.h>
-#include <thrift/lib/cpp/util/EnumUtils.h>
 #include <thrift/lib/cpp2/FieldRef.h>
 #include <algorithm>
 #include <cctype>
@@ -33,6 +33,7 @@
 #include <utility>
 #include <vector>
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/if/gen-cpp2/FbossCtrl.h"
 #include "fboss/agent/platforms/common/PlatformMapping.h"
@@ -47,6 +48,7 @@
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
 #include "fboss/cli/fboss2/utils/LookupClassUtils.h"
+#include "fboss/cli/fboss2/utils/SessionPortMap.h"
 #include "fboss/lib/config/agent/PortConfigUtils.h"
 #include "fboss/qsfp_service/if/gen-cpp2/QsfpService.h"
 
@@ -293,7 +295,7 @@ std::string applyProfile(
 
   const PlatformMapping platformMapping(platformMappingConfig);
   return applyProfileImpl(
-      *ConfigSession::getInstance().getAgentConfig().sw(),
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw(),
       platformMapping,
       qsfpSupportedProfiles,
       interfaces,
@@ -372,7 +374,8 @@ std::string createLoopbackInterface(
 std::vector<std::string> createMissingLoopbackInterfaces(
     const utils::InterfaceList& interfaces) {
   std::vector<std::string> created;
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   for (const utils::Intf& intf : interfaces) {
     if (intf.isValid()) {
       continue;
@@ -458,7 +461,8 @@ bool applyPortType(
   }
 
   bool changed = false;
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   for (const utils::Intf& intf : interfaces) {
     cfg::Port* port = intf.getPort();
     if (port) {
@@ -585,12 +589,12 @@ bool applyInterfaceName(
         "Cannot set the same name on multiple interfaces");
   }
 
-  auto& portMap = ConfigSession::getInstance().getPortMap();
-  if (portMap.hasPort(value)) {
+  const utils::SessionPortMap portMap;
+  if (portMap->hasPort(value)) {
     throw std::invalid_argument(
         fmt::format("'{}' is already in use as a port name", value));
   }
-  cfg::Interface* existing = portMap.getInterfaceByName(value);
+  cfg::Interface* existing = portMap->getInterfaceByName(value);
   if (existing && (targets.empty() || existing != targets[0])) {
     throw std::invalid_argument(
         fmt::format(
@@ -603,9 +607,6 @@ bool applyInterfaceName(
     return false;
   }
   targets[0]->name() = value;
-  // Refresh the name-based lookup maps so the rest of the session sees the
-  // new name.
-  ConfigSession::getInstance().rebuildPortMap();
   return true;
 }
 
@@ -624,8 +625,10 @@ bool applyQueueConfig(
   const utils::QueueConfigName name({value});
 
   if (!name.isDefault()) {
-    const auto& portQueueConfigs =
-        *ConfigSession::getInstance().getAgentConfig().sw()->portQueueConfigs();
+    const auto& portQueueConfigs = *ConfigSession::getInstance()
+                                        .config<AgentConfigDomain>()
+                                        .sw()
+                                        ->portQueueConfigs();
     if (portQueueConfigs.find(name.getName()) == portQueueConfigs.end()) {
       throw std::invalid_argument(
           fmt::format("Queue config '{}' does not exist.", name.getName()));
@@ -686,7 +689,6 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
       createMissingLoopbackInterfaces(interfaces);
   if (!createdLoopbacks.empty()) {
     changed = true;
-    ConfigSession::getInstance().rebuildPortMap();
     results.push_back(
         fmt::format(
             "created loopback interface(s): {}",
@@ -705,7 +707,8 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
 
   // Validate every mirror reference before applying any attribute so a bad
   // name cannot leave earlier attributes partially staged.
-  const auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  const auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   validateMirrorAttributes(attributes, swConfig);
   // The `profile` attribute mutates the port set (adjusts/removes existing
   // ports and creates absent ones), so it must be applied first, over the
@@ -715,7 +718,7 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
   // Loopback creation above re-resolves for the same reason.
   const std::optional<std::string> profileValue = findProfileValue(attributes);
 
-  utils::InterfaceList resolved(std::vector<std::string>{});
+  std::optional<utils::InterfaceList> resolved;
   // The commit action level required by this command, escalated by attribute
   // handlers as needed. Starts HITLESS (reloadConfig); a profile change that
   // removes a port escalates it to DISRUPTIVE_SERVICE_RESTART, because applying
@@ -727,14 +730,13 @@ CmdConfigInterfaceTraits::RetType CmdConfigInterface::queryClient(
     results.push_back(
         applyProfile(hostInfo, interfaces, *profileValue, &actionLevel));
     changed = true;
-    ConfigSession::getInstance().rebuildPortMap();
   }
   const bool reresolve = profileValue.has_value() || !createdLoopbacks.empty();
   if (reresolve) {
-    resolved = utils::InterfaceList(interfaces.getNames());
+    resolved.emplace(interfaces.getNames());
   }
   const utils::InterfaceList& effectiveInterfaces =
-      reresolve ? resolved : interfaces;
+      resolved ? *resolved : interfaces;
 
   for (const auto& [attr, value] : attributes) {
     if (attr == "profile") {

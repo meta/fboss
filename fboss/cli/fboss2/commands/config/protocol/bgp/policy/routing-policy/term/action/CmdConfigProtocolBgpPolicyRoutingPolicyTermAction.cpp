@@ -30,6 +30,7 @@
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliAttrHandlers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliValueParsers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/BgpRoutingPolicyCliUtils.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -135,7 +136,7 @@ std::string runTermActionCommand(
   }
 
   auto& session = ConfigSession::getInstance();
-  auto& cfg = session.getBgpConfig();
+  auto& cfg = session.config<BgpConfigDomain>();
   const bool policyCreated =
       !bgpcli::routingPolicyExists(cfg, policyArgs.policyName());
   auto& policy =
@@ -151,9 +152,9 @@ std::string runTermActionCommand(
         " for routing-policy {} term {}",
         policyArgs.policyName(),
         termArgs.seqNum());
-    session.saveBgpConfig();
-    result.message +=
-        fmt::format("\nConfig saved to: {}", session.getBgpSessionConfigPath());
+    session.save<BgpConfigDomain>();
+    result.message += fmt::format(
+        "\nConfig saved to: {}", session.stagedPath(cli::ServiceType::BGP));
   } else {
     // A rejected value must not leave a phantom term (or a phantom policy
     // implicitly created for it) visible to later lookups in this process.

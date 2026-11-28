@@ -17,10 +17,12 @@
 #include <utility>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/config/acl/AclConfigUtils.h"
 #include "fboss/cli/fboss2/commands/config/acl/table/CmdConfigAclTable.h"
 #include "fboss/cli/fboss2/commands/config/acl/table_group/CmdConfigAclTableGroup.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -216,8 +218,10 @@ TEST_F(CmdConfigAclTableGroupTestFixture, refusesMovingGroupToAnotherStage) {
 
   EXPECT_THROW(cmd.queryClient(hostInfo, args), std::runtime_error);
 
-  auto& groups =
-      *ConfigSession::getInstance().getAgentConfig().sw()->aclTableGroups();
+  auto& groups = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->aclTableGroups();
   ASSERT_EQ(groups.size(), 2u);
   EXPECT_EQ(*groups[0].stage(), cfg::AclStage::INGRESS);
   EXPECT_EQ(*groups[1].stage(), cfg::AclStage::EGRESS_MACSEC);
@@ -233,8 +237,10 @@ TEST_F(CmdConfigAclTableGroupTestFixture, sameStageIsANoop) {
   auto result = cmd.queryClient(hostInfo, args);
   EXPECT_THAT(result, HasSubstr("already at stage"));
 
-  auto& groups =
-      *ConfigSession::getInstance().getAgentConfig().sw()->aclTableGroups();
+  auto& groups = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->aclTableGroups();
   ASSERT_EQ(groups.size(), 2u);
   EXPECT_EQ(*groups[0].stage(), cfg::AclStage::INGRESS);
 }
@@ -250,8 +256,10 @@ TEST_F(CmdConfigAclTableGroupTestFixture, createsGroupOnFreeStage) {
   auto msg = cmd.queryClient(hostInfo, args);
   EXPECT_THAT(msg, HasSubstr("Created"));
 
-  auto& groups =
-      *ConfigSession::getInstance().getAgentConfig().sw()->aclTableGroups();
+  auto& groups = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->aclTableGroups();
   auto it = std::find_if(
       groups.begin(), groups.end(), [](const cfg::AclTableGroup& g) {
         return *g.name() == "macsec-group";
@@ -272,8 +280,10 @@ TEST_F(CmdConfigAclTableGroupTestFixture, refusesSecondGroupOnOccupiedStage) {
 
   EXPECT_THROW(cmd.queryClient(hostInfo, args), std::runtime_error);
 
-  auto& groups =
-      *ConfigSession::getInstance().getAgentConfig().sw()->aclTableGroups();
+  auto& groups = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->aclTableGroups();
   ASSERT_EQ(groups.size(), 2u);
   EXPECT_EQ(*groups[0].name(), "ingress-ACL-Table-Group");
   EXPECT_EQ(*groups[1].name(), "egress-ACL-Table-Group");
@@ -314,7 +324,8 @@ TEST_F(CmdConfigAclBootstrapTestFixture, tableGroupBootstrapsFirstGroup) {
   auto msg = cmd.queryClient(hostInfo, args);
   EXPECT_THAT(msg, HasSubstr("Created"));
 
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   ASSERT_TRUE(swConfig.aclTableGroups().has_value());
   ASSERT_EQ(swConfig.aclTableGroups()->size(), 1);
   const auto& group = swConfig.aclTableGroups()->front();
@@ -414,7 +425,7 @@ TEST_F(CmdConfigAclTableTestFixture, setPriority) {
   EXPECT_THAT(result, HasSubstr("priority"));
   EXPECT_THAT(result, HasSubstr("10"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& groups = *config.sw()->aclTableGroups();
   ASSERT_EQ(groups.size(), 2u);
   auto& tables = *groups[0].aclTables();
@@ -445,7 +456,7 @@ TEST_F(CmdConfigAclTableTestFixture, setPriorityOnNonFirstTable) {
   auto result = cmd.queryClient(hostInfo, args);
   EXPECT_THAT(result, HasSubstr("AclTable2"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& tables = *config.sw()->aclTableGroups()->at(0).aclTables();
   ASSERT_EQ(tables.size(), 2u);
   // The first table must be untouched.
@@ -466,8 +477,10 @@ TEST_F(CmdConfigAclTableTestFixture, createsTableWhenAbsent) {
   auto msg = cmd.queryClient(hostInfo, args);
   EXPECT_THAT(msg, HasSubstr("Created"));
 
-  auto& groups =
-      *ConfigSession::getInstance().getAgentConfig().sw()->aclTableGroups();
+  auto& groups = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->aclTableGroups();
   const auto& tables = *groups[0].aclTables();
   auto it =
       std::find_if(tables.begin(), tables.end(), [](const cfg::AclTable& t) {
@@ -494,8 +507,10 @@ TEST_F(CmdConfigAclTableTestFixture, refusesTableNameUsedInAnotherGroup) {
   EXPECT_THROW(cmd.queryClient(hostInfo, args), std::runtime_error);
 
   // The refusal must leave the config unmutated: no table added anywhere.
-  auto& groups =
-      *ConfigSession::getInstance().getAgentConfig().sw()->aclTableGroups();
+  auto& groups = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->aclTableGroups();
   ASSERT_EQ(groups.size(), 2u);
   EXPECT_EQ(groups[0].aclTables()->size(), 2u);
   EXPECT_EQ(groups[1].aclTables()->size(), 1u);

@@ -20,11 +20,13 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/vlan/CmdConfigVlan.h"
 #include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
-#include "fboss/cli/fboss2/utils/PortMap.h"
+#include "fboss/cli/fboss2/utils/SessionPortMap.h"
 
 namespace facebook::fboss {
 
@@ -32,7 +34,7 @@ CmdConfigVlanStaticMacAddTraits::RetType CmdConfigVlanStaticMacAdd::queryClient(
     const HostInfo& /* hostInfo */,
     const VlanId& vlanIdArg,
     const ObjectArgType& macAndPort) {
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   VlanID vlanId(vlanIdArg.getVlanId());
 
@@ -44,8 +46,8 @@ CmdConfigVlanStaticMacAddTraits::RetType CmdConfigVlanStaticMacAdd::queryClient(
   }
 
   // Get port logical ID from port name
-  const auto& portMap = ConfigSession::getInstance().getPortMap();
-  auto portLogicalId = portMap.getPortLogicalId(macAndPort.getPortName());
+  const utils::SessionPortMap portMap;
+  auto portLogicalId = portMap->getPortLogicalId(macAndPort.getPortName());
   if (!portLogicalId.has_value()) {
     throw std::invalid_argument(
         fmt::format(
@@ -79,7 +81,7 @@ CmdConfigVlanStaticMacAddTraits::RetType CmdConfigVlanStaticMacAdd::queryClient(
   swConfig.staticMacAddrs()->push_back(newEntry);
 
   // Save the updated config
-  ConfigSession::getInstance().saveConfig();
+  ConfigSession::getInstance().save<AgentConfigDomain>();
 
   return fmt::format(
       "Successfully added static MAC entry: MAC {} -> VLAN {}, Port {} (ID {})",

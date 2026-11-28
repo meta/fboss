@@ -12,6 +12,7 @@
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/routing-policy/term/CmdConfigProtocolBgpPolicyRoutingPolicyTerm.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/CmdDeleteProtocolBgpPolicyRoutingPolicy.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/bgp/policy/routing-policy/term/CmdDeleteProtocolBgpPolicyRoutingPolicyTerm.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -68,7 +69,7 @@ class CmdDeleteBgpPolicyRoutingPolicyTermTestFixture
 
   const std::vector<bgp::bgp_policy::BgpPolicyStatement>& policies() {
     return *ConfigSession::getInstance()
-                .getBgpConfig()
+                .config<BgpConfigDomain>()
                 .policies()
                 .ensure()
                 .bgp_policy_statements();
@@ -80,7 +81,7 @@ class CmdDeleteBgpPolicyRoutingPolicyTermTestFixture
 
   bool sessionFileExists() {
     return std::filesystem::exists(
-        ConfigSession::getInstance().getBgpSessionConfigPath());
+        ConfigSession::getInstance().stagedPath(cli::ServiceType::BGP));
   }
 };
 
@@ -141,7 +142,7 @@ TEST_F(CmdDeleteBgpPolicyRoutingPolicyTermTestFixture, deleteUnknownTermWarns) {
   // proves the no-op delete did not persist anything new.
   ASSERT_TRUE(sessionFileExists());
   std::filesystem::remove(
-      ConfigSession::getInstance().getBgpSessionConfigPath());
+      ConfigSession::getInstance().stagedPath(cli::ServiceType::BGP));
 
   auto result = delTerm("RM100", {"20"});
   EXPECT_THAT(

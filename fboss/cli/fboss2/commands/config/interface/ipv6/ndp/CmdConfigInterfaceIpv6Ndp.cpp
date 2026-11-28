@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
@@ -280,7 +281,7 @@ CmdConfigInterfaceIpv6NdpTraits::RetType CmdConfigInterfaceIpv6Ndp::queryClient(
     }
   }
 
-  ConfigSession::getInstance().saveConfig();
+  ConfigSession::getInstance().save<AgentConfigDomain>();
 
   std::string interfaceList = folly::join(", ", interfaces.getNames());
   std::string attrList = folly::join(", ", results);

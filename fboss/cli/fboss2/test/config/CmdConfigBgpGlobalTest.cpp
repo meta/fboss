@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/global/CmdConfigProtocolBgpGlobal.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -39,12 +40,12 @@ class CmdConfigBgpGlobalTestFixture : public CmdConfigTestBase {
   }
 
   bgp::thrift::BgpConfig& config() {
-    return ConfigSession::getInstance().getBgpConfig();
+    return ConfigSession::getInstance().config<BgpConfigDomain>();
   }
 
   bool sessionFileExists() {
     return std::filesystem::exists(
-        ConfigSession::getInstance().getBgpSessionConfigPath());
+        ConfigSession::getInstance().stagedPath(cli::ServiceType::BGP));
   }
 };
 

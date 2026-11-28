@@ -16,7 +16,9 @@
 #include <unordered_set>
 #include <utility>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -291,7 +293,7 @@ CmdConfigMirrorTraits::RetType CmdConfigMirror::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& mirrorConfig) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
   auto& mirrors = *swConfig.mirrors();
 
   auto it = std::find_if(

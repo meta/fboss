@@ -11,8 +11,10 @@
 #include <system_error>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/protocol/static/route/add/CmdConfigProtocolStaticRouteAdd.h"
 #include "fboss/cli/fboss2/commands/delete/protocol/static/route/CmdDeleteProtocolStaticRoute.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/session/Git.h"
 #include "fboss/cli/fboss2/test/CmdHandlerTestBase.h"
@@ -128,7 +130,7 @@ TEST_F(CmdConfigIpRouteTestFixture, addIpv4RouteSingleNexthop) {
 
   // Verify the route was added
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto& nhopRoutes = *swConfig.staticRoutesWithNhops();
   ASSERT_EQ(nhopRoutes.size(), 1);
@@ -150,7 +152,7 @@ TEST_F(CmdConfigIpRouteTestFixture, addIpv4RouteMultipleNexthops) {
   EXPECT_THAT(result, HasSubstr("192.168.1.2"));
 
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto& nhopRoutes = *swConfig.staticRoutesWithNhops();
   ASSERT_EQ(nhopRoutes.size(), 1);
@@ -170,7 +172,7 @@ TEST_F(CmdConfigIpRouteTestFixture, addIpv4DropRoute) {
   EXPECT_THAT(result, HasSubstr("10.0.0.0/8"));
 
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto& nullRoutes = *swConfig.staticRoutesToNull();
   ASSERT_EQ(nullRoutes.size(), 1);
@@ -192,7 +194,7 @@ TEST_F(CmdConfigIpRouteTestFixture, updateIpv4Route) {
   EXPECT_THAT(result, HasSubstr("Successfully updated static route"));
 
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto& nhopRoutes = *swConfig.staticRoutesWithNhops();
   ASSERT_EQ(nhopRoutes.size(), 1);
@@ -236,7 +238,7 @@ TEST_F(CmdConfigIpRouteTestFixture, addIpv4DefaultRoute) {
   EXPECT_THAT(result, HasSubstr("0.0.0.0/0"));
 
   auto& nhopRoutes = *ConfigSession::getInstance()
-                          .getAgentConfig()
+                          .config<AgentConfigDomain>()
                           .sw()
                           ->staticRoutesWithNhops();
   ASSERT_EQ(nhopRoutes.size(), 1);
@@ -260,7 +262,7 @@ TEST_F(CmdConfigIpRouteTestFixture, deleteIpv4RouteWithNexthops) {
   EXPECT_THAT(result, HasSubstr("Successfully deleted static route"));
 
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto& nhopRoutes = *swConfig.staticRoutesWithNhops();
   EXPECT_EQ(nhopRoutes.size(), 0);
@@ -281,7 +283,7 @@ TEST_F(CmdConfigIpRouteTestFixture, deleteIpv4DropRoute) {
   EXPECT_THAT(result, HasSubstr("Successfully deleted static route"));
 
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto& nullRoutes = *swConfig.staticRoutesToNull();
   EXPECT_EQ(nullRoutes.size(), 0);
@@ -316,7 +318,7 @@ TEST_F(CmdConfigIpRouteTestFixture, addIpv6RouteSingleNexthop) {
   EXPECT_THAT(result, HasSubstr("2001:db8::1"));
 
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto& nhopRoutes = *swConfig.staticRoutesWithNhops();
   ASSERT_EQ(nhopRoutes.size(), 1);
@@ -334,7 +336,7 @@ TEST_F(CmdConfigIpRouteTestFixture, addIpv6DropRoute) {
   EXPECT_THAT(result, HasSubstr("2001:db8::/32"));
 
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto& nullRoutes = *swConfig.staticRoutesToNull();
   ASSERT_EQ(nullRoutes.size(), 1);
@@ -352,7 +354,7 @@ TEST_F(CmdConfigIpRouteTestFixture, addIpv6CpuRoute) {
   EXPECT_THAT(result, HasSubstr("2001:db8:100::/48"));
 
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto& cpuRoutes = *swConfig.staticRoutesToCPU();
   ASSERT_EQ(cpuRoutes.size(), 1);
@@ -374,7 +376,7 @@ TEST_F(CmdConfigIpRouteTestFixture, updateIpv6Route) {
   EXPECT_THAT(result, HasSubstr("Successfully updated static route"));
 
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto& nhopRoutes = *swConfig.staticRoutesWithNhops();
   ASSERT_EQ(nhopRoutes.size(), 1);
@@ -418,7 +420,7 @@ TEST_F(CmdConfigIpRouteTestFixture, addIpv6DefaultRoute) {
   EXPECT_THAT(result, HasSubstr("::/0"));
 
   auto& nhopRoutes = *ConfigSession::getInstance()
-                          .getAgentConfig()
+                          .config<AgentConfigDomain>()
                           .sw()
                           ->staticRoutesWithNhops();
   ASSERT_EQ(nhopRoutes.size(), 1);
@@ -442,7 +444,7 @@ TEST_F(CmdConfigIpRouteTestFixture, deleteIpv6RouteWithNexthops) {
   EXPECT_THAT(result, HasSubstr("Successfully deleted static route"));
 
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto& nhopRoutes = *swConfig.staticRoutesWithNhops();
   EXPECT_EQ(nhopRoutes.size(), 0);
@@ -463,7 +465,7 @@ TEST_F(CmdConfigIpRouteTestFixture, deleteIpv6DropRoute) {
   EXPECT_THAT(result, HasSubstr("Successfully deleted static route"));
 
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto& nullRoutes = *swConfig.staticRoutesToNull();
   EXPECT_EQ(nullRoutes.size(), 0);
@@ -484,7 +486,7 @@ TEST_F(CmdConfigIpRouteTestFixture, deleteIpv6CpuRoute) {
   EXPECT_THAT(result, HasSubstr("Successfully deleted static route"));
 
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   auto& cpuRoutes = *swConfig.staticRoutesToCPU();
   EXPECT_EQ(cpuRoutes.size(), 0);

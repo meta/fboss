@@ -11,7 +11,9 @@
 #include <stdexcept>
 #include <utility>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss::srv6_tunnel_utils {
@@ -271,7 +273,7 @@ std::string configureTunnel(
     const std::string& tunnelId,
     const std::map<std::string, std::string>& attrs) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
   auto results = applyTunnelConfig(swConfig, tunnelType, tunnelId, attrs);
   session.saveConfig(cli::ServiceType::AGENT, cli::ConfigActionLevel::HITLESS);
 

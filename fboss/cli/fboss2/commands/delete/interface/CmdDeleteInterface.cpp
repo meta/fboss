@@ -24,10 +24,12 @@
 #include <vector>
 
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/commands/config/interface/InterfaceIpUtils.h"
 #include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
 #include "fboss/lib/config/agent/PortConfigUtils.h"
@@ -154,7 +156,8 @@ CmdDeleteInterfaceTraits::RetType CmdDeleteInterface::queryClient(
   // No attributes => delete the whole port(s) / loopback interface(s) from
   // the config.
   if (attributes.empty()) {
-    auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+    auto& swConfig =
+        *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
     std::set<PortID> portsToDelete;
     std::set<VlanID> loopbackVlansToDelete;
     std::vector<std::string> deletedNames;
@@ -189,7 +192,7 @@ CmdDeleteInterfaceTraits::RetType CmdDeleteInterface::queryClient(
     // the port-set delta live, matching how 'config interface <port> profile'
     // adds/removes ports. Removing a loopback interface and its VLAN is the
     // same config reload 'delete vlan' relies on. No agent warmboot is needed.
-    ConfigSession::getInstance().saveConfig();
+    ConfigSession::getInstance().save<AgentConfigDomain>();
     return fmt::format(
         "Deleted interface(s): {}", folly::join(", ", deletedNames));
   }
@@ -342,7 +345,7 @@ CmdDeleteInterfaceTraits::RetType CmdDeleteInterface::queryClient(
   }
 
   if (changed) {
-    ConfigSession::getInstance().saveConfig();
+    ConfigSession::getInstance().save<AgentConfigDomain>();
   }
 
   return folly::join("\n", results);

@@ -16,8 +16,10 @@
 #include <cstdint>
 #include <iostream>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -27,7 +29,7 @@ CmdDeleteVlanTraits::RetType CmdDeleteVlan::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& vlanIdArg) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
   VlanID vlanId(vlanIdArg.getVlanId());
 
   if (VlanManager::findVlan(swConfig, vlanId) == nullptr) {
@@ -40,7 +42,7 @@ CmdDeleteVlanTraits::RetType CmdDeleteVlan::queryClient(
 
   // VLAN membership/creation is applied hitlessly, matching the config vlan
   // subcommands (all save with the default HITLESS action level).
-  session.saveConfig();
+  session.save<AgentConfigDomain>();
 
   return fmt::format("Deleted VLAN {}", static_cast<uint16_t>(vlanId));
 }

@@ -17,8 +17,10 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/dhcp/relay_source_override/CmdDeleteDhcpRelaySourceOverride.h"
 #include "fboss/cli/fboss2/commands/delete/dhcp/reply_source_override/CmdDeleteDhcpReplySourceOverride.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -97,7 +99,7 @@ TEST_F(CmdDeleteDhcpTestFixture, deleteRelayIpv4) {
   EXPECT_THAT(result, HasSubstr("ipv4"));
   EXPECT_THAT(result, HasSubstr("192.0.2.1"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_FALSE(config.sw()->dhcpRelaySrcOverrideV4().has_value());
   // Other overrides untouched
   EXPECT_TRUE(config.sw()->dhcpRelaySrcOverrideV6().has_value());
@@ -116,7 +118,7 @@ TEST_F(CmdDeleteDhcpTestFixture, deleteRelayIpv6) {
   EXPECT_THAT(result, HasSubstr("ipv6"));
   EXPECT_THAT(result, HasSubstr("2001:db8::1"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_FALSE(config.sw()->dhcpRelaySrcOverrideV6().has_value());
   EXPECT_TRUE(config.sw()->dhcpRelaySrcOverrideV4().has_value());
 }
@@ -132,7 +134,7 @@ TEST_F(CmdDeleteDhcpTestFixture, deleteReplyIpv4) {
   EXPECT_THAT(result, HasSubstr("ipv4"));
   EXPECT_THAT(result, HasSubstr("10.5.6.8"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_FALSE(config.sw()->dhcpReplySrcOverrideV4().has_value());
   EXPECT_TRUE(config.sw()->dhcpReplySrcOverrideV6().has_value());
 }
@@ -148,7 +150,7 @@ TEST_F(CmdDeleteDhcpTestFixture, deleteReplyIpv6) {
   EXPECT_THAT(result, HasSubstr("ipv6"));
   EXPECT_THAT(result, HasSubstr("2401:db00:eef0:a67::2"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_FALSE(config.sw()->dhcpReplySrcOverrideV6().has_value());
   EXPECT_TRUE(config.sw()->dhcpReplySrcOverrideV4().has_value());
 }

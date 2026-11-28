@@ -4,7 +4,9 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/interface/CmdDeleteInterface.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -115,7 +117,7 @@ TEST_F(CmdDeleteConfigInterfaceTestFixture, deleteExistingIpv4Address) {
 
   // First add the IP address
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& intfs = *config.sw()->interfaces();
   for (auto& intf : intfs) {
     if (*intf.name() == "eth1/1/1") {
@@ -123,7 +125,7 @@ TEST_F(CmdDeleteConfigInterfaceTestFixture, deleteExistingIpv4Address) {
       break;
     }
   }
-  session.saveConfig();
+  session.save<AgentConfigDomain>();
 
   // Now delete it
   auto cmd = CmdDeleteInterface();
@@ -217,7 +219,8 @@ TEST_F(CmdDeleteWholeInterfaceTestFixture, deletesPortAndDependents) {
   EXPECT_THAT(result, HasSubstr("Deleted interface(s)"));
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
 
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
 
   const auto& ports = *swConfig.ports();
   EXPECT_EQ(
@@ -315,7 +318,7 @@ class DeleteQueueConfigAttrTestFixture : public CmdConfigTestBase {
  protected:
   static const cfg::Port* findPort(const std::string& name) {
     const auto& ports =
-        *ConfigSession::getInstance().getAgentConfig().sw()->ports();
+        *ConfigSession::getInstance().config<AgentConfigDomain>().sw()->ports();
     for (const auto& port : ports) {
       if (*port.name() == name) {
         return &port;
@@ -351,7 +354,7 @@ TEST_F(DeleteQueueConfigAttrTestFixture, clearsExistingBinding) {
   // Clearing a binding must not remove the config it pointed at.
   EXPECT_TRUE(
       ConfigSession::getInstance()
-          .getAgentConfig()
+          .config<AgentConfigDomain>()
           .sw()
           ->portQueueConfigs()
           ->count("rsw_queues"));

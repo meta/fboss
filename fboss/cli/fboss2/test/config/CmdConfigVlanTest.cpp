@@ -14,10 +14,12 @@
 #include <filesystem>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/commands/config/vlan/CmdConfigVlan.h"
 #include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -59,7 +61,8 @@ TEST_F(CmdConfigVlanTestFixture, queryClientCreatesVlan) {
 
   EXPECT_THAT(result, HasSubstr("Successfully created VLAN 4005"));
 
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   EXPECT_NE(VlanManager::findVlan(swConfig, VlanID(4005)), nullptr);
   bool intfFound = std::any_of(
       swConfig.interfaces()->cbegin(),
@@ -84,7 +87,8 @@ TEST_F(CmdConfigVlanTestFixture, queryClientVlanAlreadyExists) {
 
   EXPECT_THAT(result, HasSubstr("VLAN 100 already exists"));
 
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   int count = 0;
   for (const auto& vlan : *swConfig.vlans()) {
     if (*vlan.id() == 100) {

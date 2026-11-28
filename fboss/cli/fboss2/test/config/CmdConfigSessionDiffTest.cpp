@@ -5,7 +5,10 @@
 #include <gtest/gtest.h>
 #include <filesystem>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/session/CmdConfigSessionDiff.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/TestableConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtils.h"
@@ -53,7 +56,9 @@ TEST_F(CmdConfigSessionDiffTestFixture, diffNoSession) {
 
 TEST_F(CmdConfigSessionDiffTestFixture, diffIdenticalConfigs) {
   setupTestableConfigSession();
-  ConfigSession::getInstance().getAgentConfig();
+  // A session file that is a byte-for-byte copy of the live config.
+  std::filesystem::create_directories(getSessionConfigPath().parent_path());
+  createTestConfig(getSessionConfigPath(), readFile(getSystemConfigPath()));
 
   auto cmd = CmdConfigSessionDiff();
   utils::RevisionList emptyRevisions(std::vector<std::string>{});
@@ -249,7 +254,8 @@ TEST_F(CmdConfigSessionDiffTestFixture, diffWithCurrentKeyword) {
 
 TEST_F(CmdConfigSessionDiffTestFixture, diffNonexistentRevision) {
   setupTestableConfigSession();
-  ConfigSession::getInstance().getAgentConfig();
+  ConfigSession::getInstance().config<AgentConfigDomain>();
+  ConfigSession::getInstance().save<AgentConfigDomain>();
 
   auto cmd = CmdConfigSessionDiff();
   // Use a fake SHA that doesn't exist
@@ -400,8 +406,8 @@ TEST_F(CmdConfigSessionDiffTestFixture, diffBgpSession) {
   std::filesystem::remove(getSessionConfigPath());
 
   auto& session = ConfigSession::getInstance();
-  session.getBgpConfig().router_id() = "9.9.9.9";
-  session.saveBgpConfig();
+  session.config<BgpConfigDomain>().router_id() = "9.9.9.9";
+  session.save<BgpConfigDomain>();
 
   auto cmd = CmdConfigSessionDiff();
   utils::RevisionList emptyRevisions(std::vector<std::string>{});

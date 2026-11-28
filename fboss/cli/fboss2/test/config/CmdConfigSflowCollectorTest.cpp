@@ -6,8 +6,10 @@
 #include <limits>
 
 #include "fboss/agent/FbossError.h"
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/sflow_collector/CmdConfigSflowCollector.h"
 #include "fboss/cli/fboss2/commands/delete/sflow_collector/CmdDeleteSflowCollector.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -32,7 +34,7 @@ class CmdConfigSflowCollectorTestFixture : public CmdConfigTestBase {
  protected:
   static const std::vector<cfg::SflowCollector>& collectors() {
     return *ConfigSession::getInstance()
-                .getAgentConfig()
+                .config<AgentConfigDomain>()
                 .sw()
                 ->sFlowCollectors();
   }
@@ -143,8 +145,10 @@ TEST_F(CmdConfigSflowCollectorTestFixture, deleteMatchesCanonicalAddress) {
 TEST_F(CmdConfigSflowCollectorTestFixture, deleteRemovesCanonicalDuplicates) {
   setupTestableConfigSession("delete sflow-collector", "2001:db8::1 6343");
 
-  auto& mutableCollectors =
-      *ConfigSession::getInstance().getAgentConfig().sw()->sFlowCollectors();
+  auto& mutableCollectors = *ConfigSession::getInstance()
+                                 .config<AgentConfigDomain>()
+                                 .sw()
+                                 ->sFlowCollectors();
   cfg::SflowCollector duplicate;
   duplicate.ip() = "2001:0db8:0:0:0:0:0:1";
   duplicate.port() = 6343;

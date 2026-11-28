@@ -16,7 +16,9 @@
 #include <algorithm>
 #include <iostream>
 #include <stdexcept>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -25,7 +27,7 @@ CmdConfigVlanDefaultTraits::RetType CmdConfigVlanDefault::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& vlanIdArg) {
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   int32_t vlanId = vlanIdArg.getVlanId();
   int32_t currentDefault = *swConfig.defaultVlan();
@@ -101,7 +103,7 @@ CmdConfigVlanDefaultTraits::RetType CmdConfigVlanDefault::queryClient(
 
   swConfig.defaultVlan() = vlanId;
 
-  session.saveConfig();
+  session.save<AgentConfigDomain>();
 
   return fmt::format(
       "Successfully set default VLAN to {} (was {})", vlanId, currentDefault);

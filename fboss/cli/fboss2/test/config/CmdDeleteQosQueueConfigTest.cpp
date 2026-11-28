@@ -13,9 +13,11 @@
 #include <string>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/QueueConfigUtils.h"
 #include "fboss/cli/fboss2/commands/delete/qos/queue_config/CmdDeleteQosQueueConfig.h"
 #include "fboss/cli/fboss2/commands/delete/qos/queue_config/CmdDeleteQosQueueConfigQueueId.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -84,7 +86,7 @@ class CmdDeleteQosQueueConfigTestFixture : public CmdConfigTestBase {
 
  protected:
   static cfg::SwitchConfig& switchConfig() {
-    return *ConfigSession::getInstance().getAgentConfig().sw();
+    return *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   }
 
   static const std::vector<cfg::PortQueue>* namedQueues(

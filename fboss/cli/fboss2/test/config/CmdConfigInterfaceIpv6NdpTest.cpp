@@ -13,7 +13,9 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/interface/ipv6/ndp/CmdConfigInterfaceIpv6Ndp.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -150,7 +152,7 @@ TEST_F(CmdConfigInterfaceIpv6NdpTestFixture, queryClientSetsRaInterval) {
   EXPECT_THAT(result, HasSubstr("ra-interval=30"));
 
   auto& session = ConfigSession::getInstance();
-  auto& ifaces = *session.getAgentConfig().sw()->interfaces();
+  auto& ifaces = *session.config<AgentConfigDomain>().sw()->interfaces();
   EXPECT_TRUE(ifaces[0].ndp().has_value());
   EXPECT_EQ(*ifaces[0].ndp()->routerAdvertisementSeconds(), 30);
 }
@@ -165,8 +167,10 @@ TEST_F(CmdConfigInterfaceIpv6NdpTestFixture, queryClientSetsRaLifetime) {
 
   EXPECT_THAT(result, HasSubstr("ra-lifetime=1800"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->routerLifetime(), 1800);
 }
 
@@ -180,8 +184,10 @@ TEST_F(CmdConfigInterfaceIpv6NdpTestFixture, queryClientSetsHopLimit) {
 
   EXPECT_THAT(result, HasSubstr("hop-limit=64"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->curHopLimit(), 64);
 }
 
@@ -198,8 +204,10 @@ TEST_F(
 
   EXPECT_THAT(result, HasSubstr("prefix-valid-lifetime=2592000"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->prefixValidLifetimeSeconds(), 2592000);
 }
 
@@ -216,8 +224,10 @@ TEST_F(
 
   EXPECT_THAT(result, HasSubstr("prefix-preferred-lifetime=604800"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->prefixPreferredLifetimeSeconds(), 604800);
 }
 
@@ -232,8 +242,10 @@ TEST_F(CmdConfigInterfaceIpv6NdpTestFixture, queryClientSetsManagedConfigFlag) {
 
   EXPECT_THAT(result, HasSubstr("managed-config-flag=true"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_TRUE(*ifaces[0].ndp()->routerAdvertisementManagedBit());
 }
 
@@ -247,8 +259,10 @@ TEST_F(CmdConfigInterfaceIpv6NdpTestFixture, queryClientSetsOtherConfigFlag) {
 
   EXPECT_THAT(result, HasSubstr("other-config-flag=true"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_TRUE(*ifaces[0].ndp()->routerAdvertisementOtherBit());
 }
 
@@ -263,8 +277,10 @@ TEST_F(CmdConfigInterfaceIpv6NdpTestFixture, queryClientSetsRaAddress) {
 
   EXPECT_THAT(result, HasSubstr("ra-address=2001:db8::1"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->routerAddress(), "2001:db8::1");
 }
 
@@ -335,8 +351,10 @@ TEST_F(CmdConfigInterfaceIpv6NdpTestFixture, queryClientHopLimitZeroIsValid) {
 
   EXPECT_NO_THROW(cmd.queryClient(localhost(), interfaces, attrs));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->curHopLimit(), 0);
 }
 
@@ -348,8 +366,10 @@ TEST_F(CmdConfigInterfaceIpv6NdpTestFixture, queryClientRaIntervalZeroIsValid) {
 
   EXPECT_NO_THROW(cmd.queryClient(localhost(), interfaces, attrs));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->routerAdvertisementSeconds(), 0);
 }
 
@@ -379,8 +399,10 @@ TEST_F(
   EXPECT_THROW(
       cmd.queryClient(localhost(), interfaces, attrs), std::invalid_argument);
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_FALSE(ifaces[0].ndp().has_value());
 }
 
@@ -547,8 +569,10 @@ TEST_F(CmdConfigInterfaceIpv6NdpTestFixture, queryClientRaAddressNormalized) {
 
   EXPECT_THAT(result, HasSubstr("ra-address=::1"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->routerAddress(), "::1");
 }
 
@@ -569,8 +593,10 @@ TEST_F(CmdConfigInterfaceIpv6NdpTestFixture, queryClientMultiPort) {
   EXPECT_THAT(result, HasSubstr("eth1/2/1"));
   EXPECT_THAT(result, HasSubstr("ra-interval=60"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->routerAdvertisementSeconds(), 60);
   EXPECT_EQ(*ifaces[1].ndp()->routerAdvertisementSeconds(), 60);
 }
@@ -590,8 +616,10 @@ TEST_F(CmdConfigInterfaceIpv6NdpTestFixture, queryClientMultipleAttrs) {
   EXPECT_THAT(result, HasSubstr("hop-limit=64"));
   EXPECT_THAT(result, HasSubstr("managed-config-flag=true"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->routerAdvertisementSeconds(), 30);
   EXPECT_EQ(*ifaces[0].ndp()->curHopLimit(), 64);
   EXPECT_TRUE(*ifaces[0].ndp()->routerAdvertisementManagedBit());

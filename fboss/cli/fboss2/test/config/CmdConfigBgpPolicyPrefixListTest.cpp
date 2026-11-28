@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/CmdConfigProtocolBgpPolicyPrefixList.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -48,7 +49,7 @@ class CmdConfigBgpPolicyPrefixListTestFixture : public CmdConfigTestBase {
 
   const std::vector<bgp::routing_policy::PrefixList>& lists() {
     return *ConfigSession::getInstance()
-                .getBgpConfig()
+                .config<BgpConfigDomain>()
                 .policies()
                 .ensure()
                 .prefix_lists();
@@ -56,7 +57,7 @@ class CmdConfigBgpPolicyPrefixListTestFixture : public CmdConfigTestBase {
 
   bool sessionFileExists() {
     return std::filesystem::exists(
-        ConfigSession::getInstance().getBgpSessionConfigPath());
+        ConfigSession::getInstance().stagedPath(cli::ServiceType::BGP));
   }
 };
 

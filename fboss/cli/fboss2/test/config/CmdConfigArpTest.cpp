@@ -13,7 +13,9 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/arp/CmdConfigArp.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -102,7 +104,7 @@ TEST_F(CmdConfigArpTestFixture, setTimeout) {
   EXPECT_THAT(result, HasSubstr("timeout"));
   EXPECT_THAT(result, HasSubstr("120"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->arpTimeoutSeconds(), 120);
 }
 
@@ -116,7 +118,7 @@ TEST_F(CmdConfigArpTestFixture, setAgeInterval) {
   EXPECT_THAT(result, HasSubstr("age-interval"));
   EXPECT_THAT(result, HasSubstr("7"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->arpAgerInterval(), 7);
 }
 
@@ -130,7 +132,7 @@ TEST_F(CmdConfigArpTestFixture, setMaxProbes) {
   EXPECT_THAT(result, HasSubstr("max-probes"));
   EXPECT_THAT(result, HasSubstr("500"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->maxNeighborProbes(), 500);
 }
 
@@ -144,7 +146,7 @@ TEST_F(CmdConfigArpTestFixture, setStaleInterval) {
   EXPECT_THAT(result, HasSubstr("stale-interval"));
   EXPECT_THAT(result, HasSubstr("15"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->staleEntryInterval(), 15);
 }
 
@@ -158,7 +160,7 @@ TEST_F(CmdConfigArpTestFixture, idempotentSameValue) {
   cmd.queryClient(hostInfo, args);
   cmd.queryClient(hostInfo, args);
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(*config.sw()->arpTimeoutSeconds(), 90);
 }
 

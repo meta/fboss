@@ -8,9 +8,11 @@
 #include <string>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/aggregate_port/AggregatePortConfigUtils.h"
 #include "fboss/cli/fboss2/commands/config/aggregate_port/CmdConfigAggregatePort.h"
 #include "fboss/cli/fboss2/commands/delete/aggregate_port/CmdDeleteAggregatePort.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -81,8 +83,10 @@ class CmdConfigAggregatePortTestFixture : public CmdConfigTestBase {
 })") {}
 
   const cfg::AggregatePort& getAggregatePort(const std::string& name) {
-    const auto& ports =
-        *ConfigSession::getInstance().getAgentConfig().sw()->aggregatePorts();
+    const auto& ports = *ConfigSession::getInstance()
+                             .config<AgentConfigDomain>()
+                             .sw()
+                             ->aggregatePorts();
     auto* port = aggregate_port_utils::findAggregatePort(ports, name);
     if (!port) {
       throw std::runtime_error("Aggregate port not found in test");
@@ -153,7 +157,10 @@ TEST_F(CmdConfigAggregatePortTestFixture, rejectsZeroKey) {
   EXPECT_THROW(cmd.queryClient(localhost(), args), std::invalid_argument);
   EXPECT_EQ(
       aggregate_port_utils::findAggregatePort(
-          *ConfigSession::getInstance().getAgentConfig().sw()->aggregatePorts(),
+          *ConfigSession::getInstance()
+               .config<AgentConfigDomain>()
+               .sw()
+               ->aggregatePorts(),
           "Port-Channel3001"),
       nullptr);
 }
@@ -162,12 +169,17 @@ TEST_F(CmdConfigAggregatePortTestFixture, rejectsTypeChangeAtomically) {
   setupTestableConfigSession();
   CmdConfigAggregatePort cmd;
   AggregatePortConfigArg args({"Port-Channel4000", "type", "hyper"});
-  const auto before =
-      *ConfigSession::getInstance().getAgentConfig().sw()->aggregatePorts();
+  const auto before = *ConfigSession::getInstance()
+                           .config<AgentConfigDomain>()
+                           .sw()
+                           ->aggregatePorts();
 
   EXPECT_THROW(cmd.queryClient(localhost(), args), std::invalid_argument);
   EXPECT_EQ(
-      *ConfigSession::getInstance().getAgentConfig().sw()->aggregatePorts(),
+      *ConfigSession::getInstance()
+           .config<AgentConfigDomain>()
+           .sw()
+           ->aggregatePorts(),
       before);
 }
 
@@ -248,7 +260,8 @@ TEST_F(CmdConfigAggregatePortTestFixture, newMemberUsesDefaults) {
 
 TEST_F(CmdConfigAggregatePortTestFixture, rejectsNonInterfaceLagMember) {
   setupTestableConfigSession();
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   swConfig.ports()[0].portType() = cfg::PortType::FABRIC_PORT;
   const auto before = *swConfig.aggregatePorts();
   CmdConfigAggregatePortMember cmd;
@@ -263,7 +276,8 @@ TEST_F(CmdConfigAggregatePortTestFixture, rejectsNonInterfaceLagMember) {
 
 TEST_F(CmdConfigAggregatePortTestFixture, configuresHyperPortMember) {
   setupTestableConfigSession();
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   swConfig.ports()[0].portType() = cfg::PortType::HYPER_PORT_MEMBER;
   CmdConfigAggregatePort aggregatePortCmd;
   AggregatePortConfigArg aggregatePort(
@@ -300,7 +314,8 @@ TEST_F(CmdConfigAggregatePortTestFixture, rejectsInterfacePortAsHyperMember) {
 
 TEST_F(CmdConfigAggregatePortTestFixture, rejectsMemberWithPortInterface) {
   setupTestableConfigSession();
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   cfg::Interface interface;
   interface.intfID() = 3001;
   interface.routerID() = 0;
@@ -326,15 +341,20 @@ TEST_F(CmdConfigAggregatePortTestFixture, rejectsCrossLagMemberAtomically) {
   AggregatePortConfigArg aggregatePort({"Port-Channel4000"});
   AggregatePortMemberConfigArg members(
       {"eth1/1/1", "eth1/3/1", "priority", "1234"});
-  const auto before =
-      *ConfigSession::getInstance().getAgentConfig().sw()->aggregatePorts();
+  const auto before = *ConfigSession::getInstance()
+                           .config<AgentConfigDomain>()
+                           .sw()
+                           ->aggregatePorts();
 
   EXPECT_THROW(
       cmd.queryClient(localhost(), aggregatePort, members),
       std::invalid_argument);
 
   EXPECT_EQ(
-      *ConfigSession::getInstance().getAgentConfig().sw()->aggregatePorts(),
+      *ConfigSession::getInstance()
+           .config<AgentConfigDomain>()
+           .sw()
+           ->aggregatePorts(),
       before);
 }
 
@@ -354,7 +374,10 @@ TEST_F(CmdConfigAggregatePortTestFixture, rejectsInvalidHysteresis) {
   EXPECT_THROW(cmd.queryClient(localhost(), args), std::invalid_argument);
   EXPECT_EQ(
       aggregate_port_utils::findAggregatePort(
-          *ConfigSession::getInstance().getAgentConfig().sw()->aggregatePorts(),
+          *ConfigSession::getInstance()
+               .config<AgentConfigDomain>()
+               .sw()
+               ->aggregatePorts(),
           "Port-Channel3001"),
       nullptr);
 }
@@ -398,7 +421,10 @@ TEST_F(CmdConfigAggregatePortTestFixture, deletesAggregatePort) {
       cmd.queryClient(localhost(), aggregatePort), HasSubstr("deleted"));
   EXPECT_EQ(
       aggregate_port_utils::findAggregatePort(
-          *ConfigSession::getInstance().getAgentConfig().sw()->aggregatePorts(),
+          *ConfigSession::getInstance()
+               .config<AgentConfigDomain>()
+               .sw()
+               ->aggregatePorts(),
           "Port-Channel5000"),
       nullptr);
 
@@ -411,8 +437,10 @@ TEST_F(
     deleteSubcommandsAreIdempotentForMissingAggregatePort) {
   setupTestableConfigSession();
   AggregatePortNameArg aggregatePort({"Port-Channel9999"});
-  const auto before =
-      *ConfigSession::getInstance().getAgentConfig().sw()->aggregatePorts();
+  const auto before = *ConfigSession::getInstance()
+                           .config<AgentConfigDomain>()
+                           .sw()
+                           ->aggregatePorts();
 
   CmdDeleteAggregatePortMember memberCmd;
   AggregatePortMemberDeleteArg members({"eth1/1/1"});
@@ -426,7 +454,10 @@ TEST_F(
       HasSubstr("does not exist"));
 
   EXPECT_EQ(
-      *ConfigSession::getInstance().getAgentConfig().sw()->aggregatePorts(),
+      *ConfigSession::getInstance()
+           .config<AgentConfigDomain>()
+           .sw()
+           ->aggregatePorts(),
       before);
 }
 
@@ -455,7 +486,10 @@ TEST_F(
       cmd.queryClient(localhost(), aggregatePort), std::invalid_argument);
   EXPECT_NE(
       aggregate_port_utils::findAggregatePort(
-          *ConfigSession::getInstance().getAgentConfig().sw()->aggregatePorts(),
+          *ConfigSession::getInstance()
+               .config<AgentConfigDomain>()
+               .sw()
+               ->aggregatePorts(),
           "Port-Channel4000"),
       nullptr);
 }

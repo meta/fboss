@@ -14,8 +14,10 @@
 
 #include <fmt/format.h>
 #include <iostream>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -24,7 +26,7 @@ CmdConfigVlanTraits::RetType CmdConfigVlan::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& vlanIdArg) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
   VlanID vlanId(vlanIdArg.getVlanId());
 
   bool created = VlanManager::createVlan(swConfig, vlanId).first;
@@ -32,7 +34,7 @@ CmdConfigVlanTraits::RetType CmdConfigVlan::queryClient(
     return fmt::format("VLAN {} already exists", static_cast<uint16_t>(vlanId));
   }
 
-  session.saveConfig();
+  session.save<AgentConfigDomain>();
 
   return fmt::format(
       "Successfully created VLAN {}", static_cast<uint16_t>(vlanId));

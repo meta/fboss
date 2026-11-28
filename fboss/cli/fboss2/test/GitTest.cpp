@@ -123,6 +123,30 @@ TEST_F(GitTest, BasicOperations) {
   EXPECT_EQ("version 2", contentAtSecond);
 }
 
+TEST_F(GitTest, LogAcrossSeveralFiles) {
+  Git git(testRepoPath_.string());
+  git.init();
+
+  writeFile("a.conf", "a");
+  const auto shaA = git.commit({"a.conf"}, "A", "User", "user@test.com");
+  writeFile("b.conf", "b");
+  const auto shaB = git.commit({"b.conf"}, "B", "User", "user@test.com");
+  writeFile("c.conf", "c");
+  git.commit({"c.conf"}, "C", "User", "user@test.com");
+
+  const std::vector<std::string> paths = {"a.conf", "b.conf", "missing.conf"};
+  auto commits = git.log(paths);
+  ASSERT_EQ(2, commits.size());
+  EXPECT_EQ(shaB, commits[0].sha1);
+  EXPECT_EQ(shaA, commits[1].sha1);
+
+  EXPECT_TRUE(git.log(std::vector<std::string>{}).empty());
+
+  auto limited = git.log(paths, 1);
+  ASSERT_EQ(1, limited.size());
+  EXPECT_EQ(shaB, limited[0].sha1);
+}
+
 TEST_F(GitTest, CommitExplicitlyIgnoredFile) {
   Git git(testRepoPath_.string());
   git.init();

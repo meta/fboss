@@ -17,11 +17,13 @@
 #include <map>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/srv6/my_sid/CmdConfigSrv6MySid.h"
 #include "fboss/cli/fboss2/commands/config/srv6/my_sid/entry/CmdConfigSrv6MySidEntry.h"
 #include "fboss/cli/fboss2/commands/config/srv6/utils/Srv6MySidCliUtils.h"
 #include "fboss/cli/fboss2/commands/delete/srv6/my_sid/CmdDeleteSrv6MySid.h"
 #include "fboss/cli/fboss2/commands/delete/srv6/my_sid/entry/CmdDeleteSrv6MySidEntry.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -178,7 +180,7 @@ TEST_F(CmdConfigSrv6MySidTestFixture, mySidInit_createsConfig) {
   auto result = cmd.queryClient(hostInfo_, prefix);
   EXPECT_THAT(result, HasSubstr("Successfully initialized"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   ASSERT_TRUE(config.sw()->mySidConfig().has_value());
   EXPECT_EQ(*config.sw()->mySidConfig()->locatorPrefix(), kLocatorPrefix);
   EXPECT_TRUE(config.sw()->mySidConfig()->entries()->empty());
@@ -300,7 +302,7 @@ TEST_F(CmdConfigSrv6MySidTestFixture, mySidEntry_insertsEntry) {
   auto result = cmd.queryClient(hostInfo_, prefix, entryArg);
   EXPECT_THAT(result, HasSubstr("Successfully added adjacency SID"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   ASSERT_TRUE(config.sw()->mySidConfig().has_value());
   EXPECT_EQ(config.sw()->mySidConfig()->entries()->count(10188), 1);
   EXPECT_TRUE(
@@ -355,7 +357,7 @@ TEST_F(CmdConfigSrv6MySidTestFixture, mySidDeleteEntry_removesEntry) {
   auto result = deleteCmd.queryClient(hostInfo_, prefix, deleteArg);
   EXPECT_THAT(result, HasSubstr("Successfully deleted MySID entry 32767"));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_EQ(config.sw()->mySidConfig()->entries()->count(32767), 0);
 }
 
@@ -390,7 +392,7 @@ TEST_F(CmdConfigSrv6MySidTestFixture, deleteMySid_removesEntireConfig) {
       result, HasSubstr("Successfully deleted SRv6 MySID configuration"));
   EXPECT_THAT(result, HasSubstr(kLocatorPrefix));
 
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   EXPECT_FALSE(config.sw()->mySidConfig().has_value());
 }
 

@@ -5,7 +5,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/qos/default_policy/CmdDeleteQosDefaultPolicy.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -40,7 +42,7 @@ class CmdDeleteQosDefaultPolicyTestFixture : public CmdConfigTestBase {
 TEST_F(CmdDeleteQosDefaultPolicyTestFixture, deletesExistingDefaultPolicy) {
   setupTestableConfigSession(cmdPrefix_, "");
 
-  auto& agentConfig = ConfigSession::getInstance().getAgentConfig();
+  auto& agentConfig = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   switchConfig.dataPlaneTrafficPolicy() = cfg::TrafficPolicyConfig{};
   switchConfig.dataPlaneTrafficPolicy()->defaultQosPolicy() =
@@ -61,7 +63,7 @@ TEST_F(CmdDeleteQosDefaultPolicyTestFixture, deletesExistingDefaultPolicy) {
 TEST_F(CmdDeleteQosDefaultPolicyTestFixture, noOpWhenNoPolicySet) {
   setupTestableConfigSession(cmdPrefix_, "");
 
-  auto& agentConfig = ConfigSession::getInstance().getAgentConfig();
+  auto& agentConfig = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   switchConfig.dataPlaneTrafficPolicy().reset();
 
@@ -76,7 +78,7 @@ TEST_F(
     noOpWhenTrafficPolicyHasNoPolicyField) {
   setupTestableConfigSession(cmdPrefix_, "");
 
-  auto& agentConfig = ConfigSession::getInstance().getAgentConfig();
+  auto& agentConfig = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   switchConfig.dataPlaneTrafficPolicy() = cfg::TrafficPolicyConfig{};
   // defaultQosPolicy not set on the policy object

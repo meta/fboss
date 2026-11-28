@@ -5,7 +5,9 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/interface/dhcp/relay/CmdDeleteInterfaceDhcpRelay.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
@@ -126,7 +128,7 @@ TEST_F(CmdDeleteInterfaceDhcpRelayTestFixture, queryClientClearsIpv4Relay) {
   EXPECT_THAT(result, HasSubstr("Successfully deleted"));
   EXPECT_THAT(result, HasSubstr("ip-address"));
 
-  auto& sw = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& sw = *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   EXPECT_FALSE((*sw.interfaces())[0].dhcpRelayAddressV4().has_value());
   EXPECT_FALSE((*sw.vlans())[0].dhcpRelayAddressV4().has_value());
   // The v6 relay must be untouched
@@ -142,7 +144,7 @@ TEST_F(CmdDeleteInterfaceDhcpRelayTestFixture, queryClientClearsIpv6Relay) {
 
   EXPECT_NO_THROW(cmd.queryClient(localhost(), interfaces, attrs));
 
-  auto& sw = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& sw = *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   EXPECT_FALSE((*sw.interfaces())[0].dhcpRelayAddressV6().has_value());
   EXPECT_FALSE((*sw.vlans())[0].dhcpRelayAddressV6().has_value());
   EXPECT_TRUE((*sw.interfaces())[0].dhcpRelayAddressV4().has_value());
@@ -157,7 +159,7 @@ TEST_F(CmdDeleteInterfaceDhcpRelayTestFixture, queryClientClearsBoth) {
 
   EXPECT_NO_THROW(cmd.queryClient(localhost(), interfaces, attrs));
 
-  auto& sw = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& sw = *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   EXPECT_FALSE((*sw.interfaces())[0].dhcpRelayAddressV4().has_value());
   EXPECT_FALSE((*sw.interfaces())[0].dhcpRelayAddressV6().has_value());
 }
@@ -175,7 +177,7 @@ TEST_F(CmdDeleteInterfaceDhcpRelayTestFixture, queryClientMatchingAddress) {
 
   EXPECT_NO_THROW(cmd.queryClient(localhost(), interfaces, attrs));
 
-  auto& sw = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& sw = *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   EXPECT_FALSE((*sw.interfaces())[0].dhcpRelayAddressV4().has_value());
 }
 
@@ -192,7 +194,7 @@ TEST_F(
 
   EXPECT_NO_THROW(cmd.queryClient(localhost(), interfaces, attrs));
 
-  auto& sw = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& sw = *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   EXPECT_FALSE((*sw.interfaces())[0].dhcpRelayAddressV6().has_value());
 }
 
@@ -213,7 +215,7 @@ TEST_F(CmdDeleteInterfaceDhcpRelayTestFixture, queryClientMismatchedAddress) {
   }
 
   // Mismatch must leave the config untouched
-  auto& sw = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& sw = *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   EXPECT_TRUE((*sw.interfaces())[0].dhcpRelayAddressV4().has_value());
 }
 

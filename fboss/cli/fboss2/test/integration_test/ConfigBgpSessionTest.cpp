@@ -130,8 +130,8 @@ TEST_F(ConfigBgpSessionTest, RollbackRestoresBgpConfig) {
 
 // Committing a BGP config identical to what is already running must be a no-op:
 // "Nothing to commit" and, crucially, NO bgpd restart (a restart is traffic
-// affecting). saveBgpConfig() always records SERVICE_RESTART, so commit() has
-// to compare the staged config against the running one.
+// affecting). save<BgpConfigDomain>() always records SERVICE_RESTART, so
+// commit() has to compare the staged config against the running one.
 TEST_F(ConfigBgpSessionTest, CommitUnchangedBgpConfigDoesNotRestart) {
   if (bgpDaemonActiveState() != "active") {
     GTEST_SKIP() << "bgpd is not active on this DUT; skipping no-op restart "

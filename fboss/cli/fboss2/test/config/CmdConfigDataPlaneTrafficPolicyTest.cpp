@@ -15,9 +15,11 @@
 #include <string>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/config/TrafficPolicyUtils.h"
 #include "fboss/cli/fboss2/commands/config/data_plane/traffic_policy/CmdConfigDataPlaneTrafficPolicy.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -59,7 +61,7 @@ class CmdConfigDataPlaneTrafficPolicyTestFixture : public CmdConfigTestBase {
   const std::string kRule = "queue-per-host-queue-0-l2";
 
   cfg::MatchAction& dataPlaneAction(const std::string& matcher) {
-    auto& cfg = ConfigSession::getInstance().getAgentConfig();
+    auto& cfg = ConfigSession::getInstance().config<AgentConfigDomain>();
     auto policy = cfg.sw()->dataPlaneTrafficPolicy();
     if (!policy) {
       throw std::runtime_error("dataPlaneTrafficPolicy not set");
@@ -203,7 +205,7 @@ TEST_F(
   EXPECT_EQ(*action.counter(), "c1");
 
   auto& policy = *ConfigSession::getInstance()
-                      .getAgentConfig()
+                      .config<AgentConfigDomain>()
                       .sw()
                       ->dataPlaneTrafficPolicy();
   EXPECT_EQ(policy.matchToAction()->size(), 1u);
@@ -243,7 +245,8 @@ TEST_F(
     CmdConfigDataPlaneTrafficPolicyTestFixture,
     refusesRuleAlreadyInCoppPolicy) {
   setupTestableConfigSession(cmdPrefix_, "");
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   traffic_policy::applyAction(
       swConfig, traffic_policy::PolicyKind::Cpu, kRule, {"send-to-queue", "9"});
 
@@ -260,7 +263,8 @@ TEST_F(
     CmdConfigDataPlaneTrafficPolicyTestFixture,
     deleteRemovesOneActionThenTheEntry) {
   setupTestableConfigSession(cmdPrefix_, "");
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   const auto kind = traffic_policy::PolicyKind::DataPlane;
   traffic_policy::applyAction(swConfig, kind, kRule, {"send-to-queue", "0"});
   traffic_policy::applyAction(swConfig, kind, kRule, {"counter", "c1"});
@@ -328,7 +332,8 @@ TEST_F(CmdConfigDataPlaneTrafficPolicyTestFixture, deleteClearsMappedRows) {
   };
 
   setupTestableConfigSession(cmdPrefix_, "");
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   const auto kind = traffic_policy::PolicyKind::DataPlane;
   for (const auto& testCase : kCases) {
     SCOPED_TRACE(testCase.actionType);
@@ -353,7 +358,8 @@ TEST_F(
     CmdConfigDataPlaneTrafficPolicyTestFixture,
     deleteToCpuActionOnlyClearsItsOwnKeyword) {
   setupTestableConfigSession(cmdPrefix_, "");
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   const auto kind = traffic_policy::PolicyKind::DataPlane;
   traffic_policy::applyAction(swConfig, kind, kRule, {"trap-to-cpu"});
 
@@ -423,7 +429,8 @@ TEST_F(
     CmdConfigDataPlaneTrafficPolicyTestFixture,
     deleteAbsentActionIsReported) {
   setupTestableConfigSession(cmdPrefix_, "");
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   const auto kind = traffic_policy::PolicyKind::DataPlane;
   traffic_policy::applyAction(swConfig, kind, kRule, {"send-to-queue", "0"});
 
@@ -438,7 +445,8 @@ TEST_F(
     CmdConfigDataPlaneTrafficPolicyTestFixture,
     deleteAbsentActionPrunesPreExistingEmptyEntry) {
   setupTestableConfigSession(cmdPrefix_, "");
-  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& swConfig =
+      *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   const auto kind = traffic_policy::PolicyKind::DataPlane;
   traffic_policy::upsertMatcher(
       traffic_policy::policyFor(swConfig, kind), kRule);

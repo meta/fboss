@@ -11,8 +11,10 @@
 #include <string>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -23,7 +25,7 @@ CmdDeleteQosPriorityGroupPolicy::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& policyName) {
   auto& session = ConfigSession::getInstance();
-  auto& sw = *session.getAgentConfig().sw();
+  auto& sw = *session.config<AgentConfigDomain>().sw();
   const std::string& name = policyName.getName();
 
   if (!sw.portPgConfigs().has_value() ||

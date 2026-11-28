@@ -26,6 +26,7 @@
 #include <string_view>
 #include <vector>
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliValueParsers.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -434,11 +435,12 @@ CmdConfigProtocolBgpGlobal::queryClient(
   // The attribute is guaranteed valid: BgpGlobalConfig's constructor rejects
   // an empty/unknown attribute before we get here.
   auto handler = attrHandlers().find(args.attr());
-  Result result = handler->second(session.getBgpConfig(), args.values());
+  Result result =
+      handler->second(session.config<BgpConfigDomain>(), args.values());
   if (result.ok) {
-    session.saveBgpConfig();
-    result.message +=
-        fmt::format("\nConfig saved to: {}", session.getBgpSessionConfigPath());
+    session.save<BgpConfigDomain>();
+    result.message += fmt::format(
+        "\nConfig saved to: {}", session.stagedPath(cli::ServiceType::BGP));
   }
   return result.message;
 }

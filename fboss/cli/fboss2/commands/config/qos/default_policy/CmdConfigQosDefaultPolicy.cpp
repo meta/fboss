@@ -18,8 +18,10 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -50,7 +52,7 @@ CmdConfigQosDefaultPolicyTraits::RetType CmdConfigQosDefaultPolicy::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& policyName) {
   auto& session = ConfigSession::getInstance();
-  auto& agentConfig = session.getAgentConfig();
+  auto& agentConfig = session.config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
 
   const auto& name = policyName.getName();

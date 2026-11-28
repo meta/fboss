@@ -14,8 +14,10 @@
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
 #include <iostream>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/TrafficPolicyUtils.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -28,7 +30,7 @@ CmdDeleteDataPlaneTrafficPolicyMatchAction::queryClient(
     const ObjectArgType& actionType) {
   auto& session = ConfigSession::getInstance();
   auto msg = traffic_policy::deleteAction(
-      *session.getAgentConfig().sw(),
+      *session.config<AgentConfigDomain>().sw(),
       traffic_policy::PolicyKind::DataPlane,
       matcherName.getName(),
       actionType.getActionType());

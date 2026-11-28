@@ -23,6 +23,7 @@
 #include <vector>
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliValueParsers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/prefix-list/BgpPrefixListCliUtils.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -128,7 +129,7 @@ CmdDeleteProtocolBgpPolicyPrefixList::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
-  auto& cfg = session.getBgpConfig();
+  auto& cfg = session.config<BgpConfigDomain>();
   // Delete mirrors add: an absent target is already the requested end state,
   // so this is a success with a warning. Nothing is saved, so a typo'd delete
   // can't stage an unrelated session change.
@@ -161,13 +162,13 @@ CmdDeleteProtocolBgpPolicyPrefixList::queryClient(
           args.basePrefix());
     }
     entries.erase(entryIt);
-    session.saveBgpConfig();
+    session.save<BgpConfigDomain>();
     return fmt::format(
         "Successfully deleted BGP prefix-list {} prefix {}\n"
         "Config saved to: {}",
         args.listName(),
         args.basePrefix(),
-        session.getBgpSessionConfigPath());
+        session.stagedPath(cli::ServiceType::BGP));
   }
   // A term's prefix_list_names resolves against this list by name at daemon
   // load; erasing the list while a term still names it would commit a
@@ -182,11 +183,11 @@ CmdDeleteProtocolBgpPolicyPrefixList::queryClient(
         folly::join(", ", referrers));
   }
   lists.erase(it);
-  session.saveBgpConfig();
+  session.save<BgpConfigDomain>();
   return fmt::format(
       "Successfully deleted BGP prefix-list {}\nConfig saved to: {}",
       args.listName(),
-      session.getBgpSessionConfigPath());
+      session.stagedPath(cli::ServiceType::BGP));
 }
 
 void CmdDeleteProtocolBgpPolicyPrefixList::printOutput(const RetType& output) {

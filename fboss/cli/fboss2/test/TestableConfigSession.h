@@ -17,19 +17,66 @@
 #include <utility>
 #include <vector>
 
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
+#include "fboss/cli/fboss2/session/AgentServiceController.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
+#include "fboss/cli/fboss2/session/BgpServiceController.h"
+#include "fboss/cli/fboss2/session/ConfigDomainRegistry.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
-#include "fboss/cli/fboss2/session/FbossServiceUtil.h"
 #include "fboss/cli/fboss2/session/SystemdInterface.h"
 
 namespace facebook::fboss {
 
-// Real service orchestration against a mock systemd; there is no agent to
+// Real agent orchestration against a mock systemd; there is no agent to
 // poll, so it always reports configured.
-class NoAgentServiceUtil : public FbossServiceUtil {
+class NoAgentServiceController : public AgentServiceController {
  public:
-  using FbossServiceUtil::FbossServiceUtil;
+  using AgentServiceController::AgentServiceController;
   bool isAgentConfigured(const HostInfo& /*hostInfo*/) override {
     return true;
+  }
+};
+
+using SystemdFactory = std::function<std::unique_ptr<SystemdInterface>()>;
+
+// Agent domain whose service controller the test chooses: an injected one, or
+// one built from the overrides below instead of from a live agent.
+class TestableAgentConfigDomain : public AgentConfigDomain {
+ public:
+  using AgentConfigDomain::AgentConfigDomain;
+
+  void setController(std::unique_ptr<AgentServiceController> controller) {
+    controller_ = std::move(controller);
+  }
+
+  bool multiSwitch{false};
+  std::vector<int> switchIndexes{0};
+  SystemdFactory systemdFactory;
+
+ protected:
+  std::unique_ptr<AgentServiceController> makeController(
+      const HostInfo& /*hostInfo*/) const override {
+    if (systemdFactory) {
+      return std::make_unique<NoAgentServiceController>(
+          switchIndexes, multiSwitch, systemdFactory());
+    }
+    return std::make_unique<AgentServiceController>(switchIndexes, multiSwitch);
+  }
+};
+
+class TestableBgpConfigDomain : public BgpConfigDomain {
+ public:
+  using BgpConfigDomain::BgpConfigDomain;
+
+  SystemdFactory systemdFactory;
+
+ protected:
+  std::unique_ptr<RestartOnlyServiceController> makeController()
+      const override {
+    if (systemdFactory) {
+      return std::make_unique<BgpServiceController>(systemdFactory());
+    }
+    return BgpConfigDomain::makeController();
   }
 };
 
@@ -41,22 +88,26 @@ class TestableConfigSession : public ConfigSession {
       std::function<std::string(cli::ServiceType service)>;
 
   TestableConfigSession(
-      std::string sessionConfigDir,
-      std::string systemConfigDir,
+      const std::string& sessionConfigDir,
+      const std::string& systemConfigDir,
       SessionInit init = SessionInit::CreateIfAbsent)
-      : ConfigSession(std::move(sessionConfigDir), systemConfigDir, init),
-        systemConfigDir_(std::move(systemConfigDir)) {}
-
-  // Constructor with mock FbossServiceUtil
-  TestableConfigSession(
-      std::string sessionConfigDir,
-      std::string systemConfigDir,
-      std::unique_ptr<FbossServiceUtil> fbossServiceUtil)
-      : ConfigSession(
-            std::move(sessionConfigDir),
+      : TestableConfigSession(
+            makeDomains(sessionConfigDir, systemConfigDir),
+            sessionConfigDir,
             systemConfigDir,
-            std::move(fbossServiceUtil)),
-        systemConfigDir_(std::move(systemConfigDir)) {}
+            init) {}
+
+  // Constructor with a mock agent controller. Does not initialize the session.
+  TestableConfigSession(
+      const std::string& sessionConfigDir,
+      const std::string& systemConfigDir,
+      std::unique_ptr<AgentServiceController> agentController)
+      : TestableConfigSession(
+            makeDomains(sessionConfigDir, systemConfigDir),
+            sessionConfigDir,
+            systemConfigDir) {
+    agentDomain_->setController(std::move(agentController));
+  }
 
   // Expose protected setInstance() for testing
   using ConfigSession::setInstance;
@@ -64,36 +115,34 @@ class TestableConfigSession : public ConfigSession {
   // Expose protected applyServiceActions() for testing
   using ConfigSession::applyServiceActions;
 
+  // Session internals that only tests look at.
+  using ConfigSession::getCommands;
+  using ConfigSession::getGit;
+  using ConfigSession::getRequiredAction;
+  using ConfigSession::recordServiceAction;
+  using ConfigSession::resetRequiredAction;
+  using ConfigSession::updateRequiredAction;
+
+  // The installed singleton as its test type. Throws if the test did not
+  // install a TestableConfigSession.
+  static TestableConfigSession& get() {
+    return dynamic_cast<TestableConfigSession&>(ConfigSession::getInstance());
+  }
+
   void setMultiSwitchOverride(
       bool multiSwitch,
       std::vector<int> switchIndexes = {0}) {
-    multiSwitchOverride_ = multiSwitch;
-    switchIndexesOverride_ = std::move(switchIndexes);
+    agentDomain_->multiSwitch = multiSwitch;
+    agentDomain_->switchIndexes = std::move(switchIndexes);
   }
 
-  void setMockSystemdFactory(
-      std::function<std::unique_ptr<SystemdInterface>()> factory) {
-    mockSystemdFactory_ = std::move(factory);
+  void setMockSystemdFactory(SystemdFactory factory) {
+    agentDomain_->systemdFactory = factory;
+    bgpDomain_->systemdFactory = std::move(factory);
   }
 
   void setConfigPathResolver(ConfigPathResolver resolver) {
     configPathResolver_ = std::move(resolver);
-  }
-
-  void ensureFbossServiceUtil(
-      const HostInfo& /*hostInfo*/,
-      bool /*needsAgentState*/) override {
-    if (!fbossServiceUtil_) {
-      if (mockSystemdFactory_) {
-        fbossServiceUtil_ = std::make_unique<NoAgentServiceUtil>(
-            switchIndexesOverride_,
-            multiSwitchOverride_,
-            mockSystemdFactory_());
-      } else {
-        fbossServiceUtil_ = std::make_unique<FbossServiceUtil>(
-            switchIndexesOverride_, multiSwitchOverride_);
-      }
-    }
   }
 
   // Set the command line to return from readCommandLineFromProc().
@@ -122,12 +171,57 @@ class TestableConfigSession : public ConfigSession {
   }
 
  private:
+  struct Domains {
+    ConfigDomainRegistry registry;
+    TestableAgentConfigDomain* agent;
+    TestableBgpConfigDomain* bgp;
+  };
+
+  static Domains makeDomains(
+      const std::string& sessionConfigDir,
+      const std::string& systemConfigDir) {
+    auto agent = std::make_unique<TestableAgentConfigDomain>(
+        sessionConfigDir, systemConfigDir);
+    auto bgp = std::make_unique<TestableBgpConfigDomain>(
+        sessionConfigDir, systemConfigDir);
+    Domains domains{{}, agent.get(), bgp.get()};
+    domains.registry.add(std::move(agent));
+    domains.registry.add(std::move(bgp));
+    return domains;
+  }
+
+  TestableConfigSession(
+      Domains domains,
+      std::string sessionConfigDir,
+      std::string systemConfigDir,
+      SessionInit init)
+      : ConfigSession(
+            std::move(sessionConfigDir),
+            systemConfigDir,
+            std::move(domains.registry),
+            init),
+        systemConfigDir_(std::move(systemConfigDir)),
+        agentDomain_(domains.agent),
+        bgpDomain_(domains.bgp) {}
+
+  // Does not initialize the session.
+  TestableConfigSession(
+      Domains domains,
+      std::string sessionConfigDir,
+      std::string systemConfigDir)
+      : ConfigSession(
+            std::move(sessionConfigDir),
+            systemConfigDir,
+            std::move(domains.registry)),
+        systemConfigDir_(std::move(systemConfigDir)),
+        agentDomain_(domains.agent),
+        bgpDomain_(domains.bgp) {}
+
   std::string systemConfigDir_;
   ConfigPathResolver configPathResolver_;
   std::string commandLine_;
-  bool multiSwitchOverride_{false};
-  std::vector<int> switchIndexesOverride_{0};
-  std::function<std::unique_ptr<SystemdInterface>()> mockSystemdFactory_;
+  TestableAgentConfigDomain* agentDomain_;
+  TestableBgpConfigDomain* bgpDomain_;
 };
 
 } // namespace facebook::fboss

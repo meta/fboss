@@ -18,8 +18,10 @@
 #include <cstdint>
 #include <iostream>
 #include <string>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/vlan/CmdConfigVlan.h"
 #include "fboss/cli/fboss2/commands/config/vlan/VlanManager.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
 
@@ -30,7 +32,7 @@ CmdConfigVlanStaticMacDelete::queryClient(
     const HostInfo& /* hostInfo */,
     const VlanId& vlanIdArg,
     const ObjectArgType& macAddressArg) {
-  auto& config = ConfigSession::getInstance().getAgentConfig();
+  auto& config = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
   VlanID vlanId(vlanIdArg.getVlanId());
 
@@ -75,7 +77,7 @@ CmdConfigVlanStaticMacDelete::queryClient(
   staticMacs.erase(it);
 
   // Save the updated config
-  ConfigSession::getInstance().saveConfig();
+  ConfigSession::getInstance().save<AgentConfigDomain>();
 
   return fmt::format(
       "Successfully deleted static MAC entry: MAC {} from VLAN {}",

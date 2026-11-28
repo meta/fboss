@@ -14,7 +14,9 @@
 #include <string>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/interface/ipv6/ndp/CmdDeleteInterfaceIpv6Ndp.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 
@@ -117,8 +119,10 @@ TEST_F(CmdDeleteInterfaceIpv6NdpTestFixture, queryClientResetsRaInterval) {
   EXPECT_THAT(result, HasSubstr("Successfully reset"));
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->routerAdvertisementSeconds(), 0);
 }
 
@@ -133,8 +137,10 @@ TEST_F(CmdDeleteInterfaceIpv6NdpTestFixture, queryClientResetsHopLimit) {
   EXPECT_THAT(result, HasSubstr("Successfully reset"));
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->curHopLimit(), 255);
 }
 
@@ -148,8 +154,10 @@ TEST_F(CmdDeleteInterfaceIpv6NdpTestFixture, queryClientResetsRaLifetime) {
 
   EXPECT_THAT(result, HasSubstr("Successfully reset"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->routerLifetime(), 1800);
 }
 
@@ -166,8 +174,10 @@ TEST_F(
 
   EXPECT_THAT(result, HasSubstr("Successfully reset"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->prefixValidLifetimeSeconds(), 2592000);
 }
 
@@ -184,8 +194,10 @@ TEST_F(
 
   EXPECT_THAT(result, HasSubstr("Successfully reset"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->prefixPreferredLifetimeSeconds(), 604800);
 }
 
@@ -202,8 +214,10 @@ TEST_F(
 
   EXPECT_THAT(result, HasSubstr("Successfully reset"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_FALSE(*ifaces[0].ndp()->routerAdvertisementManagedBit());
 }
 
@@ -217,8 +231,10 @@ TEST_F(CmdDeleteInterfaceIpv6NdpTestFixture, queryClientResetsOtherConfigFlag) {
 
   EXPECT_THAT(result, HasSubstr("Successfully reset"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_FALSE(*ifaces[0].ndp()->routerAdvertisementOtherBit());
 }
 
@@ -232,8 +248,10 @@ TEST_F(CmdDeleteInterfaceIpv6NdpTestFixture, queryClientResetsRaAddress) {
 
   EXPECT_THAT(result, HasSubstr("Successfully reset"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_FALSE(ifaces[0].ndp()->routerAddress().has_value());
 }
 
@@ -254,8 +272,10 @@ TEST_F(CmdDeleteInterfaceIpv6NdpTestFixture, queryClientIdempotentNoNdp) {
   EXPECT_THAT(result, HasSubstr("eth1/2/1"));
 
   // The no-op must not spuriously create an NDP block on the interface
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_FALSE(ifaces[1].ndp().has_value());
 }
 
@@ -287,8 +307,10 @@ TEST_F(CmdDeleteInterfaceIpv6NdpTestFixture, queryClientMultipleAttrs) {
   EXPECT_THAT(result, HasSubstr("Successfully reset"));
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].ndp()->routerAdvertisementSeconds(), 0);
   EXPECT_EQ(*ifaces[0].ndp()->curHopLimit(), 255);
 }

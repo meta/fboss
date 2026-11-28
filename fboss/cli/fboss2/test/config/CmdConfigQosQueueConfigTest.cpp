@@ -14,7 +14,9 @@
 #include <string>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/QueueConfigUtils.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -56,7 +58,7 @@ class CmdConfigQosQueueConfigTestFixture : public CmdConfigTestBase {
 
   static const cfg::PortQueue* findQueue(int16_t queueId) {
     const auto& queues = *ConfigSession::getInstance()
-                              .getAgentConfig()
+                              .config<AgentConfigDomain>()
                               .sw()
                               ->defaultPortQueues();
     for (const auto& queue : queues) {
@@ -137,7 +139,7 @@ TEST_F(CmdConfigQosQueueConfigTestFixture, setWeightExistingQueue) {
   EXPECT_THAT(result, ::testing::HasSubstr("Successfully configured"));
   EXPECT_THAT(result, ::testing::HasSubstr("1"));
 
-  auto& agentConfig = ConfigSession::getInstance().getAgentConfig();
+  auto& agentConfig = ConfigSession::getInstance().config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
   const auto& queues = *switchConfig.defaultPortQueues();
 
@@ -162,7 +164,7 @@ TEST_F(CmdConfigQosQueueConfigTestFixture, setReservedBytesExistingQueue) {
 
   cmd.queryClient(localhost(), kDefaultName(), config);
 
-  auto& agentConfig = ConfigSession::getInstance().getAgentConfig();
+  auto& agentConfig = ConfigSession::getInstance().config<AgentConfigDomain>();
   const auto& queues = *agentConfig.sw()->defaultPortQueues();
 
   const cfg::PortQueue* q = nullptr;
@@ -186,8 +188,10 @@ TEST_F(CmdConfigQosQueueConfigTestFixture, createsNewQueueEntry) {
 
   cmd.queryClient(localhost(), kDefaultName(), config);
 
-  const auto& queues =
-      *ConfigSession::getInstance().getAgentConfig().sw()->defaultPortQueues();
+  const auto& queues = *ConfigSession::getInstance()
+                            .config<AgentConfigDomain>()
+                            .sw()
+                            ->defaultPortQueues();
 
   const cfg::PortQueue* q = nullptr;
   for (const auto& queue : queues) {
@@ -210,8 +214,10 @@ TEST_F(CmdConfigQosQueueConfigTestFixture, setSchedulingShortName) {
 
   cmd.queryClient(localhost(), kDefaultName(), config);
 
-  const auto& queues =
-      *ConfigSession::getInstance().getAgentConfig().sw()->defaultPortQueues();
+  const auto& queues = *ConfigSession::getInstance()
+                            .config<AgentConfigDomain>()
+                            .sw()
+                            ->defaultPortQueues();
 
   const cfg::PortQueue* q = nullptr;
   for (const auto& queue : queues) {
@@ -236,8 +242,10 @@ TEST_F(CmdConfigQosQueueConfigTestFixture, setAqmEcnWithLinearDetection) {
 
   cmd.queryClient(localhost(), kDefaultName(), config);
 
-  const auto& queues =
-      *ConfigSession::getInstance().getAgentConfig().sw()->defaultPortQueues();
+  const auto& queues = *ConfigSession::getInstance()
+                            .config<AgentConfigDomain>()
+                            .sw()
+                            ->defaultPortQueues();
   const cfg::PortQueue* q = nullptr;
   for (const auto& queue : queues) {
     if (*queue.id() == 6) {
@@ -459,8 +467,10 @@ TEST_F(CmdConfigQosQueueConfigAqmSeedFixture, aqmEditPreservesExistingFields) {
   utils::QueueIdAndAttributes config(getCmdArgsList());
   cmd.queryClient(localhost(), kDefaultName(), config);
 
-  const auto& queues =
-      *ConfigSession::getInstance().getAgentConfig().sw()->defaultPortQueues();
+  const auto& queues = *ConfigSession::getInstance()
+                            .config<AgentConfigDomain>()
+                            .sw()
+                            ->defaultPortQueues();
   const cfg::PortQueue* q = nullptr;
   for (const auto& queue : queues) {
     if (*queue.id() == 6) {
@@ -486,8 +496,10 @@ TEST_F(CmdConfigQosQueueConfigAqmSeedFixture, aqmEditPreservesExistingFields) {
 // AqmSeed fixture is not derived from the main fixture, so it can't use that
 // fixture's protected findQueue helper).
 static const cfg::PortQueue* queueInSession(int16_t queueId) {
-  const auto& queues =
-      *ConfigSession::getInstance().getAgentConfig().sw()->defaultPortQueues();
+  const auto& queues = *ConfigSession::getInstance()
+                            .config<AgentConfigDomain>()
+                            .sw()
+                            ->defaultPortQueues();
   for (const auto& queue : queues) {
     if (*queue.id() == queueId) {
       return &queue;
@@ -639,15 +651,17 @@ utils::QueueConfigName kNamedName() {
 
 const std::vector<cfg::PortQueue>* namedQueuesInSession(
     const std::string& name) {
-  const auto& configs =
-      *ConfigSession::getInstance().getAgentConfig().sw()->portQueueConfigs();
+  const auto& configs = *ConfigSession::getInstance()
+                             .config<AgentConfigDomain>()
+                             .sw()
+                             ->portQueueConfigs();
   auto it = configs.find(name);
   return it == configs.end() ? nullptr : &it->second;
 }
 
 size_t defaultQueueCount() {
   return ConfigSession::getInstance()
-      .getAgentConfig()
+      .config<AgentConfigDomain>()
       .sw()
       ->defaultPortQueues()
       ->size();

@@ -14,6 +14,8 @@
 
 #include <fmt/format.h>
 #include <iostream>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -24,7 +26,7 @@ CmdDeleteSrv6MySidEntryTraits::RetType CmdDeleteSrv6MySidEntry::queryClient(
     const LocatorPrefixArg& prefixArg,
     const ObjectArgType& deleteArg) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
 
   if (!swConfig.mySidConfig().has_value()) {
     return fmt::format(

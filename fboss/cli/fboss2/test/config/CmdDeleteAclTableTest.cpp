@@ -15,8 +15,10 @@
 #include <string>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/acl/table/CmdDeleteAclTable.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -84,7 +86,7 @@ class CmdDeleteAclTableTestFixture : public CmdConfigTestBase {
 
  protected:
   cfg::SwitchConfig& sw() {
-    return *ConfigSession::getInstance().getAgentConfig().sw();
+    return *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   }
 
   bool hasTable(const std::string& name) {
@@ -217,7 +219,7 @@ TEST_F(CmdDeleteAclEmptyConfigTestFixture, deleteTableOnEmptyConfigThrows) {
       std::runtime_error);
   EXPECT_FALSE(
       ConfigSession::getInstance()
-          .getAgentConfig()
+          .config<AgentConfigDomain>()
           .sw()
           ->aclTableGroups()
           .has_value());
@@ -254,8 +256,10 @@ TEST_F(CmdDeleteAclOneTableTestFixture, refusesDeletingTheLastTable) {
       cmd.queryClient(host, AclTableDeleteArgs({"AclTable1"})),
       std::runtime_error);
 
-  auto& groups =
-      *ConfigSession::getInstance().getAgentConfig().sw()->aclTableGroups();
+  auto& groups = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->aclTableGroups();
   EXPECT_EQ(groups[0].aclTables()->size(), 1u);
 }
 

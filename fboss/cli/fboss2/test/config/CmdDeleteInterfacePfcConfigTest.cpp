@@ -6,8 +6,10 @@
 #include <string>
 #include <vector>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/interface/pfc_config/CmdDeleteInterfacePfcConfig.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
@@ -50,8 +52,10 @@ class CmdDeleteInterfacePfcConfigTestFixture : public CmdConfigTestBase {
   const PfcConfigDeleteAttrs kNoAttrs{std::vector<std::string>{}};
 
   const cfg::Port& port(const std::string& name) {
-    for (const auto& p :
-         *ConfigSession::getInstance().getAgentConfig().sw()->ports()) {
+    for (const auto& p : *ConfigSession::getInstance()
+                              .config<AgentConfigDomain>()
+                              .sw()
+                              ->ports()) {
       if (p.name().has_value() && *p.name() == name) {
         return p;
       }
@@ -86,7 +90,7 @@ TEST_F(CmdDeleteInterfacePfcConfigTestFixture, deletesWholeStruct) {
   EXPECT_TRUE(port("eth1/2/1").pfc().has_value());
   EXPECT_TRUE(
       ConfigSession::getInstance()
-          .getAgentConfig()
+          .config<AgentConfigDomain>()
           .sw()
           ->portPgConfigs()
           ->count("pg-a"));

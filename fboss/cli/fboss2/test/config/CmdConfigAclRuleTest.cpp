@@ -12,9 +12,11 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
 #include "fboss/cli/fboss2/commands/config/acl/rule/AclRuleAttrs.h"
 #include "fboss/cli/fboss2/commands/config/acl/rule/CmdConfigAclRule.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -57,7 +59,7 @@ class CmdConfigAclRuleTestFixture : public CmdConfigTestBase {
   const std::string cmdPrefix_ = "config acl rule";
 
   cfg::AclEntry& getRule(const std::string& name) {
-    auto& cfg = ConfigSession::getInstance().getAgentConfig();
+    auto& cfg = ConfigSession::getInstance().config<AgentConfigDomain>();
     auto& tables = *(*cfg.sw()->aclTableGroups())[0].aclTables();
     auto& entries = *tables[0].aclEntries();
     for (auto& e : entries) {

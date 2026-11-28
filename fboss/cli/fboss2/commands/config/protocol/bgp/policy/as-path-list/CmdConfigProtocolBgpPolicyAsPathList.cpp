@@ -30,6 +30,7 @@
 #include <vector>
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliAttrHandlers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/policy/as-path-list/BgpAsPathListCliUtils.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -202,7 +203,7 @@ CmdConfigProtocolBgpPolicyAsPathList::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
-  auto& cfg = session.getBgpConfig();
+  auto& cfg = session.config<BgpConfigDomain>();
   const bool listCreated = !bgpcli::asPathListExists(cfg, args.listName());
   auto& list = bgpcli::findOrCreateAsPathList(cfg, args.listName());
   auto& lists = *cfg.policies().ensure().aspath_lists();
@@ -231,9 +232,9 @@ CmdConfigProtocolBgpPolicyAsPathList::queryClient(
         ref.filter->boolean_operator() = *list.boolean_operator();
       }
     }
-    session.saveBgpConfig();
-    result.message +=
-        fmt::format("\nConfig saved to: {}", session.getBgpSessionConfigPath());
+    session.save<BgpConfigDomain>();
+    result.message += fmt::format(
+        "\nConfig saved to: {}", session.stagedPath(cli::ServiceType::BGP));
   } else if (listCreated && !lists.empty()) {
     // Drop the phantom list so a rejected value is not visible to later
     // lookups in the same process.

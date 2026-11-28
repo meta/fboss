@@ -20,6 +20,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -53,7 +54,7 @@ CmdDeleteProtocolBgpPeerGroup::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
-  auto& cfg = session.getBgpConfig();
+  auto& cfg = session.config<BgpConfigDomain>();
   // Delete mirrors add: an absent group is already the requested end state,
   // so this is a success with a warning. Nothing is saved, so a typo'd delete
   // can't stage an unrelated session change.
@@ -88,11 +89,11 @@ CmdDeleteProtocolBgpPeerGroup::queryClient(
         folly::join(", ", referencingPeers));
   }
   groups.erase(it);
-  session.saveBgpConfig();
+  session.save<BgpConfigDomain>();
   return fmt::format(
       "Successfully deleted BGP peer-group {}\nConfig saved to: {}",
       args.groupName(),
-      session.getBgpSessionConfigPath());
+      session.stagedPath(cli::ServiceType::BGP));
 }
 
 void CmdDeleteProtocolBgpPeerGroup::printOutput(const RetType& output) {

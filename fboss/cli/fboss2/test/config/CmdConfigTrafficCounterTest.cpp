@@ -11,7 +11,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/traffic_counter/CmdConfigTrafficCounter.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/PortMap.h" // NOLINT(misc-include-cleaner)
@@ -128,8 +130,10 @@ TEST_F(CmdConfigTrafficCounterTestFixture, createNewCounterSingleType) {
   EXPECT_THAT(result, HasSubstr("new_counter"));
   EXPECT_THAT(result, HasSubstr("PACKETS"));
 
-  auto& counters =
-      *ConfigSession::getInstance().getAgentConfig().sw()->trafficCounters();
+  auto& counters = *ConfigSession::getInstance()
+                        .config<AgentConfigDomain>()
+                        .sw()
+                        ->trafficCounters();
   ASSERT_EQ(counters.size(), 2);
   EXPECT_EQ(*counters[1].name(), "new_counter");
   EXPECT_EQ(*counters[1].types(), std::vector{cfg::CounterType::PACKETS});
@@ -144,8 +148,10 @@ TEST_F(CmdConfigTrafficCounterTestFixture, createNewCounterBothTypes) {
   auto result = cmd.queryClient(hostInfo, arg);
   EXPECT_THAT(result, HasSubstr("PACKETS,BYTES"));
 
-  auto& counters =
-      *ConfigSession::getInstance().getAgentConfig().sw()->trafficCounters();
+  auto& counters = *ConfigSession::getInstance()
+                        .config<AgentConfigDomain>()
+                        .sw()
+                        ->trafficCounters();
   ASSERT_EQ(counters.size(), 2);
   EXPECT_EQ(*counters[1].name(), "stat_both");
   EXPECT_EQ(
@@ -163,8 +169,10 @@ TEST_F(CmdConfigTrafficCounterTestFixture, updateExistingCounter) {
   EXPECT_THAT(result, HasSubstr("updated"));
   EXPECT_THAT(result, HasSubstr("BYTES"));
 
-  auto& counters =
-      *ConfigSession::getInstance().getAgentConfig().sw()->trafficCounters();
+  auto& counters = *ConfigSession::getInstance()
+                        .config<AgentConfigDomain>()
+                        .sw()
+                        ->trafficCounters();
   ASSERT_EQ(counters.size(), 1);
   EXPECT_EQ(*counters[0].name(), "existing_counter");
   EXPECT_EQ(*counters[0].types(), std::vector{cfg::CounterType::BYTES});
@@ -180,8 +188,10 @@ TEST_F(CmdConfigTrafficCounterTestFixture, alreadyConfigured) {
   auto result = cmd.queryClient(hostInfo, arg);
   EXPECT_THAT(result, HasSubstr("already"));
 
-  auto& counters =
-      *ConfigSession::getInstance().getAgentConfig().sw()->trafficCounters();
+  auto& counters = *ConfigSession::getInstance()
+                        .config<AgentConfigDomain>()
+                        .sw()
+                        ->trafficCounters();
   ASSERT_EQ(counters.size(), 1);
 }
 

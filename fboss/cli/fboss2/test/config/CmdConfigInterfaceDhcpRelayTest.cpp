@@ -5,7 +5,9 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/interface/dhcp/relay/CmdConfigInterfaceDhcpRelay.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/test/config/CmdConfigTestBase.h"
 #include "fboss/cli/fboss2/utils/InterfaceList.h"
@@ -149,7 +151,7 @@ TEST_F(CmdConfigInterfaceDhcpRelayTestFixture, queryClientSetsIpv4Relay) {
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
   EXPECT_THAT(result, HasSubstr("ip-address=10.127.255.67"));
 
-  auto& sw = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& sw = *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   auto& ifaces = *sw.interfaces();
   ASSERT_TRUE(ifaces[0].dhcpRelayAddressV4().has_value());
   EXPECT_EQ(*ifaces[0].dhcpRelayAddressV4(), "10.127.255.67");
@@ -170,7 +172,7 @@ TEST_F(CmdConfigInterfaceDhcpRelayTestFixture, queryClientSetsIpv6Relay) {
 
   EXPECT_THAT(result, HasSubstr("ipv6-address=2401:db00:eef0:a67::"));
 
-  auto& sw = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& sw = *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   ASSERT_TRUE((*sw.interfaces())[0].dhcpRelayAddressV6().has_value());
   EXPECT_EQ(
       *(*sw.interfaces())[0].dhcpRelayAddressV6(), "2401:db00:eef0:a67::");
@@ -193,8 +195,10 @@ TEST_F(CmdConfigInterfaceDhcpRelayTestFixture, queryClientSetsBoth) {
   EXPECT_THAT(result, HasSubstr("ip-address=10.127.255.67"));
   EXPECT_THAT(result, HasSubstr("ipv6-address=2401:db00:eef0:a67::"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].dhcpRelayAddressV4(), "10.127.255.67");
   EXPECT_EQ(*ifaces[0].dhcpRelayAddressV6(), "2401:db00:eef0:a67::");
 }
@@ -210,7 +214,7 @@ TEST_F(CmdConfigInterfaceDhcpRelayTestFixture, queryClientNoVlanEntry) {
 
   EXPECT_NO_THROW(cmd.queryClient(localhost(), interfaces, attrs));
 
-  auto& sw = *ConfigSession::getInstance().getAgentConfig().sw();
+  auto& sw = *ConfigSession::getInstance().config<AgentConfigDomain>().sw();
   EXPECT_EQ(*(*sw.interfaces())[1].dhcpRelayAddressV4(), "10.0.0.1");
   // VLAN 2000 belongs to eth1/1/1 and must be untouched
   EXPECT_FALSE((*sw.vlans())[0].dhcpRelayAddressV4().has_value());
@@ -228,8 +232,10 @@ TEST_F(CmdConfigInterfaceDhcpRelayTestFixture, queryClientIpv6Normalized) {
 
   EXPECT_THAT(result, HasSubstr("ipv6-address=2401:db00::1"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].dhcpRelayAddressV6(), "2401:db00::1");
 }
 
@@ -337,8 +343,10 @@ TEST_F(
   EXPECT_THROW(
       cmd.queryClient(localhost(), interfaces, attrs), std::invalid_argument);
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_FALSE(ifaces[0].dhcpRelayAddressV4().has_value());
 }
 
@@ -358,8 +366,10 @@ TEST_F(CmdConfigInterfaceDhcpRelayTestFixture, queryClientMultiInterface) {
   EXPECT_THAT(result, HasSubstr("eth1/1/1"));
   EXPECT_THAT(result, HasSubstr("eth1/2/1"));
 
-  auto& ifaces =
-      *ConfigSession::getInstance().getAgentConfig().sw()->interfaces();
+  auto& ifaces = *ConfigSession::getInstance()
+                      .config<AgentConfigDomain>()
+                      .sw()
+                      ->interfaces();
   EXPECT_EQ(*ifaces[0].dhcpRelayAddressV4(), "10.0.0.1");
   EXPECT_EQ(*ifaces[1].dhcpRelayAddressV4(), "10.0.0.1");
 }

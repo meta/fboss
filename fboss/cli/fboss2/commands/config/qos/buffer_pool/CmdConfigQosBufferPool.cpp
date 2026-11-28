@@ -21,7 +21,9 @@
 #include <map>
 #include <set>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/agent/gen-cpp2/switch_config_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -110,7 +112,7 @@ CmdConfigQosBufferPoolTraits::RetType CmdConfigQosBufferPool::queryClient(
   const std::string& poolName = config.getName();
 
   auto& session = ConfigSession::getInstance();
-  auto& agentConfig = session.getAgentConfig();
+  auto& agentConfig = session.config<AgentConfigDomain>();
   auto& switchConfig = *agentConfig.sw();
 
   // Get or create the bufferPoolConfigs map

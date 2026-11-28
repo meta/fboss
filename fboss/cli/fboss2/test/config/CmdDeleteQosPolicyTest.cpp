@@ -8,8 +8,10 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicy.h"
 #include "fboss/cli/fboss2/commands/delete/qos/policy/CmdDeleteQosPolicyMap.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -75,8 +77,10 @@ class CmdDeleteQosPolicyTestFixture : public CmdConfigTestBase {
 
  protected:
   static const cfg::QosPolicy* findPolicy(const std::string& name) {
-    const auto& policies =
-        *ConfigSession::getInstance().getAgentConfig().sw()->qosPolicies();
+    const auto& policies = *ConfigSession::getInstance()
+                                .config<AgentConfigDomain>()
+                                .sw()
+                                ->qosPolicies();
     for (const auto& policy : policies) {
       if (*policy.name() == name) {
         return &policy;
@@ -177,14 +181,19 @@ TEST_F(CmdDeleteQosPolicyTestFixture, deleteMissingPolicyIsNoop) {
   setupTestableConfigSession("delete qos policy", "nope");
   const auto sessionBefore = sessionConfigText();
 
-  const auto before =
-      *ConfigSession::getInstance().getAgentConfig().sw()->qosPolicies();
+  const auto before = *ConfigSession::getInstance()
+                           .config<AgentConfigDomain>()
+                           .sw()
+                           ->qosPolicies();
   auto cmd = CmdDeleteQosPolicy();
   EXPECT_THAT(
       cmd.queryClient(localhost(), QosPolicyName({"nope"})),
       ::testing::HasSubstr("nothing to delete"));
   EXPECT_EQ(
-      *ConfigSession::getInstance().getAgentConfig().sw()->qosPolicies(),
+      *ConfigSession::getInstance()
+           .config<AgentConfigDomain>()
+           .sw()
+           ->qosPolicies(),
       before);
   EXPECT_EQ(sessionConfigText(), sessionBefore)
       << "a no-op delete must not save the config";

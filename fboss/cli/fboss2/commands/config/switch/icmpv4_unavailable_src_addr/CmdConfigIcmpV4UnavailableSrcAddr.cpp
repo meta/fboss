@@ -12,7 +12,9 @@
 #include <fmt/format.h>
 #include <folly/IPAddressV4.h>
 #include <iostream>
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/CmdHandler.cpp" // NOLINT(facebook-unused-include-check)
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss {
@@ -39,7 +41,7 @@ CmdConfigIcmpV4UnavailableSrcAddr::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& srcAddr) {
   auto& session = ConfigSession::getInstance();
-  auto& config = session.getAgentConfig();
+  auto& config = session.config<AgentConfigDomain>();
   auto& swConfig = *config.sw();
 
   const std::string& newAddr = srcAddr.getAddress();

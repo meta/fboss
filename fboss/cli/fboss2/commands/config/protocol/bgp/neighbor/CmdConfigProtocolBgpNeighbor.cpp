@@ -29,6 +29,7 @@
 #include "configerator/structs/neteng/fboss/bgp/if/gen-cpp2/bgp_attr_types.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpCliAttrHandlers.h"
 #include "fboss/cli/fboss2/commands/config/protocol/bgp/BgpPeerAddr.h"
+#include "fboss/cli/fboss2/session/BgpConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 #include "fboss/cli/fboss2/utils/CmdUtilsCommon.h"
 #include "fboss/cli/fboss2/utils/HostInfo.h"
@@ -820,7 +821,7 @@ CmdConfigProtocolBgpNeighbor::queryClient(
     const HostInfo& /* hostInfo */,
     const ObjectArgType& args) {
   auto& session = ConfigSession::getInstance();
-  auto& cfg = session.getBgpConfig();
+  auto& cfg = session.config<BgpConfigDomain>();
   auto& peers = *cfg.peers();
   auto existing = bgpcli::findBgpPeer(cfg, args.peerAddr());
   if (args.attr().empty() && existing != peers.end()) {
@@ -849,9 +850,9 @@ CmdConfigProtocolBgpNeighbor::queryClient(
   if (!args.attr().empty()) {
     result.message += fmt::format(" for neighbor {}", args.peerAddr());
   }
-  session.saveBgpConfig();
-  result.message +=
-      fmt::format("\nConfig saved to: {}", session.getBgpSessionConfigPath());
+  session.save<BgpConfigDomain>();
+  result.message += fmt::format(
+      "\nConfig saved to: {}", session.stagedPath(cli::ServiceType::BGP));
   return result.message;
 }
 

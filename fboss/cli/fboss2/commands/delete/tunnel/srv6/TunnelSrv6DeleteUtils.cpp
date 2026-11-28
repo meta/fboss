@@ -7,8 +7,10 @@
 #include <algorithm>
 #include <unordered_set>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/tunnel/srv6/TunnelSrv6ConfigUtils.h"
 #include "fboss/cli/fboss2/gen-cpp2/cli_metadata_types.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 namespace facebook::fboss::srv6_tunnel_delete_utils {
@@ -133,7 +135,7 @@ std::string deleteTunnel(
     const std::string& tunnelId,
     const std::vector<std::string>& attrs) {
   auto& session = ConfigSession::getInstance();
-  auto& swConfig = *session.getAgentConfig().sw();
+  auto& swConfig = *session.config<AgentConfigDomain>().sw();
   bool changed = false;
   auto result =
       applyTunnelDelete(swConfig, expectedType, tunnelId, attrs, changed);

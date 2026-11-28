@@ -7,8 +7,10 @@
 #include <stdexcept>
 #include <string>
 
+#include "fboss/agent/gen-cpp2/agent_config_types.h"
 #include "fboss/cli/fboss2/commands/config/switch/admin_distance/CmdConfigAdminDistance.h"
 #include "fboss/cli/fboss2/commands/delete/switch/admin_distance/CmdDeleteAdminDistance.h"
+#include "fboss/cli/fboss2/session/AgentConfigDomain.h"
 #include "fboss/cli/fboss2/session/ConfigSession.h"
 
 using namespace ::testing;
@@ -40,7 +42,7 @@ class CmdDeleteAdminDistanceTestFixture : public CmdConfigTestBase {
 
   static const std::map<int32_t, int32_t>& adminDistanceMap() {
     return *ConfigSession::getInstance()
-                .getAgentConfig()
+                .config<AgentConfigDomain>()
                 .sw()
                 ->clientIdToAdminDistance();
   }
