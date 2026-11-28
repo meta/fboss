@@ -502,6 +502,45 @@ void sendNeighborAdvertisement(
   handle->rxPacket(std::move(buf), port, vlan);
 }
 
+void sendDuplicateAddressDetectionProbe(
+    HwTestHandle* handle,
+    StringPiece targetIpStr,
+    StringPiece srcMacStr,
+    const PortDescriptor& port,
+    int vlanID) {
+  IPAddressV6 targetIP(targetIpStr);
+  MacAddress srcMac(srcMacStr);
+  VlanID vlan(vlanID);
+  IPAddressV6 dstIP = targetIP.getSolicitedNodeAddress();
+  MacAddress dstMac = MacAddress::createMulticast(dstIP);
+  size_t plen = ICMPHdr::ICMPV6_UNUSED_LEN + IPAddressV6::byteCount();
+
+  IPv6Hdr ipv6(IPAddressV6(), dstIP);
+  ipv6.trafficClass = 0xe0;
+  ipv6.payloadLength = ICMPHdr::SIZE + plen;
+  ipv6.nextHeader = static_cast<uint8_t>(IP_PROTO::IP_PROTO_IPV6_ICMP);
+  ipv6.hopLimit = 255;
+
+  size_t totalLen = EthHdr::SIZE + IPv6Hdr::SIZE + ipv6.payloadLength;
+  auto buf = IOBuf::create(totalLen);
+  buf->append(totalLen);
+  folly::io::RWPrivateCursor cursor(buf.get());
+
+  auto bodyFn = [&](folly::io::RWPrivateCursor* c) {
+    c->write<uint32_t>(0);
+    c->push(targetIP.bytes(), IPAddressV6::byteCount());
+  };
+
+  ICMPHdr icmp6(
+      static_cast<uint8_t>(ICMPv6Type::ICMPV6_TYPE_NDP_NEIGHBOR_SOLICITATION),
+      0,
+      0);
+  icmp6.serializeFullPacket(&cursor, dstMac, srcMac, vlan, ipv6, plen, bodyFn);
+
+  PktUtil::padToLength(buf.get(), totalLen);
+  handle->rxPacket(std::move(buf), port, vlan);
+}
+
 } // unnamed namespace
 
 class NdpTest : public ::testing::Test {
@@ -617,7 +656,7 @@ TEST_F(NdpTest, UnsolicitedRequest) {
           MockPlatform::getMockLocalMac(),
           IPAddressV6("2401:db00:2110:3004::a"),
           MacAddress("02:05:73:f9:46:fc"),
-          IPAddressV6("ff01::1"),
+          IPAddressV6("ff02::1"),
           VlanID(5),
           0xa0),
       PortID(1),
@@ -675,7 +714,7 @@ TEST_F(NdpTest, UnsolicitedRequestPortRif) {
           MacAddress("00:02:00:00:00:55"),
           IPAddressV6("2401:db00:2110:3004::a"),
           MacAddress("02:05:73:f9:46:fc"),
-          IPAddressV6("ff01::1"),
+          IPAddressV6("ff02::1"),
           VlanID(1),
           0xa0),
       PortID(1),
@@ -689,6 +728,36 @@ TEST_F(NdpTest, UnsolicitedRequestPortRif) {
   counters.update();
   counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.pkts.sum", 1);
   counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.ndp.sum", 1);
+}
+
+TEST_F(NdpTest, DuplicateAddressDetectionProbeForOwnAddress) {
+  auto handle = this->setupTestHandle();
+  auto sw = handle->getSw();
+  const auto ownIP = "2401:db00:2110:3004::a";
+  const auto probingHostMac = "02:05:73:f9:46:fc";
+  constexpr uint8_t kRouterAndOverrideFlags = 0xa0;
+
+  CounterCache counters(sw);
+
+  EXPECT_OUT_OF_PORT_PKT(
+      sw,
+      "neighbor advertisement",
+      checkNeighborAdvert(
+          MockPlatform::getMockLocalMac(),
+          IPAddressV6(ownIP),
+          MacAddress(probingHostMac),
+          IPAddressV6("ff02::1"),
+          VlanID(5),
+          kRouterAndOverrideFlags),
+      PortID(1),
+      std::optional<uint8_t>(kNCStrictPriorityQueue));
+
+  sendDuplicateAddressDetectionProbe(
+      handle.get(), ownIP, probingHostMac, PortDescriptor(PortID(1)), 5);
+
+  counters.update();
+  counters.checkDelta(SwitchStats::kCounterPrefix + "trapped.ndp.sum", 1);
+  counters.checkDelta(SwitchStats::kCounterPrefix + "ipv6.ndp.bad.sum", 0);
 }
 
 TEST_F(NdpTest, NeighborSoliciationNotMine) {
