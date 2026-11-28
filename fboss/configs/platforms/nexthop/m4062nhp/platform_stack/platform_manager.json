@@ -93,7 +93,7 @@
         },
         {
           "pmUnitScopedName": "NIC_TEMP",
-          "sysfsPath": "/sys/bus/pci/devices/0000:02:00.0"
+          "sysfsPath": "/sys/class/net/eth0/device"
         }
       ],
       "outgoingSlotConfigs": {
