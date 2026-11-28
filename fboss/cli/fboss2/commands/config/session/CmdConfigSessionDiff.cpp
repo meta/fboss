@@ -19,12 +19,20 @@
 
 #include <fmt/format.h>
 #include <folly/FileUtil.h>
+#include <folly/String.h>
 #include <folly/Subprocess.h>
+#include <folly/json/dynamic.h>
+#include <folly/json/json.h>
+#include <glog/logging.h>
 #include <unistd.h>
+#include <algorithm>
+#include <cstddef>
 #include <cstdlib>
 #include <exception>
 #include <functional>
 #include <iostream>
+#include <map>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -133,6 +141,121 @@ std::string executeDiff(
   }
 }
 
+// Unknown key path -> raw value.
+using DroppedKeys = std::map<std::string, folly::dynamic>;
+
+// Array elements pair by index, so an added element shifts later key paths.
+void collectDroppedKeys(
+    const folly::dynamic& raw,
+    const folly::dynamic& normalized,
+    const std::string& path,
+    DroppedKeys& dropped) {
+  if (raw.isObject()) {
+    for (const auto& [key, value] : raw.items()) {
+      auto keyPath = path.empty() ? key.asString()
+                                  : fmt::format("{}.{}", path, key.asString());
+      const auto* match =
+          normalized.isObject() ? normalized.get_ptr(key) : nullptr;
+      if (match) {
+        collectDroppedKeys(value, *match, keyPath, dropped);
+      } else {
+        dropped.emplace(std::move(keyPath), value);
+      }
+    }
+  } else if (raw.isArray() && normalized.isArray()) {
+    for (size_t i = 0; i < std::min(raw.size(), normalized.size()); ++i) {
+      collectDroppedKeys(
+          raw[i], normalized[i], fmt::format("{}[{}]", path, i), dropped);
+    }
+  }
+}
+
+// `bare`: an Agent text with no "sw" object around the SwitchConfig.
+struct RawKeys {
+  DroppedKeys dropped;
+  bool bare = false;
+};
+
+RawKeys rawKeys(
+    cli::ServiceType service,
+    const std::string& raw,
+    const std::string& normalized) {
+  RawKeys keys;
+  try {
+    const auto rawJson = folly::parseJson(raw);
+    const auto normalizedJson = folly::parseJson(normalized);
+    // The saved form has a bare SwitchConfig in its "sw" object.
+    const auto* base = &normalizedJson;
+    if (service == cli::ServiceType::AGENT && rawJson.isObject() &&
+        !rawJson.count("sw") && normalizedJson.count("sw")) {
+      keys.bare = true;
+      base = &normalizedJson["sw"];
+    }
+    collectDroppedKeys(rawJson, *base, "", keys.dropped);
+  } catch (const std::exception& ex) {
+    LOG(WARNING) << "Unknown-key check failed to parse: " << ex.what();
+  }
+  return keys;
+}
+
+// Diffs the texts in the form that saveConfig() writes. The diff does not
+// show unknown keys, so a WARNING names them. `commitWritesContent2` is
+// true when a commit replaces content1 with content2.
+std::string normalizedDiff(
+    cli::ServiceType service,
+    std::string content1,
+    std::string content2,
+    const std::string& label1,
+    const std::string& label2,
+    bool commitWritesContent2) {
+  RawKeys keys1;
+  RawKeys keys2;
+  const auto normalize = [&](std::string& json,
+                             const std::string& label,
+                             RawKeys& keys) -> std::string {
+    auto text = ConfigSession::normalizedConfigJson(service, json);
+    if (text == json) {
+      return label;
+    }
+    keys = rawKeys(service, json, text);
+    json = std::move(text);
+    return fmt::format("{} (normalized)", label);
+  };
+  const auto diffLabel1 = normalize(content1, label1, keys1);
+  const auto diffLabel2 = normalize(content2, label2, keys2);
+  const bool equal = content1 == content2;
+
+  std::set<std::string> hidden;
+  const auto addDifferent = [&](const DroppedKeys& keys,
+                                const DroppedKeys& other) {
+    for (const auto& [path, value] : keys) {
+      const auto it = other.find(path);
+      if (it == other.end() || it->second != value) {
+        hidden.insert(path);
+      }
+    }
+  };
+  // A commit of equal texts keeps the live file, except a bare live text.
+  if (!equal || !commitWritesContent2 || keys1.bare) {
+    addDifferent(keys1.dropped, keys2.dropped);
+    addDifferent(keys2.dropped, keys1.dropped);
+  }
+  std::string warning;
+  if (!hidden.empty()) {
+    warning = fmt::format(
+        "WARNING: {} key(s) that are not in the CLI schema are different in "
+        "the 2 texts. The diff does not show them{}: {}\n",
+        hidden.size(),
+        commitWritesContent2 ? " and a commit adds, changes or drops them" : "",
+        folly::join(", ", hidden));
+  }
+  return fmt::format(
+      "{}{}",
+      warning,
+      equal ? executeDiff(content1, content2, label1, label2)
+            : executeDiff(content1, content2, diffLabel1, diffLabel2));
+}
+
 // Append a (optionally headered) diff section to the combined output.
 void appendSection(
     std::string& out,
@@ -170,7 +293,8 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
   // difference is how the base content+label is obtained, so share the loop.
   auto diffStagedDomains =
       [&](const std::function<std::pair<std::string, std::string>(
-              const ConfigDomain&)>& getBase) {
+              const ConfigDomain&)>& getBase,
+          bool baseIsLive) {
         // Read each domain's staged content once via the shared primitive
         // (nullopt == not staged), so we neither re-stat nor re-read files.
         std::vector<std::pair<ConfigDomain, std::string>> staged;
@@ -185,8 +309,13 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
           appendSection(
               out,
               d.name,
-              executeDiff(
-                  baseContent, sessionContent, baseLabel, "session config"),
+              normalizedDiff(
+                  d.service,
+                  baseContent,
+                  sessionContent,
+                  baseLabel,
+                  "session config",
+                  baseIsLive),
               staged.size() > 1);
         }
         return out;
@@ -197,11 +326,13 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
     if (!session.hasActiveSession()) {
       return "No config session exists. Make a config change first.";
     }
-    return diffStagedDomains([&](const ConfigDomain& d) {
-      return std::make_pair(
-          readFileOrEmpty(session.getCurrentConfigPath(d.service)),
-          std::string("current live config"));
-    });
+    return diffStagedDomains(
+        [&](const ConfigDomain& d) {
+          return std::make_pair(
+              readFileOrEmpty(session.getCurrentConfigPath(d.service)),
+              std::string("current live config"));
+        },
+        true);
   }
 
   // Mode 2: One argument - diff each staged domain's session vs a revision.
@@ -209,9 +340,12 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
     if (!session.hasActiveSession()) {
       return "No config session exists. Make a config change first.";
     }
-    return diffStagedDomains([&](const ConfigDomain& d) {
-      return getRevisionContent(revisions[0], d, validationPath, session, git);
-    });
+    return diffStagedDomains(
+        [&](const ConfigDomain& d) {
+          return getRevisionContent(
+              revisions[0], d, validationPath, session, git);
+        },
+        revisions[0] == "current");
   }
 
   // Mode 3: Two arguments - diff between two revisions for each domain that
@@ -228,7 +362,8 @@ CmdConfigSessionDiffTraits::RetType CmdConfigSessionDiff::queryClient(
       if (c1.empty() && c2.empty()) {
         continue; // domain absent at both revisions
       }
-      sections.emplace_back(d.name, executeDiff(c1, c2, l1, l2));
+      sections.emplace_back(
+          d.name, normalizedDiff(d.service, c1, c2, l1, l2, false));
     }
     if (sections.empty()) {
       return "No config found at the given revisions.";
