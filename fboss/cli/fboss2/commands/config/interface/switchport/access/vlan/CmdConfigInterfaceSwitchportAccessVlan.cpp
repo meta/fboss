@@ -10,7 +10,8 @@
 
 #include "fboss/cli/fboss2/commands/config/interface/switchport/access/vlan/CmdConfigInterfaceSwitchportAccessVlan.h"
 
-#include <unordered_set>
+#include <algorithm>
+#include <set>
 
 #include "fboss/cli/fboss2/CmdHandler.cpp"
 
@@ -39,8 +40,9 @@ CmdConfigInterfaceSwitchportAccessVlan::queryClient(
   bool vlanCreated =
       VlanManager::createVlan(*config.sw(), VlanID(vlanId)).first;
 
-  // Collect the logical port IDs we need to update
-  std::unordered_set<int32_t> portIds;
+  // Collect the logical port IDs we need to update (ordered, so the
+  // vlanPorts entries below are inserted deterministically)
+  std::set<int32_t> portIds;
 
   // Update ingressVlan for all resolved ports
   for (const utils::Intf& intf : interfaces) {
@@ -51,12 +53,28 @@ CmdConfigInterfaceSwitchportAccessVlan::queryClient(
     }
   }
 
-  // Also update the vlanPorts entries for these ports
+  // Each port must end up with exactly one untagged vlanPorts membership in
+  // the target VLAN — the agent expects a port to be a member of its ingress
+  // VLAN. Drop the port's previous untagged (access) memberships and any
+  // existing entry in the target VLAN, then insert the new entry. Tagged
+  // (trunk) memberships in other VLANs are preserved.
   auto& vlanPorts = *config.sw()->vlanPorts();
-  for (auto& vlanPort : vlanPorts) {
-    if (portIds.count(*vlanPort.logicalPort())) {
-      vlanPort.vlanID() = vlanId;
-    }
+  vlanPorts.erase(
+      std::remove_if(
+          vlanPorts.begin(),
+          vlanPorts.end(),
+          [&portIds, vlanId](const auto& vp) {
+            return portIds.count(*vp.logicalPort()) &&
+                (!*vp.emitTags() || *vp.vlanID() == vlanId);
+          }),
+      vlanPorts.end());
+  for (int32_t portId : portIds) {
+    cfg::VlanPort vlanPort;
+    vlanPort.vlanID() = vlanId;
+    vlanPort.logicalPort() = portId;
+    vlanPort.spanningTreeState() = cfg::SpanningTreeState::FORWARDING;
+    vlanPort.emitTags() = false;
+    vlanPorts.push_back(std::move(vlanPort));
   }
 
   // Save the updated config

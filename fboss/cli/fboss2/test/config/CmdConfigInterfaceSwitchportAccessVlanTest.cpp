@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "fboss/agent/types.h"
 #include "fboss/cli/fboss2/commands/config/interface/switchport/access/vlan/CmdConfigInterfaceSwitchportAccessVlan.h"
@@ -40,6 +41,13 @@ class CmdConfigInterfaceSwitchportAccessVlanTestFixture
         "state": 2,
         "speed": 100000,
         "ingressVlan": 1
+      },
+      {
+        "logicalID": 3,
+        "name": "eth1/3/1",
+        "state": 2,
+        "speed": 100000,
+        "ingressVlan": 1
       }
     ],
     "vlanPorts": [
@@ -54,6 +62,12 @@ class CmdConfigInterfaceSwitchportAccessVlanTestFixture
         "logicalPort": 2,
         "spanningTreeState": 2,
         "emitTags": false
+      },
+      {
+        "vlanID": 3000,
+        "logicalPort": 2,
+        "spanningTreeState": 2,
+        "emitTags": true
       }
     ],
     "defaultVlan": 4000,
@@ -75,6 +89,18 @@ class CmdConfigInterfaceSwitchportAccessVlanTestFixture
 
     setupTestableConfigSession(
         "config interface switchport access vlan eth1/1/1", "100");
+  }
+
+  // All vlanPorts entries for the given logical port in the session config.
+  static std::vector<cfg::VlanPort> vlanPortEntriesFor(int32_t logicalPort) {
+    auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+    std::vector<cfg::VlanPort> entries;
+    for (const auto& vp : *swConfig.vlanPorts()) {
+      if (*vp.logicalPort() == logicalPort) {
+        entries.push_back(vp);
+      }
+    }
+    return entries;
   }
 };
 
@@ -184,13 +210,98 @@ TEST_F(
     }
   }
 
-  // Verify the vlanPorts entries were also updated
-  auto& vlanPorts = *switchConfig.vlanPorts();
-  for (const auto& vlanPort : vlanPorts) {
-    if (*vlanPort.logicalPort() == 1 || *vlanPort.logicalPort() == 2) {
-      EXPECT_EQ(*vlanPort.vlanID(), 2001);
+  // Port 1: its untagged VLAN 1 membership was replaced by exactly one
+  // untagged membership in VLAN 2001.
+  auto port1Entries = vlanPortEntriesFor(1);
+  ASSERT_EQ(port1Entries.size(), 1);
+  EXPECT_EQ(*port1Entries[0].vlanID(), 2001);
+  EXPECT_FALSE(*port1Entries[0].emitTags());
+
+  // Port 2: same replacement, but its tagged (trunk) membership in VLAN 3000
+  // is preserved.
+  auto port2Entries = vlanPortEntriesFor(2);
+  ASSERT_EQ(port2Entries.size(), 2);
+  bool foundUntagged2001 = false;
+  bool foundTagged3000 = false;
+  for (const auto& vp : port2Entries) {
+    if (*vp.vlanID() == 2001 && !*vp.emitTags()) {
+      foundUntagged2001 = true;
+    }
+    if (*vp.vlanID() == 3000 && *vp.emitTags()) {
+      foundTagged3000 = true;
     }
   }
+  EXPECT_TRUE(foundUntagged2001);
+  EXPECT_TRUE(foundTagged3000);
+}
+
+TEST_F(
+    CmdConfigInterfaceSwitchportAccessVlanTestFixture,
+    queryClientInsertsVlanPortWhenMissing) {
+  // eth1/3/1 (logical port 3) has no vlanPorts entry in the fixture config;
+  // the command must insert one rather than leave the port with an
+  // ingressVlan it is not a member of.
+  ASSERT_TRUE(vlanPortEntriesFor(3).empty());
+
+  auto cmd = CmdConfigInterfaceSwitchportAccessVlan();
+  utils::InterfaceList interfaces({"eth1/3/1"});
+  VlanIdValue vlanId({"2001"});
+
+  auto result = cmd.queryClient(localhost(), interfaces, vlanId);
+  EXPECT_THAT(result, HasSubstr("Successfully set access VLAN"));
+
+  auto entries = vlanPortEntriesFor(3);
+  ASSERT_EQ(entries.size(), 1);
+  EXPECT_EQ(*entries[0].vlanID(), 2001);
+  EXPECT_FALSE(*entries[0].emitTags());
+  EXPECT_EQ(
+      *entries[0].spanningTreeState(), cfg::SpanningTreeState::FORWARDING);
+
+  auto& swConfig = *ConfigSession::getInstance().getAgentConfig().sw();
+  for (const auto& port : *swConfig.ports()) {
+    if (*port.name() == "eth1/3/1") {
+      EXPECT_EQ(*port.ingressVlan(), 2001);
+    }
+  }
+}
+
+TEST_F(
+    CmdConfigInterfaceSwitchportAccessVlanTestFixture,
+    queryClientDeduplicatesConflictingEntries) {
+  // eth1/2/1 (logical port 2) starts with an untagged membership in VLAN 1
+  // and a tagged membership in VLAN 3000. Setting access VLAN 3000 must not
+  // leave duplicate (vlan, port) entries: both old entries are replaced by a
+  // single untagged membership in VLAN 3000.
+  ASSERT_EQ(vlanPortEntriesFor(2).size(), 2);
+
+  auto cmd = CmdConfigInterfaceSwitchportAccessVlan();
+  utils::InterfaceList interfaces({"eth1/2/1"});
+  VlanIdValue vlanId({"3000"});
+
+  auto result = cmd.queryClient(localhost(), interfaces, vlanId);
+  EXPECT_THAT(result, HasSubstr("Successfully set access VLAN"));
+
+  auto entries = vlanPortEntriesFor(2);
+  ASSERT_EQ(entries.size(), 1);
+  EXPECT_EQ(*entries[0].vlanID(), 3000);
+  EXPECT_FALSE(*entries[0].emitTags());
+}
+
+TEST_F(
+    CmdConfigInterfaceSwitchportAccessVlanTestFixture,
+    queryClientIsIdempotent) {
+  auto cmd = CmdConfigInterfaceSwitchportAccessVlan();
+  utils::InterfaceList interfaces({"eth1/1/1"});
+  VlanIdValue vlanId({"2001"});
+
+  cmd.queryClient(localhost(), interfaces, vlanId);
+  cmd.queryClient(localhost(), interfaces, vlanId);
+
+  // Running the command twice must not accumulate duplicate entries
+  auto entries = vlanPortEntriesFor(1);
+  ASSERT_EQ(entries.size(), 1);
+  EXPECT_EQ(*entries[0].vlanID(), 2001);
+  EXPECT_FALSE(*entries[0].emitTags());
 }
 
 TEST_F(
@@ -234,6 +345,12 @@ TEST_F(
       EXPECT_EQ(*port.ingressVlan(), 4094);
     }
   }
+
+  // Including its vlanPorts membership
+  auto entries = vlanPortEntriesFor(1);
+  ASSERT_EQ(entries.size(), 1);
+  EXPECT_EQ(*entries[0].vlanID(), 4094);
+  EXPECT_FALSE(*entries[0].emitTags());
 }
 
 } // namespace facebook::fboss
