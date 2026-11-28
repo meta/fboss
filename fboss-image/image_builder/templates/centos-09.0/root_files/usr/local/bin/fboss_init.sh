@@ -16,6 +16,8 @@ CHASSIS_EEPROM_PARSED="/run/devmap/eeproms/CHASSIS_EEPROM_PARSED"
 # Passed as --flagfile by the fboss_sw_agent, fboss_hw_agent@ and qsfp_service
 # units; on tmpfs so it cannot go stale across boots.
 VARIANT_FLAGFILE="/run/fboss/variant_flags"
+# Set by setup_agent_config when it creates agent.conf on this boot.
+AGENT_CONF_CREATED=0
 
 log() {
   echo "[fboss_init] $1" >&2
@@ -81,6 +83,7 @@ setup_agent_config() {
   if [[ ! -f $NPU_SDK_METADATA ]]; then
     log "No NPU SDK metadata found; keeping the configured SDK version"
     copy_config "$src" "$dst" "agent.conf"
+    AGENT_CONF_CREATED=1
     return
   fi
 
@@ -89,6 +92,7 @@ setup_agent_config() {
     --metadata-path "$NPU_SDK_METADATA" \
     --binary-name "$NPU_HW_AGENT_BINARY" \
     --output-directory "$COOP_DIR"
+  AGENT_CONF_CREATED=1
   log "Created agent.conf with SDK versions for $NPU_HW_AGENT_BINARY"
 }
 
@@ -153,6 +157,55 @@ set_variant_flags() {
   log "Wrote $VARIANT_FLAGFILE"
 }
 
+# Start fboss2's config history (ConfigSession::initializeGit's layout) from the
+# agent.conf this boot created, so its first commit is the bootstrap rather than
+# whatever agent.conf holds at the first `fboss2-dev config` session.
+#
+# bgpd's packaged /etc/coop/bgpcpp.conf goes into the same commit as
+# bgpcpp/bgpcpp.conf: fboss2's rollback removes a domain absent at the target
+# commit, and bgpd aborts without its config.
+commit_bootstrap_config() {
+  if [[ $AGENT_CONF_CREATED -ne 1 ]]; then
+    return
+  fi
+  # /etc/coop belongs to coop, so git refuses it to root without safe.directory,
+  # which fboss2 passes on every call too.
+  local git=(git -c "safe.directory=$COOP_DIR" -C "$COOP_DIR")
+  if "${git[@]}" rev-parse --verify HEAD >/dev/null 2>&1; then
+    log "fboss2 config history already has commits (skipping)"
+    return
+  fi
+  # fboss2 skips its own git init once the repository exists, so this sets up
+  # what that init would: group-writable files and the fboss-cli identity.
+  local files=(cli/agent.conf cli/cli_metadata.json)
+  local bgp_live="${COOP_DIR}/bgpcpp.conf"
+  local seed_bgp=0
+  if [[ -f $bgp_live && ! -L $bgp_live && ! -e "${COOP_DIR}/bgpcpp/bgpcpp.conf" ]]; then
+    files+=(bgpcpp/bgpcpp.conf)
+    seed_bgp=1
+  fi
+  if (
+    umask 0002
+    mkdir -p "${COOP_DIR}/cli" &&
+      cp "${COOP_DIR}/agent.conf" "${COOP_DIR}/cli/agent.conf" &&
+      printf '{}' >"${COOP_DIR}/cli/cli_metadata.json" &&
+      {
+        [[ $seed_bgp -eq 0 ]] ||
+          { mkdir -p "${COOP_DIR}/bgpcpp" && cp "$bgp_live" "${COOP_DIR}/bgpcpp/bgpcpp.conf"; }
+      } &&
+      "${git[@]}" init --quiet --initial-branch=main --shared=group &&
+      "${git[@]}" config user.name fboss-cli &&
+      "${git[@]}" config user.email fboss-cli@localhost &&
+      "${git[@]}" add -- "${files[@]}" &&
+      "${git[@]}" commit --quiet -m "Initial commit: bootstrap agent.conf"
+  ); then
+    log "Committed the bootstrap config (${files[*]}) to the fboss2 config history"
+  else
+    # Not fatal: fboss2 starts the history itself at its first session.
+    error "Failed to commit the bootstrap agent.conf to ${COOP_DIR}"
+  fi
+}
+
 enable_hw_agents() {
   local platform_dir="$1"
   local num_hw_agents
@@ -202,6 +255,7 @@ main() {
 
   create_distro_base_snapshot
   setup_coop_configs "$platform_dir"
+  commit_bootstrap_config
   set_variant_flags
   if ! generate_fruid; then
     exit 1
